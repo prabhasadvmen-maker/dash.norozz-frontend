@@ -1,0 +1,122 @@
+import React from 'react';
+import { Briefcase, Search, Bell, RefreshCw, LogOut, ShieldCheck, Lock, Unlock } from 'lucide-react';
+
+const DedicatedPartnerNavbar = ({ currentUser, onLogout, onRefresh, refreshing, kycStatus = 'pending' }) => {
+  const isApproved = kycStatus === 'approved';
+
+  return (
+    <header style={{
+      background: '#ffffff',
+      borderBottom: '1px solid var(--border-light)',
+      padding: '14px 28px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      position: 'sticky',
+      top: 0,
+      zIndex: 100,
+      boxShadow: 'var(--shadow-sm)'
+    }}>
+      {/* Brand Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <div style={{
+          width: '42px',
+          height: '42px',
+          borderRadius: '12px',
+          background: 'linear-gradient(135deg, #7c3aed, #ec4899)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 4px 14px rgba(124,58,237,0.3)',
+          color: '#ffffff'
+        }}>
+          <Briefcase size={24} />
+        </div>
+        <div>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            NOROZZ <span className="gradient-text">PARTNER PORTAL</span>
+          </h2>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            CleanPro Services Agency • Delhi NCR
+          </span>
+        </div>
+      </div>
+
+      {/* KYC Status Badge */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span className={`badge ${isApproved ? 'badge-success' : 'badge-warning'}`} style={{ padding: '6px 14px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {isApproved ? <ShieldCheck size={14} /> : <Lock size={14} />}
+          {isApproved ? 'VERIFIED PARTNER (ALL FEATURES UNLOCKED)' : 'KYC PENDING APPROVAL (RESTRICTED ACCESS)'}
+        </span>
+      </div>
+
+      {/* Right Controls */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        
+        {/* Refresh Data */}
+        <button
+          onClick={onRefresh}
+          className="btn btn-secondary btn-sm"
+          disabled={refreshing}
+          title="Refresh Data"
+        >
+          <RefreshCw size={14} style={{ animation: refreshing ? 'spin 0.8s linear infinite' : 'none', color: '#7c3aed' }} />
+          <span>Refresh</span>
+        </button>
+
+        {/* User Pill */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '4px 12px 4px 6px',
+          background: '#f8fafc',
+          borderRadius: '9999px',
+          border: '1px solid var(--border-light)'
+        }}>
+          <div style={{
+            width: '34px',
+            height: '34px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #7c3aed, #ec4899)',
+            color: '#ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: '800',
+            fontSize: '0.85rem'
+          }}>
+            P
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+              CleanPro Partner
+            </span>
+            <span style={{ fontSize: '0.68rem', color: '#7c3aed', fontWeight: '700' }}>
+              BUSINESS AGENCY
+            </span>
+          </div>
+        </div>
+
+        {/* Logout */}
+        <button
+          onClick={onLogout}
+          className="btn btn-danger btn-sm"
+          title="Logout"
+        >
+          <LogOut size={16} /> Logout
+        </button>
+
+      </div>
+
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </header>
+  );
+};
+
+export default DedicatedPartnerNavbar;

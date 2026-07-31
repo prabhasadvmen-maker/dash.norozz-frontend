@@ -1,0 +1,353 @@
+import React, { useState } from 'react';
+import { ShieldCheck, Lock, Mail, KeyRound, Sparkles, AlertCircle, ArrowRight, Loader2, UserPlus, CheckCircle2, Crown, Building2, Briefcase, Smartphone } from 'lucide-react';
+import RoleSelector from '../components/auth/RoleSelector';
+import CustomerRegisterForm from '../components/auth/CustomerRegisterForm';
+import PartnerRegisterForm from '../components/auth/PartnerRegisterForm';
+import PartnerStatusView from '../components/auth/PartnerStatusView';
+import OtpVerificationModal from '../components/auth/OtpVerificationModal';
+import { authService } from '../services/api';
+
+const LoginPage = ({ onLoginSuccess }) => {
+  // Modes: 'login' | 'register' | 'partnerStatus'
+  const [authMode, setAuthMode] = useState('login');
+  const [selectedRole, setSelectedRole] = useState('superadmin'); // 'superadmin' | 'admin' | 'partner' | 'customer'
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  // Modals & Partner State
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
+  const [otpUserEmail, setOtpUserEmail] = useState('');
+  const [otpMode, setOtpMode] = useState('register'); // 'register' | 'forgotPassword'
+  const [submittedPartnerData, setSubmittedPartnerData] = useState(null);
+
+  // Submit Login
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccessMessage('');
+    setLoading(true);
+
+    try {
+      const data = await authService.login(email, password);
+      if (data.token) {
+        localStorage.setItem('norozz_token', data.token);
+        localStorage.setItem('norozz_user', JSON.stringify(data.user));
+        onLoginSuccess(data.user);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Authentication failed. Please verify credentials.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Quick Auto-Fill Demo Credentials
+  const handleQuickDemoFill = async (role) => {
+    setError('');
+    setSelectedRole(role);
+
+    if (role === 'superadmin') {
+      try {
+        const seedRes = await authService.seedSuperAdmin();
+        setEmail(seedRes.credentials.email);
+        setPassword('SuperAdmin123!');
+        setSuccessMessage('Super Admin credentials auto-filled!');
+      } catch (err) {
+        setEmail('superadmin@norozz.com');
+        setPassword('SuperAdmin123!');
+      }
+    } else if (role === 'admin') {
+      setEmail('admin.test@norozz.com');
+      setPassword('AdminPass123!');
+      setSuccessMessage('Admin credentials auto-filled!');
+    } else if (role === 'partner') {
+      setEmail('partner.cleanpro@norozz.com');
+      setPassword('PartnerPass123!');
+      setSuccessMessage('Partner credentials auto-filled!');
+    } else {
+      setEmail('ananya.deshmukh@gmail.com');
+      setPassword('Customer123!');
+      setSuccessMessage('Customer credentials auto-filled!');
+    }
+  };
+
+  // Open Forgot Password
+  const handleOpenForgotPassword = () => {
+    if (!email) {
+      setError('Please enter your Email Address first to reset password');
+      return;
+    }
+    setOtpUserEmail(email);
+    setOtpMode('forgotPassword');
+    setIsOtpModalOpen(true);
+  };
+
+  // Open Customer OTP
+  const handleOpenCustomerOtp = (userData) => {
+    setOtpUserEmail(userData.email);
+    setOtpMode('register');
+    setIsOtpModalOpen(true);
+  };
+
+  // Partner Registration Submitted
+  const handlePartnerSubmitted = (partnerData) => {
+    setSubmittedPartnerData(partnerData);
+    setAuthMode('partnerStatus');
+  };
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '24px',
+      position: 'relative',
+      zIndex: 1,
+      background: 'var(--bg-primary)'
+    }}>
+      <div className="mui-card" style={{ width: '100%', maxWidth: '490px', padding: '36px', background: '#ffffff' }}>
+        
+        {/* Header Branding */}
+        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '60px',
+            height: '60px',
+            borderRadius: '18px',
+            background: 'var(--gradient-brand)',
+            marginBottom: '14px',
+            boxShadow: '0 4px 18px rgba(37,99,235,0.3)',
+            color: '#ffffff'
+          }}>
+            <ShieldCheck size={30} />
+          </div>
+          <h1 style={{ fontSize: '1.7rem', fontWeight: '800', letterSpacing: '-0.5px' }}>
+            NOROZZ <span className="gradient-text">SERVICES</span>
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginTop: '4px' }}>
+            Multi-Service Marketplace Onboarding Portal
+          </p>
+        </div>
+
+        {/* Role Selector Tabs */}
+        {authMode !== 'partnerStatus' && (
+          <RoleSelector selectedRole={selectedRole} onSelectRole={setSelectedRole} />
+        )}
+
+        {/* Alerts */}
+        {error && (
+          <div style={{
+            background: 'var(--accent-rose-light)',
+            color: 'var(--accent-rose)',
+            border: '1px solid #fecaca',
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-md)',
+            fontSize: '0.85rem',
+            marginBottom: '18px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <AlertCircle size={16} style={{ flexShrink: 0 }} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {successMessage && (
+          <div style={{
+            background: 'var(--accent-emerald-light)',
+            color: 'var(--accent-emerald)',
+            border: '1px solid #a7f3d0',
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-md)',
+            fontSize: '0.85rem',
+            marginBottom: '18px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <Sparkles size={16} style={{ flexShrink: 0 }} />
+            <span>{successMessage}</span>
+          </div>
+        )}
+
+        {/* MODE 1: LOGIN */}
+        {authMode === 'login' && (
+          <form onSubmit={handleLogin}>
+            <div className="form-group">
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Mail size={14} /> Email Address / Phone
+              </label>
+              <input
+                type="email"
+                className="form-input"
+                placeholder={selectedRole === 'superadmin' ? 'superadmin@norozz.com' : 'user@domain.com'}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '10px' }}>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Lock size={14} /> Password
+              </label>
+              <input
+                type="password"
+                className="form-input"
+                placeholder="••••••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            {/* Forgot Password Link */}
+            <div style={{ textAlign: 'right', marginBottom: '22px' }}>
+              <button
+                type="button"
+                onClick={handleOpenForgotPassword}
+                style={{ background: 'none', border: 'none', color: 'var(--accent-blue)', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer' }}
+              >
+                Forgot Password?
+              </button>
+            </div>
+
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={loading}
+              style={{ width: '100%', padding: '12px', fontSize: '0.95rem' }}
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={16} className="spin" /> Authenticating...
+                </>
+              ) : (
+                <>
+                  Sign In to Dashboard <ArrowRight size={16} />
+                </>
+              )}
+            </button>
+          </form>
+        )}
+
+        {/* MODE 2: REGISTER (CUSTOMER vs PARTNER) */}
+        {authMode === 'register' && (
+          <>
+            {selectedRole === 'partner' ? (
+              <PartnerRegisterForm onPartnerSubmitted={handlePartnerSubmitted} />
+            ) : (
+              <CustomerRegisterForm
+                onSubmitSuccess={() => setAuthMode('login')}
+                onOpenOtpModal={handleOpenCustomerOtp}
+              />
+            )}
+          </>
+        )}
+
+        {/* MODE 3: PARTNER APPROVAL STATUS */}
+        {authMode === 'partnerStatus' && (
+          <PartnerStatusView
+            partnerData={submittedPartnerData}
+            onProceedToLogin={() => setAuthMode('login')}
+          />
+        )}
+
+        {/* Mode Toggle (Login ⇄ Register) */}
+        {authMode !== 'partnerStatus' && (
+          <div style={{ marginTop: '22px', paddingTop: '16px', borderTop: '1px solid var(--border-light)', textAlign: 'center', fontSize: '0.85rem' }}>
+            {authMode === 'login' ? (
+              <span>
+                Don't have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('register'); setError(''); setSuccessMessage(''); }}
+                  style={{ background: 'none', border: 'none', color: 'var(--accent-blue)', fontWeight: '800', cursor: 'pointer' }}
+                >
+                  Register Now
+                </button>
+              </span>
+            ) : (
+              <span>
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('login'); setError(''); setSuccessMessage(''); }}
+                  style={{ background: 'none', border: 'none', color: 'var(--accent-blue)', fontWeight: '800', cursor: 'pointer' }}
+                >
+                  Sign In
+                </button>
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* 1-Click Quick Demo Auto-Fill Helpers */}
+        {authMode === 'login' && (
+          <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border-light)', textAlign: 'center' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px' }}>
+              QUICK DEMO AUTO-FILL
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoFill('superadmin')}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '0.75rem' }}
+              >
+                <Crown size={12} color="#7c3aed" /> Super Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoFill('admin')}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '0.75rem' }}
+              >
+                <Building2 size={12} color="#2563eb" /> Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoFill('partner')}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '0.75rem' }}
+              >
+                <Briefcase size={12} color="#ec4899" /> Partner
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoFill('customer')}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '0.75rem' }}
+              >
+                <Smartphone size={12} color="#10b981" /> Customer
+              </button>
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      {/* OTP Verification & Reset Password Modal */}
+      <OtpVerificationModal
+        isOpen={isOtpModalOpen}
+        onClose={() => setIsOtpModalOpen(false)}
+        userEmail={otpUserEmail}
+        mode={otpMode}
+        onVerified={(msg) => {
+          setSuccessMessage(msg || 'Account verified successfully! Please sign in.');
+          setAuthMode('login');
+        }}
+      />
+    </div>
+  );
+};
+
+export default LoginPage;
