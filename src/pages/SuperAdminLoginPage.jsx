@@ -40,20 +40,19 @@ const SuperAdminLoginPage = () => {
         
         {/* Branding Header */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '64px',
-            height: '64px',
-            borderRadius: '20px',
-            background: 'var(--gradient-brand)',
-            marginBottom: '14px',
-            boxShadow: '0 6px 20px rgba(124,58,237,0.35)',
-            color: '#ffffff'
-          }}>
-            <Crown size={32} />
-          </div>
+          <img
+            src="/logo.png"
+            alt="NOROZZ Logo"
+            style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '20px',
+              objectFit: 'cover',
+              marginBottom: '14px',
+              boxShadow: '0 6px 20px rgba(0, 180, 216, 0.35)',
+              border: '2px solid rgba(118, 215, 41, 0.4)'
+            }}
+          />
           <h1 style={{ fontSize: '1.65rem', fontWeight: '800', letterSpacing: '-0.5px' }}>
             NOROZZ <span className="gradient-text">SUPER ADMIN</span>
           </h1>

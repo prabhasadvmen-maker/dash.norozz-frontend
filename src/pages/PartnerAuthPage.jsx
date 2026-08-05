@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Briefcase, Lock, Mail, Phone, User, MapPin, Grid, ArrowRight, Loader2, AlertCircle, Sparkles, Navigation } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
+import { catalogService } from '../services/catalog.service.js';
 
 const PartnerAuthPage = ({ onLoginSuccess }) => {
   const { partnerLogin, partnerSignup, isLoggingIn } = useAuth();
@@ -14,13 +15,34 @@ const PartnerAuthPage = ({ onLoginSuccess }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [category, setCategory] = useState('AC & Appliance Repair');
+  const [category, setCategory] = useState('');
+  const [categoriesList, setCategoriesList] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
   const [password, setPassword] = useState('');
   const [address, setAddress] = useState('');
   const [detectingLocation, setDetectingLocation] = useState(false);
 
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const res = await catalogService.getCategories();
+        const fetched = res.data?.data || res.data || [];
+        if (Array.isArray(fetched) && fetched.length > 0) {
+          setCategoriesList(fetched);
+          setCategory(fetched[0].name);
+        }
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   // Geolocation Permission & Auto-Fill Location Address
   const handleDetectLocation = () => {
@@ -110,20 +132,19 @@ const PartnerAuthPage = ({ onLoginSuccess }) => {
         
         {/* Branding Header */}
         <div style={{ textAlign: 'center', marginBottom: '22px' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '60px',
-            height: '60px',
-            borderRadius: '18px',
-            background: 'linear-gradient(135deg, #7c3aed 0%, #ec4899 100%)',
-            marginBottom: '12px',
-            boxShadow: '0 6px 20px rgba(124,58,237,0.35)',
-            color: '#ffffff'
-          }}>
-            <Briefcase size={28} />
-          </div>
+          <img
+            src="/logo.png"
+            alt="NOROZZ Logo"
+            style={{
+              width: '60px',
+              height: '60px',
+              borderRadius: '18px',
+              objectFit: 'cover',
+              marginBottom: '12px',
+              boxShadow: '0 6px 20px rgba(0, 180, 216, 0.35)',
+              border: '2px solid rgba(118, 215, 41, 0.4)'
+            }}
+          />
           <h1 style={{ fontSize: '1.55rem', fontWeight: '800', letterSpacing: '-0.5px' }}>
             NOROZZ <span className="gradient-text">PARTNER PORTAL</span>
           </h1>
@@ -294,14 +315,29 @@ const PartnerAuthPage = ({ onLoginSuccess }) => {
               <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Grid size={14} /> Select Service Category
               </label>
-              <select className="form-select" value={category} onChange={(e) => setCategory(e.target.value)}>
-                <option value="AC & Appliance Repair">AC & Appliance Repair</option>
-                <option value="Home Deep Cleaning">Home Deep Cleaning</option>
-                <option value="Salon for Women">Salon for Women</option>
-                <option value="Plumbing & Leakage">Plumbing & Leakage</option>
-                <option value="Electrician & Electrical">Electrician & Electrical</option>
-                <option value="Painting & Waterproofing">Painting & Waterproofing</option>
-                <option value="Pest Control Services">Pest Control Services</option>
+              <select
+                className="form-select"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                disabled={loadingCategories}
+              >
+                {loadingCategories ? (
+                  <option value="">Loading Super Admin categories...</option>
+                ) : categoriesList.length > 0 ? (
+                  categoriesList.map((cat) => (
+                    <option key={cat._id || cat.id || cat.slug || cat.name} value={cat.name}>
+                      {cat.name}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="AC & Appliance Repair">AC & Appliance Repair</option>
+                    <option value="Home Deep Cleaning">Home Deep Cleaning</option>
+                    <option value="Salon for Women">Salon for Women</option>
+                    <option value="Plumbing & Leakage">Plumbing & Leakage</option>
+                    <option value="Electrician & Electrical">Electrician & Electrical</option>
+                  </>
+                )}
               </select>
             </div>
 

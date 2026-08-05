@@ -114,20 +114,19 @@ const LoginPage = ({ onLoginSuccess }) => {
         
         {/* Header Branding */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '60px',
-            height: '60px',
-            borderRadius: '18px',
-            background: 'var(--gradient-brand)',
-            marginBottom: '14px',
-            boxShadow: '0 4px 18px rgba(37,99,235,0.3)',
-            color: '#ffffff'
-          }}>
-            <ShieldCheck size={30} />
-          </div>
+          <img
+            src="/logo.png"
+            alt="NOROZZ Logo"
+            style={{
+              width: '60px',
+              height: '60px',
+              borderRadius: '18px',
+              objectFit: 'cover',
+              marginBottom: '14px',
+              boxShadow: '0 4px 18px rgba(0, 180, 216, 0.35)',
+              border: '2px solid rgba(118, 215, 41, 0.4)'
+            }}
+          />
           <h1 style={{ fontSize: '1.7rem', fontWeight: '800', letterSpacing: '-0.5px' }}>
             NOROZZ <span className="gradient-text">SERVICES</span>
           </h1>

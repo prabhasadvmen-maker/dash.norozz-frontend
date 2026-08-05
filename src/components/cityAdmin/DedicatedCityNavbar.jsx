@@ -17,25 +17,24 @@ const DedicatedCityNavbar = ({ currentUser, onLogout, onRefresh, refreshing, ass
     }}>
       {/* Brand Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-        <div style={{
-          width: '42px',
-          height: '42px',
-          borderRadius: '12px',
-          background: 'linear-gradient(135deg, #2563eb, #06b6d4)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 4px 14px rgba(37,99,235,0.3)',
-          color: '#ffffff'
-        }}>
-          <Building2 size={24} />
-        </div>
+        <img
+          src="/logo.png"
+          alt="NOROZZ Logo"
+          style={{
+            width: '42px',
+            height: '42px',
+            borderRadius: '12px',
+            objectFit: 'cover',
+            boxShadow: '0 4px 14px rgba(0, 180, 216, 0.35)',
+            border: '1px solid rgba(118, 215, 41, 0.3)'
+          }}
+        />
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             NOROZZ <span className="gradient-text">{assignedCity.toUpperCase()} OPERATIONS</span>
           </h2>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <MapPin size={13} color="#2563eb" /> {assignedCity} Assigned Operational Jurisdiction
+            <MapPin size={13} color="#0052d4" /> {assignedCity} Assigned Operational Jurisdiction
           </span>
         </div>
       </div>
@@ -81,7 +80,7 @@ const DedicatedCityNavbar = ({ currentUser, onLogout, onRefresh, refreshing, ass
           disabled={refreshing}
           title="Refresh Data"
         >
-          <RefreshCw size={14} style={{ animation: refreshing ? 'spin 0.8s linear infinite' : 'none', color: '#2563eb' }} />
+          <RefreshCw size={14} style={{ animation: refreshing ? 'spin 0.8s linear infinite' : 'none', color: '#0052d4' }} />
           <span>Refresh</span>
         </button>
 
@@ -99,7 +98,7 @@ const DedicatedCityNavbar = ({ currentUser, onLogout, onRefresh, refreshing, ass
             width: '34px',
             height: '34px',
             borderRadius: '50%',
-            background: 'linear-gradient(135deg, #06b6d4, #2563eb)',
+            background: 'var(--gradient-brand)',
             color: '#ffffff',
             display: 'flex',
             alignItems: 'center',
@@ -113,7 +112,7 @@ const DedicatedCityNavbar = ({ currentUser, onLogout, onRefresh, refreshing, ass
             <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
               City Operations Admin
             </span>
-            <span style={{ fontSize: '0.68rem', color: '#2563eb', fontWeight: '700' }}>
+            <span style={{ fontSize: '0.68rem', color: '#0052d4', fontWeight: '700' }}>
               {assignedCity.toUpperCase()} MANAGER
             </span>
           </div>

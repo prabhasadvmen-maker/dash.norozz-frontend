@@ -6,16 +6,32 @@
   --bg-surface-elevated: #f1f5f9;
   --bg-sidebar: #ffffff;
 
-  --accent-blue: #2563eb;
-  --accent-blue-light: #eff6ff;
-  --accent-blue-hover: #1d4ed8;
+  /* Brand Colors from Logo */
+  --brand-green: #76d729;
+  --brand-green-hover: #5fb91b;
+  --brand-green-light: #f2fbe9;
 
-  --accent-purple: #7c3aed;
-  --accent-purple-light: #f5f3ff;
-  --accent-purple-hover: #6d28d9;
+  --brand-teal: #00b4d8;
+  --brand-teal-hover: #0096c7;
+  --brand-teal-light: #e6f7fa;
 
-  --accent-emerald: #10b981;
-  --accent-emerald-light: #ecfdf5;
+  --brand-blue: #0052d4;
+  --brand-blue-hover: #003eab;
+  --brand-blue-light: #edf4ff;
+
+  --brand-navy: #031b4e;
+
+  /* Theme Mapping */
+  --accent-blue: #0052d4;
+  --accent-blue-light: #edf4ff;
+  --accent-blue-hover: #003eab;
+
+  --accent-purple: #00b4d8;
+  --accent-purple-light: #e6f7fa;
+  --accent-purple-hover: #0096c7;
+
+  --accent-emerald: #76d729;
+  --accent-emerald-light: #f2fbe9;
 
   --accent-amber: #f59e0b;
   --accent-amber-light: #fffbe6;
@@ -23,16 +39,19 @@
   --accent-rose: #ef4444;
   --accent-rose-light: #fef2f2;
 
-  --gradient-brand: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-  --gradient-card-blue: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  --gradient-card-purple: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  --gradient-brand: linear-gradient(135deg, #76d729 0%, #00b4d8 50%, #0052d4 100%);
+  --gradient-brand-hover: linear-gradient(135deg, #64bd1e 0%, #009bba 50%, #0044b8 100%);
+  --gradient-green-teal: linear-gradient(135deg, #76d729 0%, #00b4d8 100%);
+  --gradient-teal-blue: linear-gradient(135deg, #00b4d8 0%, #0052d4 100%);
+  --gradient-card-blue: linear-gradient(135deg, #edf4ff 0%, #e6f7fa 100%);
+  --gradient-card-purple: linear-gradient(135deg, #e6f7fa 0%, #f2fbe9 100%);
 
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #94a3b8;
 
   --border-light: #e2e8f0;
-  --border-focus: #93c5fd;
+  --border-focus: #76d729;
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -41,8 +60,8 @@
 
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-  --shadow-lg: 0 10px 25px -3px rgba(37, 99, 235, 0.08), 0 4px 6px -4px rgba(124, 58, 237, 0.05);
-  --shadow-hover: 0 14px 28px rgba(37, 99, 235, 0.12);
+  --shadow-lg: 0 10px 25px -3px rgba(0, 180, 216, 0.18), 0 4px 6px -4px rgba(0, 82, 212, 0.12);
+  --shadow-hover: 0 14px 28px rgba(0, 82, 212, 0.2);
 
   --font-main: 'Plus Jakarta Sans', 'Inter', sans-serif;
 }
@@ -154,11 +173,11 @@ body {
 .btn-primary {
   background: var(--gradient-brand);
   color: #ffffff;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 180, 216, 0.35);
 }
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+  box-shadow: 0 6px 20px rgba(0, 82, 212, 0.4);
 }
 
 .btn-secondary {

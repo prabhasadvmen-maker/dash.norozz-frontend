@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Briefcase, User, Mail, Phone, MapPin, Grid, Lock, ArrowRight, Loader2, FileText } from 'lucide-react';
+import { catalogService } from '../../services/catalog.service.js';
 
 const PartnerRegisterForm = ({ onPartnerSubmitted }) => {
   const [agencyName, setAgencyName] = useState('');
-  const [category, setCategory] = useState('AC & Appliance Repair');
+  const [category, setCategory] = useState('');
+  const [categoriesList, setCategoriesList] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
   const [city, setCity] = useState('Delhi NCR');
   const [ownerName, setOwnerName] = useState('');
   const [email, setEmail] = useState('');
@@ -11,6 +14,25 @@ const PartnerRegisterForm = ({ onPartnerSubmitted }) => {
   const [password, setPassword] = useState('');
   const [license, setLicense] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const res = await catalogService.getCategories();
+        const fetched = res.data?.data || res.data || [];
+        if (Array.isArray(fetched) && fetched.length > 0) {
+          setCategoriesList(fetched);
+          setCategory(fetched[0].name);
+        }
+      } catch (err) {
+        console.error('Failed to fetch categories in PartnerRegisterForm:', err);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -52,12 +74,29 @@ const PartnerRegisterForm = ({ onPartnerSubmitted }) => {
           <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Grid size={14} /> Primary Service Category
           </label>
-          <select className="form-select" value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value="AC & Appliance Repair">AC & Appliance Repair</option>
-            <option value="Home Deep Cleaning">Home Deep Cleaning</option>
-            <option value="Women Salon & Spa">Women Salon & Spa</option>
-            <option value="Plumbing & Leak Repair">Plumbing & Leak Repair</option>
-            <option value="Electrician & Wiring">Electrician & Wiring</option>
+          <select
+            className="form-select"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            disabled={loadingCategories}
+          >
+            {loadingCategories ? (
+              <option value="">Loading Super Admin categories...</option>
+            ) : categoriesList.length > 0 ? (
+              categoriesList.map((cat) => (
+                <option key={cat._id || cat.id || cat.slug || cat.name} value={cat.name}>
+                  {cat.name}
+                </option>
+              ))
+            ) : (
+              <>
+                <option value="AC & Appliance Repair">AC & Appliance Repair</option>
+                <option value="Home Deep Cleaning">Home Deep Cleaning</option>
+                <option value="Women Salon & Spa">Women Salon & Spa</option>
+                <option value="Plumbing & Leak Repair">Plumbing & Leak Repair</option>
+                <option value="Electrician & Wiring">Electrician & Wiring</option>
+              </>
+            )}
           </select>
         </div>
 

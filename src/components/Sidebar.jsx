@@ -79,16 +79,16 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout }) => {
                   padding: '11px 14px',
                   fontSize: '0.88rem',
                   borderRadius: 'var(--radius-md)',
-                  background: isActive ? 'linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(124,58,237,0.1) 100%)' : 'transparent',
-                  color: isActive ? 'var(--accent-blue)' : 'var(--text-secondary)',
-                  border: isActive ? '1px solid #bfdbfe' : '1px solid transparent',
+                  background: isActive ? 'linear-gradient(135deg, rgba(118, 215, 41, 0.12) 0%, rgba(0, 180, 216, 0.12) 50%, rgba(0, 82, 212, 0.12) 100%)' : 'transparent',
+                  color: isActive ? '#0052d4' : 'var(--text-secondary)',
+                  border: isActive ? '1px solid #00b4d8' : '1px solid transparent',
                   fontWeight: isActive ? '700' : '500',
                   boxShadow: isActive ? 'var(--shadow-sm)' : 'none',
                   transition: 'all 0.2s ease',
                   width: '100%'
                 }}
               >
-                <Icon size={18} color={isActive ? '#2563eb' : '#64748b'} />
+                <Icon size={18} color={isActive ? '#0052d4' : '#64748b'} />
                 <span style={{ flex: 1, textAlign: 'left' }}>
                   {item.label}
                 </span>

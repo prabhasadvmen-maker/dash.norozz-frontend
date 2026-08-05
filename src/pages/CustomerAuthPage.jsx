@@ -66,20 +66,19 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
         
         {/* Branding Header */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '64px',
-            height: '64px',
-            borderRadius: '20px',
-            background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
-            marginBottom: '14px',
-            boxShadow: '0 6px 20px rgba(37,99,235,0.35)',
-            color: '#ffffff'
-          }}>
-            <Smartphone size={32} />
-          </div>
+          <img
+            src="/logo.png"
+            alt="NOROZZ Logo"
+            style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '20px',
+              objectFit: 'cover',
+              marginBottom: '14px',
+              boxShadow: '0 6px 20px rgba(0, 180, 216, 0.35)',
+              border: '2px solid rgba(118, 215, 41, 0.4)'
+            }}
+          />
           <h1 style={{ fontSize: '1.65rem', fontWeight: '800', letterSpacing: '-0.5px' }}>
             NOROZZ <span className="gradient-text">CUSTOMER APP</span>
           </h1>

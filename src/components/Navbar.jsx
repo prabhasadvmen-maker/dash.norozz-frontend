@@ -38,19 +38,18 @@ const Navbar = ({
       {/* Brand & 4-Way Portal Switcher */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '42px',
-            height: '42px',
-            borderRadius: '12px',
-            background: portalMode === 'customer' ? 'linear-gradient(135deg, #2563eb, #7c3aed)' : portalMode === 'partner' ? 'linear-gradient(135deg, #7c3aed, #ec4899)' : portalMode === 'cityAdmin' ? 'linear-gradient(135deg, #2563eb, #06b6d4)' : 'var(--gradient-brand)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 14px rgba(37,99,235,0.3)',
-            color: '#ffffff'
-          }}>
-            {portalMode === 'customer' ? <Smartphone size={24} /> : portalMode === 'partner' ? <Briefcase size={24} /> : portalMode === 'cityAdmin' ? <Building2 size={24} /> : <ShieldCheck size={24} />}
-          </div>
+          <img
+            src="/logo.png"
+            alt="NOROZZ Logo"
+            style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '12px',
+              objectFit: 'cover',
+              boxShadow: '0 4px 14px rgba(0, 180, 216, 0.35)',
+              border: '1px solid rgba(118, 215, 41, 0.3)'
+            }}
+          />
           <div>
             <h2 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
               NOROZZ <span className="gradient-text">{portalMode === 'customer' ? 'APP' : portalMode === 'partner' ? 'PARTNER' : portalMode === 'cityAdmin' ? 'CITY ADMIN' : 'SERVICES'}</span>
@@ -106,7 +105,7 @@ const Navbar = ({
         
         {/* City Switcher */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <MapPin size={15} color="#2563eb" />
+          <MapPin size={15} color="#0052d4" />
           <select
             value={selectedCity}
             onChange={(e) => setSelectedCity(e.target.value)}
@@ -138,7 +137,7 @@ const Navbar = ({
           style={{ position: 'relative', padding: '9px', borderRadius: '50%' }}
           title={portalMode === 'customer' ? 'My Cart' : 'Notifications'}
         >
-          {portalMode === 'customer' ? <ShoppingBag size={18} color="#2563eb" /> : <Bell size={18} color="var(--text-secondary)" />}
+          {portalMode === 'customer' ? <ShoppingBag size={18} color="#0052d4" /> : <Bell size={18} color="var(--text-secondary)" />}
           <span style={{
             position: 'absolute',
             top: '2px',
@@ -164,7 +163,7 @@ const Navbar = ({
             width: '34px',
             height: '34px',
             borderRadius: '50%',
-            background: portalMode === 'customer' ? 'linear-gradient(135deg, #2563eb, #7c3aed)' : portalMode === 'partner' ? 'linear-gradient(135deg, #7c3aed, #ec4899)' : portalMode === 'cityAdmin' ? 'linear-gradient(135deg, #06b6d4, #2563eb)' : 'var(--gradient-brand)',
+            background: 'var(--gradient-brand)',
             color: '#ffffff',
             display: 'flex',
             alignItems: 'center',
@@ -178,7 +177,7 @@ const Navbar = ({
             <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
               {portalMode === 'customer' ? 'Ananya Deshmukh' : portalMode === 'partner' ? 'CleanPro Partner' : currentUser?.name || 'Super Admin'}
             </span>
-            <span style={{ fontSize: '0.68rem', color: portalMode === 'customer' ? '#2563eb' : portalMode === 'partner' ? '#7c3aed' : portalMode === 'cityAdmin' ? '#06b6d4' : 'var(--accent-purple)', fontWeight: '700' }}>
+            <span style={{ fontSize: '0.68rem', color: '#0052d4', fontWeight: '700' }}>
               {portalMode === 'customer' ? 'CUSTOMER APP' : portalMode === 'partner' ? 'BUSINESS AGENCY' : portalMode === 'cityAdmin' ? `${selectedCity.toUpperCase()} ADMIN` : 'SUPER ADMIN'}
             </span>
           </div>

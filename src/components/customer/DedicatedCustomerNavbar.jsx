@@ -16,19 +16,18 @@ const DedicatedCustomerNavbar = ({ currentUser, onLogout }) => {
         
         {/* Brand */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{
-            width: '38px',
-            height: '38px',
-            borderRadius: '10px',
-            background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#ffffff',
-            boxShadow: '0 4px 12px rgba(37,99,235,0.3)'
-          }}>
-            <Smartphone size={20} />
-          </div>
+          <img
+            src="/logo.png"
+            alt="NOROZZ Logo"
+            style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '10px',
+              objectFit: 'cover',
+              boxShadow: '0 4px 12px rgba(0, 180, 216, 0.35)',
+              border: '1px solid rgba(118, 215, 41, 0.3)'
+            }}
+          />
           <div>
             <h2 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0, letterSpacing: '-0.3px' }}>
               NOROZZ <span className="gradient-text">APP</span>
@@ -43,7 +42,7 @@ const DedicatedCustomerNavbar = ({ currentUser, onLogout }) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {/* Cart */}
           <button className="btn btn-secondary btn-sm" style={{ padding: '8px', borderRadius: '50%' }} title="My Cart">
-            <ShoppingBag size={18} color="#2563eb" />
+            <ShoppingBag size={18} color="#0052d4" />
           </button>
 
           {/* User Name */}

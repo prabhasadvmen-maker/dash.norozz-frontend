@@ -8,7 +8,7 @@ const HomeBannerSlider = () => {
       title: 'AC Deep Jet Service',
       subtitle: 'Guaranteed 2x Cooling • Starts @ ₹399',
       tag: '50% OFF',
-      gradient: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
+      gradient: 'linear-gradient(135deg, #76d729 0%, #00b4d8 50%, #0052d4 100%)',
       cta: 'Book AC Service'
     },
     {
@@ -16,7 +16,7 @@ const HomeBannerSlider = () => {
       title: 'Salon for Women at Home',
       subtitle: 'Professional Facial, Waxing & Spa',
       tag: 'FLAT ₹200 OFF',
-      gradient: 'linear-gradient(135deg, #ec4899 0%, #7c3aed 100%)',
+      gradient: 'linear-gradient(135deg, #00b4d8 0%, #0052d4 100%)',
       cta: 'Book Salon'
     },
     {
@@ -24,7 +24,7 @@ const HomeBannerSlider = () => {
       title: 'Full Home Deep Cleaning',
       subtitle: 'Complete 3BHK Sanitization & Dusting',
       tag: 'VIP SPECIAL',
-      gradient: 'linear-gradient(135deg, #06b6d4 0%, #2563eb 100%)',
+      gradient: 'linear-gradient(135deg, #76d729 0%, #00b4d8 100%)',
       cta: 'Book Cleaning'
     },
   ];
@@ -40,8 +40,8 @@ const HomeBannerSlider = () => {
         color: '#ffffff',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        boxShadow: '0 10px 25px rgba(37,99,235,0.25)',
+        justifyContent: 'center',
+        boxShadow: '0 10px 25px rgba(0,180,216,0.25)',
         position: 'relative',
         overflow: 'hidden'
       }}>
@@ -67,7 +67,7 @@ const HomeBannerSlider = () => {
           <p style={{ fontSize: '0.85rem', opacity: 0.9, marginBottom: '16px' }}>
             {banners[activeBanner].subtitle}
           </p>
-          <button className="btn" style={{ background: '#ffffff', color: '#2563eb', fontWeight: '800', border: 'none', padding: '8px 16px', fontSize: '0.85rem' }}>
+          <button className="btn" style={{ background: '#ffffff', color: '#0052d4', fontWeight: '800', border: 'none', padding: '8px 16px', fontSize: '0.85rem' }}>
             {banners[activeBanner].cta} <ArrowRight size={14} />
           </button>
         </div>

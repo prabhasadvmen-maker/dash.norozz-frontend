@@ -17,19 +17,18 @@ const SuperAdminNavbar = ({ currentUser, onLogout, onRefresh, refreshing }) => {
     }}>
       {/* Brand Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <div style={{
-          width: '42px',
-          height: '42px',
-          borderRadius: '12px',
-          background: 'var(--gradient-brand)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 4px 14px rgba(124,58,237,0.35)',
-          color: '#ffffff'
-        }}>
-          <Crown size={24} />
-        </div>
+        <img
+          src="/logo.png"
+          alt="NOROZZ Logo"
+          style={{
+            width: '42px',
+            height: '42px',
+            borderRadius: '12px',
+            objectFit: 'cover',
+            boxShadow: '0 4px 14px rgba(0, 180, 216, 0.35)',
+            border: '1px solid rgba(118, 215, 41, 0.3)'
+          }}
+        />
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             NOROZZ <span className="gradient-text">SUPER ADMIN PANEL</span>
