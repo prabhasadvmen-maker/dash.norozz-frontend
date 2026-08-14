@@ -1,56 +1,331 @@
 import React, { useState } from 'react';
-import { Smartphone, Lock, Mail, Phone, User, ArrowRight, Loader2, AlertCircle, Sparkles } from 'lucide-react';
+import { Smartphone, Mail, Phone, User, Calendar, Camera, ArrowRight, Loader2, AlertCircle, Sparkles, KeyRound, Edit2, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
+import { authService } from '../services/auth.service.js';
+import { toast } from '../utils/toast.js';
 
 const CustomerAuthPage = ({ onLoginSuccess }) => {
-  const { customerLogin, customerSignup, isLoggingIn } = useAuth();
-  const [tab, setTab] = useState('login'); // 'login' | 'register'
+  const { requestOtpLogin, verifyOtpLogin, login } = useAuth();
 
-  // Login Form
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
+  const [step, setStep] = useState('request'); // 'request' | 'verify' | 'profile'
+  const [emailOrPhone, setEmailOrPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [demoOtp, setDemoOtp] = useState('');
 
-  // Register Form
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  // Pending Session for new user profile completion
+  const [pendingSession, setPendingSession] = useState(null); // { user, token }
 
+  // Profile Form Fields (Requested: Profile Image, Name, DOB, Gender, Email, Mobile Phone)
+  const [profileImage, setProfileImage] = useState('');
+  const [profileName, setProfileName] = useState('');
+  const [profileDob, setProfileDob] = useState('');
+  const [profileGender, setProfileGender] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  const handleLoginSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+  // Secondary verification states (for Email & Phone OTP verification)
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
 
+  const [verifyingSecondaryTarget, setVerifyingSecondaryTarget] = useState(null); // 'email' | 'phone' | null
+  const [secOtp, setSecOtp] = useState('');
+  const [secOtpSent, setSecOtpSent] = useState(false);
+  const [secLoading, setSecLoading] = useState(false);
+  const [secDemoOtp, setSecDemoOtp] = useState('');
+
+  const handleSendOtp = async (e, customTarget = null) => {
+    if (e) e.preventDefault();
+    setError('');
+    setSuccessMessage('');
+    const target = customTarget || emailOrPhone;
+
+    if (!target || !target.trim()) {
+      return setError('Please enter a valid Email Address or Mobile Number');
+    }
+
+    setLoading(true);
     try {
-      await customerLogin({ email: loginEmail, password: loginPassword });
+      const res = await requestOtpLogin({ emailOrPhone: target });
+      const returnedOtp = res?.data?.otp || res?.otp;
+      if (returnedOtp) {
+        setDemoOtp(returnedOtp);
+        setOtp(returnedOtp);
+      }
+      setSuccessMessage('OTP sent successfully!');
+      setStep('verify');
     } catch (err) {
-      setError(err.message || 'Invalid customer credentials.');
+      setError(err.message || 'Failed to send OTP. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleRegisterSubmit = async (e) => {
-    e.preventDefault();
+  const handleVerifyOtp = async (e) => {
+    if (e) e.preventDefault();
     setError('');
 
-    if (password !== confirmPassword) {
-      return setError('Passwords do not match');
+    if (!otp || !otp.trim()) {
+      return setError('Please enter the 6-digit OTP code');
     }
 
+    setLoading(true);
     try {
-      await customerSignup({ name, email, phone, password });
+      const res = await verifyOtpLogin({ emailOrPhone, otp });
+      const isNewUser = res?.data?.isNewUser || res?.isNewUser;
+      const user = res?.data?.user || res?.user || res?.data;
+      const token = res?.data?.accessToken || res?.accessToken;
+
+      if (token) {
+        localStorage.setItem('norozz_token', token);
+      }
+
+      // Track verification status of email/phone
+      const initialEmailVerified = !!(user?.isEmailVerified && user?.email && !user.email.endsWith('@norozz.com'));
+      const initialPhoneVerified = !!(user?.isPhoneVerified && user?.phone);
+
+      setIsEmailVerified(initialEmailVerified);
+      setIsPhoneVerified(initialPhoneVerified);
+
+      if (isNewUser) {
+        setPendingSession({ user, token });
+        // Pre-fill profile state intelligently
+        const initialName = user?.name && !user.name.startsWith('Customer') && !user.name.startsWith('user_') ? user.name : '';
+        const initialEmail = user?.email && !user.email.endsWith('@norozz.com') ? user.email : (emailOrPhone.includes('@') ? emailOrPhone : '');
+        const initialPhone = user?.phone ? user.phone : (!emailOrPhone.includes('@') ? emailOrPhone : '');
+        
+        setProfileName(initialName);
+        setProfileEmail(initialEmail);
+        setProfilePhone(initialPhone);
+        setProfileDob(user?.dob || '');
+        setProfileGender(user?.gender || '');
+        setProfileImage(user?.profileImage || '');
+        
+        setSuccessMessage('OTP Verified! Please complete your profile details and verify both Email & Mobile Phone.');
+        setStep('profile');
+      }
     } catch (err) {
-      setError(err.message || 'Failed to create customer account');
+      setError(err.message || 'Invalid or expired OTP code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Secondary OTP Verification (Sending OTP for Email or Phone)
+  const handleSendSecondaryOtp = async (targetField) => {
+    const val = targetField === 'email' ? profileEmail : profilePhone;
+    if (!val || !val.trim()) {
+      return setError(`Please enter a valid ${targetField === 'email' ? 'Email Address' : 'Mobile Phone Number'} first.`);
+    }
+
+    setSecLoading(true);
+    setError('');
+    try {
+      const tokenToUse = pendingSession?.token || localStorage.getItem('norozz_token');
+      const res = await authService.sendSecondaryOtp(
+        { emailOrPhone: val.trim() },
+        { headers: { Authorization: `Bearer ${tokenToUse}` } }
+      );
+      const returnedOtp = res?.data?.otp || res?.otp;
+      if (returnedOtp) {
+        setSecDemoOtp(returnedOtp);
+        setSecOtp(returnedOtp);
+      }
+      setVerifyingSecondaryTarget(targetField);
+      setSecOtpSent(true);
+      toast.success(`Verification OTP sent to ${val.trim()}`);
+    } catch (err) {
+      setError(err.message || `Failed to send verification OTP to ${targetField}.`);
+    } finally {
+      setSecLoading(false);
+    }
+  };
+
+  const handleVerifySecondaryOtp = async () => {
+    if (!secOtp || !secOtp.trim()) {
+      return setError('Please enter the verification OTP code');
+    }
+
+    const val = verifyingSecondaryTarget === 'email' ? profileEmail : profilePhone;
+    setSecLoading(true);
+    setError('');
+    try {
+      const tokenToUse = pendingSession?.token || localStorage.getItem('norozz_token');
+      await authService.verifySecondaryOtp(
+        { emailOrPhone: val.trim(), otp: secOtp.trim() },
+        { headers: { Authorization: `Bearer ${tokenToUse}` } }
+      );
+
+      if (verifyingSecondaryTarget === 'email') {
+        setIsEmailVerified(true);
+        toast.success('Email Address verified successfully!');
+      } else {
+        setIsPhoneVerified(true);
+        toast.success('Mobile Phone Number verified successfully!');
+      }
+
+      setVerifyingSecondaryTarget(null);
+      setSecOtpSent(false);
+      setSecOtp('');
+      setSecDemoOtp('');
+    } catch (err) {
+      setError(err.message || 'Invalid or expired OTP code.');
+    } finally {
+      setSecLoading(false);
+    }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 400;
+          const MAX_HEIGHT = 400;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+          setProfileImage(compressedBase64);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveProfile = async (e) => {
+    if (e) e.preventDefault();
+    setError('');
+
+    if (!profileName.trim()) {
+      return setError('Full Name is required');
+    }
+    if (!profileEmail.trim() || profileEmail.endsWith('@norozz.com')) {
+      return setError('Valid Email Address is required');
+    }
+    if (!isEmailVerified) {
+      return setError('Please verify your Email Address via OTP before continuing.');
+    }
+    if (!profilePhone.trim()) {
+      return setError('Mobile Phone Number is required');
+    }
+    if (!isPhoneVerified) {
+      return setError('Please verify your Mobile Phone Number via OTP before continuing.');
+    }
+    if (!profileDob) {
+      return setError('Date of Birth (DOB) is required');
+    }
+    if (!profileGender) {
+      return setError('Please select your Gender');
+    }
+
+    setLoading(true);
+    try {
+      let updatedUser = pendingSession?.user;
+      const tokenToUse = pendingSession?.token || localStorage.getItem('norozz_token');
+      if (tokenToUse) {
+        localStorage.setItem('norozz_token', tokenToUse);
+      }
+
+      try {
+        const res = await authService.updateCustomerProfile(
+          {
+            name: profileName.trim(),
+            email: profileEmail.trim(),
+            phone: profilePhone.trim(),
+            dob: profileDob,
+            gender: profileGender,
+            profileImage: profileImage,
+            isEmailVerified: true,
+            isPhoneVerified: true,
+            isProfileCompleted: true,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${tokenToUse}`,
+            },
+          }
+        );
+        updatedUser = res?.data?.user || res?.data || {
+          ...pendingSession?.user,
+          name: profileName.trim(),
+          email: profileEmail.trim(),
+          phone: profilePhone.trim(),
+          dob: profileDob,
+          gender: profileGender,
+          profileImage: profileImage,
+          isEmailVerified: true,
+          isPhoneVerified: true,
+          isProfileCompleted: true,
+        };
+      } catch (err) {
+        console.warn('Profile update API warning:', err);
+        updatedUser = {
+          ...pendingSession?.user,
+          name: profileName.trim(),
+          email: profileEmail.trim(),
+          phone: profilePhone.trim(),
+          dob: profileDob,
+          gender: profileGender,
+          profileImage: profileImage,
+          isEmailVerified: true,
+          isPhoneVerified: true,
+          isProfileCompleted: true,
+        };
+      }
+
+      toast.success(`Account setup complete! Welcome to NOROZZ, ${profileName}!`);
+      login(updatedUser, tokenToUse);
+    } catch (err) {
+      setError(err.message || 'Failed to update profile details.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSkipProfile = () => {
+    if (pendingSession) {
+      toast.success('Welcome to NOROZZ!');
+      login(pendingSession.user, pendingSession.token);
     }
   };
 
   const handleQuickFillCustomer = () => {
-    setTab('login');
-    setLoginEmail('ananya.test@norozz.com');
-    setLoginPassword('NewCustomerPass123!');
-    setSuccessMessage('Customer credentials auto-filled!');
+    const demoUser = 'ananya.test@norozz.com';
+    setEmailOrPhone(demoUser);
+    handleSendOtp(null, demoUser);
+  };
+
+  const handleResetStep = () => {
+    setStep('request');
+    setOtp('');
+    setDemoOtp('');
+    setError('');
+    setSuccessMessage('');
   };
 
   return (
@@ -87,33 +362,24 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
           </p>
         </div>
 
-        {/* Tab Switcher */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '6px',
-          background: '#f1f5f9',
-          padding: '4px',
-          borderRadius: 'var(--radius-md)',
-          marginBottom: '24px'
-        }}>
-          <button
-            type="button"
-            onClick={() => { setTab('login'); setError(''); setSuccessMessage(''); }}
-            className={`btn btn-sm ${tab === 'login' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ border: 'none', padding: '9px', fontWeight: '800' }}
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => { setTab('register'); setError(''); setSuccessMessage(''); }}
-            className={`btn btn-sm ${tab === 'register' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ border: 'none', padding: '9px', fontWeight: '800' }}
-          >
-            Create Account
-          </button>
-        </div>
+        {/* Info Header Badge */}
+        {step !== 'profile' && (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(124,58,237,0.06) 100%)',
+            padding: '12px 16px',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            border: '1px solid rgba(37,99,235,0.15)'
+          }}>
+            <ShieldCheck size={20} color="#2563eb" style={{ flexShrink: 0 }} />
+            <p style={{ margin: 0, fontSize: '0.83rem', color: '#1e293b', lineHeight: 1.4, fontWeight: '500' }}>
+              Instant Login / Register with OTP. Existing users log in & new users complete basic profile!
+            </p>
+          </div>
+        )}
 
         {/* Alerts */}
         {error && (
@@ -152,141 +418,375 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
           </div>
         )}
 
-        {/* TAB 1: LOGIN */}
-        {tab === 'login' && (
-          <form onSubmit={handleLoginSubmit}>
-            <div className="form-group">
+        {/* STEP 1: REQUEST OTP */}
+        {step === 'request' && (
+          <form onSubmit={handleSendOtp}>
+            <div className="form-group" style={{ marginBottom: '20px' }}>
               <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Mail size={14} /> Registered Email / Phone
+                <Mail size={14} /> Email Address or Mobile Number
               </label>
               <input
-                type="email"
+                type="text"
                 className="form-input"
-                placeholder="ananya.test@norozz.com"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
+                placeholder="e.g. ananya.test@norozz.com or 9876543210"
+                value={emailOrPhone}
+                onChange={(e) => setEmailOrPhone(e.target.value)}
                 required
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '24px' }}>
-              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Lock size={14} /> Password
-              </label>
-              <input
-                type="password"
-                className="form-input"
-                placeholder="••••••••••••"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                required
+                autoFocus
               />
             </div>
 
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={isLoggingIn}
+              disabled={loading}
               style={{ width: '100%', padding: '12px', fontSize: '0.95rem' }}
             >
-              {isLoggingIn ? <Loader2 size={16} className="spin" /> : <>Sign In & Start Booking <ArrowRight size={16} /></>}
+              {loading ? <Loader2 size={16} className="spin" /> : <>Send OTP Code <ArrowRight size={16} /></>}
             </button>
           </form>
         )}
 
-        {/* TAB 2: SIGNUP */}
-        {tab === 'register' && (
-          <form onSubmit={handleRegisterSubmit}>
-            <div className="form-group">
+        {/* STEP 2: VERIFY OTP */}
+        {step === 'verify' && (
+          <form onSubmit={handleVerifyOtp}>
+            <div style={{
+              background: '#f8fafc',
+              padding: '12px 14px',
+              borderRadius: 'var(--radius-md)',
+              marginBottom: '18px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: '0.85rem'
+            }}>
+              <div>
+                <span style={{ color: 'var(--text-secondary)' }}>OTP sent to: </span>
+                <strong style={{ color: '#0f172a' }}>{emailOrPhone}</strong>
+              </div>
+              <button
+                type="button"
+                onClick={handleResetStep}
+                className="btn btn-sm btn-secondary"
+                style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+              >
+                <Edit2 size={12} /> Edit
+              </button>
+            </div>
+
+            {demoOtp && (
+              <div style={{
+                background: '#eff6ff',
+                border: '1px dashed #3b82f6',
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-md)',
+                fontSize: '0.85rem',
+                color: '#1d4ed8',
+                marginBottom: '18px',
+                textAlign: 'center',
+                fontWeight: '600'
+              }}>
+                🔑 Demo Verification Code: <span style={{ fontSize: '1rem', letterSpacing: '2px', fontWeight: '800' }}>{demoOtp}</span>
+              </div>
+            )}
+
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <KeyRound size={14} /> Enter 6-Digit OTP Code
+              </label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="123456"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                maxLength={6}
+                required
+                autoFocus
+                style={{ letterSpacing: '4px', fontSize: '1.2rem', textAlign: 'center', fontWeight: '700' }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={loading}
+              style={{ width: '100%', padding: '12px', fontSize: '0.95rem' }}
+            >
+              {loading ? <Loader2 size={16} className="spin" /> : <>Verify OTP & Continue <ArrowRight size={16} /></>}
+            </button>
+          </form>
+        )}
+
+        {/* STEP 3: NEW USER PROFILE SETUP (Requested Fields: Profile Image, Name, DOB, Gender, Email, Mobile Number) */}
+        {step === 'profile' && (
+          <form onSubmit={handleSaveProfile}>
+            <div style={{
+              background: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              padding: '12px 14px',
+              borderRadius: 'var(--radius-md)',
+              marginBottom: '20px',
+              textAlign: 'center'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#15803d', fontWeight: '700', fontSize: '0.95rem', marginBottom: '2px' }}>
+                <CheckCircle2 size={18} /> Welcome to NOROZZ!
+              </div>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: '#166534' }}>
+                OTP Verified. Please enter your profile details.
+              </p>
+            </div>
+
+            {/* 1. Profile Image Upload */}
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <label style={{ position: 'relative', display: 'inline-block', cursor: 'pointer' }}>
+                <div style={{
+                  width: '84px',
+                  height: '84px',
+                  borderRadius: '50%',
+                  background: '#f1f5f9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  border: '3px solid #2563eb',
+                  boxShadow: '0 4px 12px rgba(37,99,235,0.15)'
+                }}>
+                  {profileImage ? (
+                    <img src={profileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <User size={40} color="#94a3b8" />
+                  )}
+                </div>
+                <div style={{
+                  position: 'absolute',
+                  bottom: '0',
+                  right: '0',
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  padding: '6px',
+                  borderRadius: '50%',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Camera size={14} />
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                Click camera to upload profile photo
+              </div>
+            </div>
+
+            {/* 2. Full Name */}
+            <div className="form-group" style={{ marginBottom: '12px' }}>
               <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <User size={14} /> Full Name
               </label>
               <input
                 type="text"
                 className="form-input"
-                placeholder="e.g. Ananya Deshmukh"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Rahul Sharma"
+                value={profileName}
+                onChange={(e) => setProfileName(e.target.value)}
                 required
               />
             </div>
 
-            <div className="form-group">
+            {/* 3. Date of Birth (DOB) */}
+            <div className="form-group" style={{ marginBottom: '12px' }}>
               <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Mail size={14} /> Email Address
+                <Calendar size={14} /> Date of Birth (DOB)
               </label>
+              <input
+                type="date"
+                className="form-input"
+                value={profileDob}
+                onChange={(e) => setProfileDob(e.target.value)}
+              />
+            </div>
+
+            {/* 4. Gender */}
+            <div className="form-group" style={{ marginBottom: '12px' }}>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <User size={14} /> Gender
+              </label>
+              <select
+                className="form-input"
+                value={profileGender}
+                onChange={(e) => setProfileGender(e.target.value)}
+              >
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            {/* 5. Email Address + OTP Verification */}
+            <div className="form-group" style={{ marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                  <Mail size={14} /> Email Address
+                </label>
+                {isEmailVerified ? (
+                  <span style={{ color: '#15803d', fontSize: '0.72rem', fontWeight: '700', background: '#dcfce7', padding: '2px 8px', borderRadius: '12px' }}>
+                    ✓ Email Verified
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleSendSecondaryOtp('email')}
+                    disabled={secLoading || !profileEmail.trim() || profileEmail.endsWith('@norozz.com')}
+                    className="btn btn-sm btn-secondary"
+                    style={{ padding: '2px 8px', fontSize: '0.72rem', border: '1px solid #2563eb', color: '#2563eb' }}
+                  >
+                    {secLoading && verifyingSecondaryTarget === 'email' ? 'Sending...' : 'Verify Email via OTP'}
+                  </button>
+                )}
+              </div>
               <input
                 type="email"
                 className="form-input"
-                placeholder="ananya@gmail.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="rahul@gmail.com"
+                value={profileEmail}
+                onChange={(e) => { setProfileEmail(e.target.value); setIsEmailVerified(false); }}
                 required
+                disabled={isEmailVerified}
               />
+
+              {verifyingSecondaryTarget === 'email' && secOtpSent && (
+                <div style={{ marginTop: '8px', padding: '10px', background: '#eff6ff', borderRadius: '8px', border: '1px dashed #3b82f6' }}>
+                  {secDemoOtp && (
+                    <div style={{ fontSize: '0.78rem', color: '#1d4ed8', fontWeight: '700', marginBottom: '6px' }}>
+                      🔑 Email Verification OTP: {secDemoOtp}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Enter Email OTP"
+                      value={secOtp}
+                      onChange={(e) => setSecOtp(e.target.value)}
+                      maxLength={6}
+                      style={{ fontSize: '0.9rem', letterSpacing: '2px', textAlign: 'center' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleVerifySecondaryOtp}
+                      disabled={secLoading}
+                      className="btn btn-primary btn-sm"
+                      style={{ flexShrink: 0 }}
+                    >
+                      {secLoading ? <Loader2 size={14} className="spin" /> : 'Verify'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="form-group">
-              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Phone size={14} /> Mobile Phone Number
-              </label>
+            {/* 6. Mobile Phone Number + OTP Verification */}
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                  <Phone size={14} /> Mobile Phone Number
+                </label>
+                {isPhoneVerified ? (
+                  <span style={{ color: '#15803d', fontSize: '0.72rem', fontWeight: '700', background: '#dcfce7', padding: '2px 8px', borderRadius: '12px' }}>
+                    ✓ Phone Verified
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleSendSecondaryOtp('phone')}
+                    disabled={secLoading || !profilePhone.trim()}
+                    className="btn btn-sm btn-secondary"
+                    style={{ padding: '2px 8px', fontSize: '0.72rem', border: '1px solid #2563eb', color: '#2563eb' }}
+                  >
+                    {secLoading && verifyingSecondaryTarget === 'phone' ? 'Sending...' : 'Verify Phone via OTP'}
+                  </button>
+                )}
+              </div>
               <input
                 type="tel"
                 className="form-input"
-                placeholder="+91 98765 43210"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                placeholder="9876543210"
+                value={profilePhone}
+                onChange={(e) => { setProfilePhone(e.target.value); setIsPhoneVerified(false); }}
                 required
+                disabled={isPhoneVerified}
               />
-            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Password</label>
-                <input
-                  type="password"
-                  className="form-input"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                />
-              </div>
-
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">Confirm Password</label>
-                <input
-                  type="password"
-                  className="form-input"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                />
-              </div>
+              {verifyingSecondaryTarget === 'phone' && secOtpSent && (
+                <div style={{ marginTop: '8px', padding: '10px', background: '#eff6ff', borderRadius: '8px', border: '1px dashed #3b82f6' }}>
+                  {secDemoOtp && (
+                    <div style={{ fontSize: '0.78rem', color: '#1d4ed8', fontWeight: '700', marginBottom: '6px' }}>
+                      🔑 Phone Verification OTP: {secDemoOtp}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Enter Phone OTP"
+                      value={secOtp}
+                      onChange={(e) => setSecOtp(e.target.value)}
+                      maxLength={6}
+                      style={{ fontSize: '0.9rem', letterSpacing: '2px', textAlign: 'center' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleVerifySecondaryOtp}
+                      disabled={secLoading}
+                      className="btn btn-primary btn-sm"
+                      style={{ flexShrink: 0 }}
+                    >
+                      {secLoading ? <Loader2 size={14} className="spin" /> : 'Verify'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={isLoggingIn}
-              style={{ width: '100%', padding: '12px', fontSize: '0.95rem' }}
+              disabled={loading}
+              style={{ width: '100%', padding: '12px', fontSize: '0.95rem', marginBottom: '10px' }}
             >
-              {isLoggingIn ? <Loader2 size={16} className="spin" /> : <>Create Account & Book <ArrowRight size={16} /></>}
+              {loading ? <Loader2 size={16} className="spin" /> : <>Save Profile & Start Booking <ArrowRight size={16} /></>}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSkipProfile}
+              className="btn btn-secondary btn-sm"
+              style={{ width: '100%', padding: '8px', fontSize: '0.8rem', border: 'none' }}
+            >
+              Skip for Now
             </button>
           </form>
         )}
 
         {/* Quick Demo Auto-Fill */}
-        {tab === 'login' && (
+        {step !== 'profile' && (
           <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-light)', textAlign: 'center' }}>
             <button
               type="button"
               onClick={handleQuickFillCustomer}
               className="btn btn-secondary btn-sm"
               style={{ width: '100%', fontSize: '0.82rem' }}
+              disabled={loading}
             >
-              <Sparkles size={14} color="#2563eb" /> Auto-Fill Customer Credentials
+              <Sparkles size={14} color="#2563eb" /> Quick Auto-Fill Customer Credentials
             </button>
           </div>
         )}

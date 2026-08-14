@@ -45,6 +45,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
   const [catModalOpen, setCatModalOpen] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [newCatDesc, setNewCatDesc] = useState('');
+  const [newCatImage, setNewCatImage] = useState('');
 
   // SubCategory Modal state
   const [subCatModalOpen, setSubCatModalOpen] = useState(false);
@@ -61,6 +62,12 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
   const [newSrvDiscount, setNewSrvDiscount] = useState('');
   const [newSrvDuration, setNewSrvDuration] = useState('45 mins');
   const [newSrvDesc, setNewSrvDesc] = useState('');
+  const [newSrvImage, setNewSrvImage] = useState('');
+  const [newSrvPackages, setNewSrvPackages] = useState([
+    { title: 'Basic Clean', price: 999, description: 'Mopping & basic vacuuming', features: 'Mopping & deep vacuuming\nBathroom dry wiping & cleaning\nLiving room basic dusting', isPopular: false },
+    { title: 'Standard Deep Clean', price: 1499, description: 'Intense scrubbing & degreasing', features: 'Kitchen chimney + slab degreasing\nIntense bathroom wall scrubbing\nWet mop & mechanised floor scrub\nDry upholstery vacuuming', isPopular: true },
+    { title: 'Ultra Premium Scrub', price: 2499, description: 'Complete sanitation & sterilisation', features: 'Complete sanitation & sterilisation\nWet safe shampoo dry wash\nGlass facade & full balcony wash\nWall spots scrubbing & spot clean', isPopular: false }
+  ]);
 
   // Catalog Filters
   const [subCatFilterCategory, setSubCatFilterCategory] = useState('');
@@ -73,12 +80,91 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     setTimeout(() => setRefreshing(false), 600);
   };
 
+  const handleCatImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 400;
+          const MAX_HEIGHT = 400;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+          setNewCatImage(compressedBase64);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSrvImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 600;
+          const MAX_HEIGHT = 600;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+          setNewSrvImage(compressedBase64);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleCreateCategorySubmit = async (e) => {
     e.preventDefault();
     if (!newCatName.trim()) return;
-    await createCategory({ name: newCatName.trim(), description: newCatDesc.trim() });
+    await createCategory({ name: newCatName.trim(), description: newCatDesc.trim(), image: newCatImage });
     setNewCatName('');
     setNewCatDesc('');
+    setNewCatImage('');
     setCatModalOpen(false);
   };
 
@@ -99,6 +185,15 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
   const handleCreateServiceSubmit = async (e) => {
     e.preventDefault();
     if (!newSrvName.trim() || !newSrvCategory || !newSrvSubCategory || !newSrvPrice) return;
+    
+    const formattedPackages = newSrvPackages.map((p) => ({
+      title: p.title,
+      price: Number(p.price) || 999,
+      description: p.description || '',
+      features: typeof p.features === 'string' ? p.features.split('\n').filter(Boolean) : (p.features || []),
+      isPopular: Boolean(p.isPopular)
+    }));
+
     await createService({
       name: newSrvName.trim(),
       category: newSrvCategory,
@@ -107,6 +202,9 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
       discount: Number(newSrvDiscount) || 0,
       duration: newSrvDuration || '45 mins',
       description: newSrvDesc.trim(),
+      image: newSrvImage,
+      thumbnail: newSrvImage,
+      packages: formattedPackages,
     });
     setNewSrvName('');
     setNewSrvCategory('');
@@ -115,6 +213,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     setNewSrvDiscount('');
     setNewSrvDuration('45 mins');
     setNewSrvDesc('');
+    setNewSrvImage('');
     setSrvModalOpen(false);
   };
 
@@ -434,10 +533,17 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                     .map((srv) => {
                       const parentCatName = typeof srv.category === 'object' ? srv.category?.name : categories.find(c => c._id === srv.category)?.name;
                       const parentSubCatName = typeof srv.subCategory === 'object' ? srv.subCategory?.name : subCategories.find(s => s._id === srv.subCategory)?.name;
+                      const srvImg = srv.thumbnail || srv.image;
 
                       return (
                         <div key={srv._id} style={{ padding: '18px', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                           <div>
+                            {srvImg && (
+                              <div style={{ width: '100%', height: '110px', borderRadius: '8px', overflow: 'hidden', marginBottom: '12px' }}>
+                                <img src={srvImg} alt={srv.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              </div>
+                            )}
+
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                               <div style={{ fontWeight: '800', fontSize: '1.02rem', color: 'var(--text-primary)' }}>{srv.name}</div>
                               <div style={{ fontSize: '1rem', color: '#10b981', fontWeight: '800' }}>₹{srv.finalPrice || srv.price}</div>
@@ -594,6 +700,19 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                 <label className="form-label">Category Name *</label>
                 <input type="text" className="form-input" placeholder="e.g. Appliance Repair" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} required />
               </div>
+              <div className="form-group">
+                <label className="form-label">Category Image (Upload Icon / Photo)</label>
+                <input type="file" accept="image/*" className="form-input" onChange={handleCatImageChange} />
+                {newCatImage && (
+                  <div style={{ marginTop: '10px', textAlign: 'center' }}>
+                    <img
+                      src={newCatImage}
+                      alt="Category Preview"
+                      style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover', border: '2px solid #2563eb', boxShadow: '0 4px 12px rgba(37,99,235,0.15)' }}
+                    />
+                  </div>
+                )}
+              </div>
               <div className="form-group" style={{ marginBottom: '20px' }}>
                 <label className="form-label">Description (Optional)</label>
                 <input type="text" className="form-input" placeholder="Short summary" value={newCatDesc} onChange={(e) => setNewCatDesc(e.target.value)} />
@@ -698,6 +817,19 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                   <label className="form-label">Duration</label>
                   <input type="text" className="form-input" placeholder="45 mins" value={newSrvDuration} onChange={(e) => setNewSrvDuration(e.target.value)} />
                 </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Service Image (Upload Photo / Banner)</label>
+                <input type="file" accept="image/*" className="form-input" onChange={handleSrvImageChange} />
+                {newSrvImage && (
+                  <div style={{ marginTop: '10px', textAlign: 'center' }}>
+                    <img
+                      src={newSrvImage}
+                      alt="Service Preview"
+                      style={{ width: '130px', height: '80px', borderRadius: '10px', objectFit: 'cover', border: '2px solid #2563eb', boxShadow: '0 4px 12px rgba(37,99,235,0.15)' }}
+                    />
+                  </div>
+                )}
               </div>
               <div className="form-group" style={{ marginBottom: '20px' }}>
                 <label className="form-label">Description (Optional)</label>

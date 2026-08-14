@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import BottomNav from '../components/customer/BottomNav';
 import HomeBannerSlider from '../components/customer/HomeBannerSlider';
 import PopularCategories from '../components/customer/PopularCategories';
 import FeaturedServices from '../components/customer/FeaturedServices';
 import CustomerHomeSections from '../components/customer/CustomerHomeSections';
 import CustomerProfileView from '../components/customer/CustomerProfileView';
+import { useAuth } from '../hooks/useAuth.js';
+import { authService } from '../services/auth.service.js';
+import { toast } from '../utils/toast.js';
 import {
   Search,
   MapPin,
@@ -17,12 +20,85 @@ import {
   ArrowRight,
   ShieldCheck,
   Sparkles,
-  CreditCard
+  CreditCard,
+  Loader2,
 } from 'lucide-react';
 
 const CustomerDashboard = ({ currentUser, onLogout, selectedCity }) => {
+  const { updateUser } = useAuth();
   // 5 Bottom Nav Tabs: 'home' | 'bookings' | 'wallet' | 'notifications' | 'profile'
   const [activeTab, setActiveTab] = useState('home');
+  const [detectingLocation, setDetectingLocation] = useState(false);
+
+  const handleDetectLocation = async () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    setDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          // Reverse Geocoding via OpenStreetMap Nominatim API
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+          const data = await res.json();
+
+          const formattedAddress = data?.display_name || `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`;
+          const city = data?.address?.city || data?.address?.suburb || data?.address?.town || data?.address?.state_district || selectedCity || 'Delhi NCR';
+          const state = data?.address?.state || '';
+          const country = data?.address?.country || 'India';
+
+          const tokenToUse = localStorage.getItem('norozz_token');
+
+          // Update backend profile
+          await authService.updateCustomerProfile(
+            {
+              address: formattedAddress,
+              city: city,
+              state: state,
+              country: country,
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${tokenToUse}`,
+              },
+            }
+          );
+
+          // Update React AuthContext state
+          updateUser({
+            address: formattedAddress,
+            city: city,
+            state: state,
+            country: country,
+          });
+
+          toast.success(`📍 Location saved to profile: ${city}`);
+        } catch (err) {
+          console.error('Location Reverse Geocoding Error:', err);
+          toast.error('Failed to resolve address details.');
+        } finally {
+          setDetectingLocation(false);
+        }
+      },
+      (err) => {
+        console.warn('Geolocation Permission Error/Denied:', err);
+        toast.error('Please allow location access to auto-detect your address.');
+        setDetectingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  useEffect(() => {
+    if (activeTab === 'home' && (!currentUser?.address || currentUser.address.includes('Vasant Kunj'))) {
+      handleDetectLocation();
+    }
+  }, [activeTab]);
 
   return (
     <div style={{ minHeight: 'calc(100vh - 74px)', background: 'var(--bg-primary)', paddingBottom: '90px' }}>
@@ -38,18 +114,43 @@ const CustomerDashboard = ({ currentUser, onLogout, selectedCity }) => {
           <div style={{ maxWidth: '960px', margin: '0 auto' }}>
             {/* Address Selector */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <MapPin size={18} color="#2563eb" />
-                <div>
-                  <span style={{ fontSize: '0.88rem', fontWeight: '800', color: 'var(--text-primary)' }}>
-                    Home - Vasant Kunj
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                <MapPin size={18} color="#2563eb" style={{ flexShrink: 0 }} />
+                <div style={{ overflow: 'hidden' }}>
+                  <span style={{ fontSize: '0.88rem', fontWeight: '800', color: 'var(--text-primary)', display: 'block' }}>
+                    {currentUser?.city || (detectingLocation ? 'Detecting Location...' : 'Current Location')}
                   </span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '6px' }}>
-                    Sector C, Pocket 2, {selectedCity || 'Delhi NCR'}
+                  <span style={{
+                    fontSize: '0.75rem',
+                    color: 'var(--text-muted)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    display: 'block',
+                    maxWidth: '450px'
+                  }}>
+                    {currentUser?.address || 'Click DETECT LOCATION to fetch live address'}
                   </span>
                 </div>
               </div>
-              <span className="badge badge-purple" style={{ fontSize: '0.65rem' }}>CHANGE</span>
+              <button
+                type="button"
+                onClick={handleDetectLocation}
+                disabled={detectingLocation}
+                className="badge badge-purple"
+                style={{
+                  fontSize: '0.68rem',
+                  cursor: 'pointer',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '5px 10px',
+                  flexShrink: 0
+                }}
+              >
+                {detectingLocation ? <Loader2 size={12} className="spin" /> : 'DETECT LOCATION'}
+              </button>
             </div>
 
             {/* Big Search Input */}

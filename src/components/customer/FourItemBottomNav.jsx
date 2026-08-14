@@ -1,9 +1,10 @@
 import React from 'react';
-import { Home, CalendarCheck, Wallet, User } from 'lucide-react';
+import { Home, Wrench, CalendarCheck, Wallet, User } from 'lucide-react';
 
 const FourItemBottomNav = ({ activeTab, setActiveTab }) => {
   const navItems = [
     { id: 'home', label: 'Home', icon: Home },
+    { id: 'services', label: 'Services', icon: Wrench },
     { id: 'bookings', label: 'Bookings', icon: CalendarCheck, badge: '2' },
     { id: 'wallet', label: 'Wallet', icon: Wallet },
     { id: 'profile', label: 'Profile', icon: User },

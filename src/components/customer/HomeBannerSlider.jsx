@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, ArrowRight, ShieldCheck, Tag } from 'lucide-react';
 
 const HomeBannerSlider = () => {
@@ -27,12 +27,33 @@ const HomeBannerSlider = () => {
       gradient: 'linear-gradient(135deg, #76d729 0%, #00b4d8 100%)',
       cta: 'Book Cleaning'
     },
+    {
+      id: 4,
+      title: 'Plumbing & Water Leak Repair',
+      subtitle: 'Verified Experts • 30-Min Arrival',
+      tag: 'INSTANT 20% OFF',
+      gradient: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
+      cta: 'Book Plumbing'
+    }
   ];
 
   const [activeBanner, setActiveBanner] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    if (isHovered) return;
+    const timer = setInterval(() => {
+      setActiveBanner((prev) => (prev + 1) % banners.length);
+    }, 3500);
+    return () => clearInterval(timer);
+  }, [banners.length, isHovered]);
 
   return (
-    <div style={{ marginBottom: '28px' }}>
+    <div
+      style={{ marginBottom: '28px' }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div style={{
         background: banners[activeBanner].gradient,
         borderRadius: 'var(--radius-xl)',
@@ -40,10 +61,11 @@ const HomeBannerSlider = () => {
         color: '#ffffff',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'space-between',
         boxShadow: '0 10px 25px rgba(0,180,216,0.25)',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        transition: 'background 0.5s ease-in-out'
       }}>
         <div style={{ maxWidth: '65%' }}>
           <span style={{

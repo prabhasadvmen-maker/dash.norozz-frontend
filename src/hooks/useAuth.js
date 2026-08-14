@@ -4,7 +4,7 @@ import { useAuthContext } from '../contexts/AuthContext.jsx';
 import { toast } from '../utils/toast.js';
 
 export const useAuth = () => {
-  const { login, logout, currentUser, isAuthenticated, role } = useAuthContext();
+  const { login, logout, currentUser, isAuthenticated, role, updateUser } = useAuthContext();
 
   const customerLoginMutation = useMutation({
     mutationFn: (data) => authService.customerLogin(data),
@@ -28,8 +28,11 @@ export const useAuth = () => {
     onSuccess: (res) => {
       const user = res.data?.user || res.data;
       const token = res.data?.accessToken;
-      login(user, token);
-      toast.success(`Welcome back, ${user.name || 'Customer'}!`);
+      const isNewUser = res.data?.isNewUser || res.isNewUser;
+      if (!isNewUser) {
+        login(user, token);
+        toast.success(`Welcome back, ${user.name || 'Customer'}!`);
+      }
     },
   });
 
@@ -89,6 +92,7 @@ export const useAuth = () => {
     role,
     login,
     logout,
+    updateUser,
     customerLogin: customerLoginMutation.mutateAsync,
     customerSignup: customerSignupMutation.mutateAsync,
     requestOtpLogin: otpLoginRequestMutation.mutateAsync,

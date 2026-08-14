@@ -45,7 +45,7 @@ const FeaturedServices = () => {
     <div style={{ marginBottom: '32px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
         <h3 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)' }}>
-          Featured Services
+          Recommended for You
         </h3>
         <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--accent-blue)', cursor: 'pointer' }}>
           See All
