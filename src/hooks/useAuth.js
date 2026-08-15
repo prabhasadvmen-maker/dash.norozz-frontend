@@ -66,6 +66,89 @@ export const useAuth = () => {
     },
   });
 
+  const partnerOtpRequestMutation = useMutation({
+    mutationFn: (data) => authService.requestPartnerOtpLogin(data),
+    onSuccess: (res) => {
+      toast.success(res.message || 'OTP sent successfully!');
+    },
+  });
+
+  const partnerOtpVerifyMutation = useMutation({
+    mutationFn: (data) => authService.verifyPartnerOtpLogin(data),
+    onSuccess: (res) => {
+      const user = res.data?.user || res.data;
+      const token = res.data?.accessToken;
+      const isProfileCompleted = res.data?.isProfileCompleted ?? res.isProfileCompleted;
+      if (isProfileCompleted) {
+        login(user, token);
+        toast.success(`Welcome back Partner, ${user.name || 'Partner'}!`);
+      }
+    },
+  });
+
+  const partnerProfileUpdateMutation = useMutation({
+    mutationFn: (data) => authService.updatePartnerProfile(data),
+    onSuccess: (res) => {
+      const user = res.data?.user || res.data;
+      updateUser(user);
+      toast.success('Partner profile saved successfully!');
+    },
+  });
+
+  const partnerKycSubmitMutation = useMutation({
+    mutationFn: (data) => authService.submitPartnerKyc(data),
+    onSuccess: (res) => {
+      const user = res.data?.user || res.data;
+      updateUser(user);
+      toast.success('Partner KYC & Work setup submitted successfully!');
+    },
+  });
+
+  const saveOnboardingDocsMutation = useMutation({
+    mutationFn: (data) => authService.saveOnboardingDocuments(data),
+    onSuccess: (res) => {
+      const user = res.data?.user || res.data;
+      updateUser(user);
+      toast.success('Documents saved!');
+    },
+  });
+
+  const saveOnboardingCatMutation = useMutation({
+    mutationFn: (data) => authService.saveOnboardingCategory(data),
+    onSuccess: (res) => {
+      const user = res.data?.user || res.data;
+      updateUser(user);
+      toast.success('Service Category saved!');
+    },
+  });
+
+  const saveOnboardingSkillsMutation = useMutation({
+    mutationFn: (data) => authService.saveOnboardingSkills(data),
+    onSuccess: (res) => {
+      const user = res.data?.user || res.data;
+      updateUser(user);
+      toast.success('Skills & Experience saved!');
+    },
+  });
+
+  const saveOnboardingAreaMutation = useMutation({
+    mutationFn: (data) => authService.saveOnboardingServiceArea(data),
+    onSuccess: (res) => {
+      const user = res.data?.user || res.data;
+      updateUser(user);
+      toast.success('Service area saved!');
+    },
+  });
+
+  const saveOnboardingHoursMutation = useMutation({
+    mutationFn: (data) => authService.saveOnboardingWorkingHours(data),
+    onSuccess: (res) => {
+      const user = res.data?.user || res.data;
+      updateUser(user);
+      toast.success('Working hours saved! Application submitted for review.');
+    },
+  });
+
   const cityAdminLoginMutation = useMutation({
     mutationFn: (data) => authService.cityAdminLogin(data),
     onSuccess: (res) => {
@@ -99,11 +182,29 @@ export const useAuth = () => {
     verifyOtpLogin: otpLoginVerifyMutation.mutateAsync,
     partnerLogin: partnerLoginMutation.mutateAsync,
     partnerSignup: partnerSignupMutation.mutateAsync,
+    requestPartnerOtp: partnerOtpRequestMutation.mutateAsync,
+    verifyPartnerOtp: partnerOtpVerifyMutation.mutateAsync,
+    updatePartnerProfile: partnerProfileUpdateMutation.mutateAsync,
+    submitPartnerKyc: partnerKycSubmitMutation.mutateAsync,
+    saveOnboardingDocuments: saveOnboardingDocsMutation.mutateAsync,
+    saveOnboardingCategory: saveOnboardingCatMutation.mutateAsync,
+    saveOnboardingSkills: saveOnboardingSkillsMutation.mutateAsync,
+    saveOnboardingServiceArea: saveOnboardingAreaMutation.mutateAsync,
+    saveOnboardingWorkingHours: saveOnboardingHoursMutation.mutateAsync,
     cityAdminLogin: cityAdminLoginMutation.mutateAsync,
     superAdminLogin: superAdminLoginMutation.mutateAsync,
     isLoggingIn:
       customerLoginMutation.isPending ||
       partnerLoginMutation.isPending ||
+      partnerOtpRequestMutation.isPending ||
+      partnerOtpVerifyMutation.isPending ||
+      partnerProfileUpdateMutation.isPending ||
+      partnerKycSubmitMutation.isPending ||
+      saveOnboardingDocsMutation.isPending ||
+      saveOnboardingCatMutation.isPending ||
+      saveOnboardingSkillsMutation.isPending ||
+      saveOnboardingAreaMutation.isPending ||
+      saveOnboardingHoursMutation.isPending ||
       cityAdminLoginMutation.isPending ||
       superAdminLoginMutation.isPending ||
       otpLoginVerifyMutation.isPending,

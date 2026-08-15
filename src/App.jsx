@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import SuperAdminLoginPage from './pages/SuperAdminLoginPage';
 import CityAdminLoginPage from './pages/CityAdminLoginPage';
 import PartnerAuthPage from './pages/PartnerAuthPage';
+import PartnerOnboardingPage from './pages/PartnerOnboardingPage';
 import CustomerAuthPage from './pages/CustomerAuthPage';
 import SuperAdminPanel from './pages/SuperAdminPanel';
 import CityAdminPanel from './pages/CityAdminPanel';
@@ -13,6 +14,7 @@ import { ProtectedRoute } from './components/ProtectedRoutes.jsx';
 function App() {
   const { currentUser, logout, loading, role } = useAuthContext();
   const [authView, setAuthView] = useState('customer'); // 'customer' | 'partner' | 'cityAdmin' | 'superAdmin'
+  const [skipOnboarding, setSkipOnboarding] = useState(false);
 
   if (loading) {
     return (
@@ -47,6 +49,20 @@ function App() {
       );
     }
     if (userRole === 'partner') {
+      const isKycDone = currentUser.isKycSubmitted || (currentUser.documents && (currentUser.documents.aadhaarDoc || currentUser.documents.aadhaarFront));
+
+      if (!isKycDone && !skipOnboarding) {
+        return (
+          <ProtectedRoute allowedRoles={['partner']}>
+            <PartnerOnboardingPage
+              currentUser={currentUser}
+              onLogout={logout}
+              onFinishOnboarding={() => setSkipOnboarding(true)}
+            />
+          </ProtectedRoute>
+        );
+      }
+
       return (
         <ProtectedRoute allowedRoles={['partner']}>
           <DedicatedPartnerPanel currentUser={currentUser} onLogout={logout} />

@@ -2,6 +2,34 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext(null);
 
+const sanitizeUserForStorage = (user) => {
+  if (!user) return null;
+  try {
+    const userCopy = JSON.parse(JSON.stringify(user));
+    if (userCopy.documents && typeof userCopy.documents === 'object') {
+      Object.keys(userCopy.documents).forEach((key) => {
+        const val = userCopy.documents[key];
+        if (typeof val === 'string' && (val.startsWith('data:') || val.length > 500)) {
+          userCopy.documents[key] = '[DOCUMENT_ATTACHED]';
+        }
+      });
+    }
+    return userCopy;
+  } catch (e) {
+    return user;
+  }
+};
+
+const safeSaveUserToStorage = (user) => {
+  if (!user) return;
+  try {
+    const sanitized = sanitizeUserForStorage(user);
+    localStorage.setItem('norozz_user', JSON.stringify(sanitized));
+  } catch (err) {
+    console.warn('Failed to save norozz_user to localStorage quota:', err);
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [token, setToken] = useState(null);
@@ -34,24 +62,28 @@ export const AuthProvider = ({ children }) => {
     setCurrentUser(userData);
     setToken(accessToken);
     if (accessToken) {
-      localStorage.setItem('norozz_token', accessToken);
+      try {
+        localStorage.setItem('norozz_token', accessToken);
+      } catch (e) {}
     }
     if (userData) {
-      localStorage.setItem('norozz_user', JSON.stringify(userData));
+      safeSaveUserToStorage(userData);
     }
   };
 
   const logout = () => {
     setCurrentUser(null);
     setToken(null);
-    localStorage.removeItem('norozz_token');
-    localStorage.removeItem('norozz_user');
+    try {
+      localStorage.removeItem('norozz_token');
+      localStorage.removeItem('norozz_user');
+    } catch (e) {}
   };
 
   const updateUser = (updatedData) => {
     setCurrentUser((prev) => {
       const newObj = { ...prev, ...updatedData };
-      localStorage.setItem('norozz_user', JSON.stringify(newObj));
+      safeSaveUserToStorage(newObj);
       return newObj;
     });
   };
