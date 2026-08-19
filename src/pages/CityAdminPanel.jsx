@@ -105,8 +105,8 @@ const CityAdminPanel = ({ currentUser, onLogout }) => {
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                      <th style={{ padding: '12px' }}>AGENCY NAME</th>
-                      <th style={{ padding: '12px' }}>OWNER</th>
+                      <th style={{ padding: '12px' }}>TECHNICIAN NAME</th>
+                      <th style={{ padding: '12px' }}>SKILL CATEGORY</th>
                       <th style={{ padding: '12px' }}>EMAIL</th>
                       <th style={{ padding: '12px' }}>KYC STATUS</th>
                     </tr>
@@ -117,8 +117,8 @@ const CityAdminPanel = ({ currentUser, onLogout }) => {
                     ) : (
                       partners.map((p) => (
                         <tr key={p._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                          <td style={{ padding: '12px', fontWeight: '800' }}>{p.agencyName || p.name}</td>
-                          <td style={{ padding: '12px' }}>{p.name}</td>
+                          <td style={{ padding: '12px', fontWeight: '800' }}>{p.name}</td>
+                          <td style={{ padding: '12px' }}>{p.category || 'Service Technician'}</td>
                           <td style={{ padding: '12px', fontSize: '0.85rem' }}>{p.email}</td>
                           <td style={{ padding: '12px' }}>
                             <span className={`badge ${p.kycStatus === 'approved' ? 'badge-success' : 'badge-warning'}`}>

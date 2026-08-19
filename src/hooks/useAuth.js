@@ -104,6 +104,15 @@ export const useAuth = () => {
     },
   });
 
+  const saveOnboardingLocationMutation = useMutation({
+    mutationFn: (data) => authService.saveOnboardingLocation(data),
+    onSuccess: (res) => {
+      const user = res.data?.user || res.data;
+      updateUser(user);
+      toast.success('Location access saved!');
+    },
+  });
+
   const saveOnboardingDocsMutation = useMutation({
     mutationFn: (data) => authService.saveOnboardingDocuments(data),
     onSuccess: (res) => {
@@ -186,6 +195,7 @@ export const useAuth = () => {
     verifyPartnerOtp: partnerOtpVerifyMutation.mutateAsync,
     updatePartnerProfile: partnerProfileUpdateMutation.mutateAsync,
     submitPartnerKyc: partnerKycSubmitMutation.mutateAsync,
+    saveOnboardingLocation: saveOnboardingLocationMutation.mutateAsync,
     saveOnboardingDocuments: saveOnboardingDocsMutation.mutateAsync,
     saveOnboardingCategory: saveOnboardingCatMutation.mutateAsync,
     saveOnboardingSkills: saveOnboardingSkillsMutation.mutateAsync,

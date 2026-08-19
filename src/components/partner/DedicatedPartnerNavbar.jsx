@@ -1,7 +1,7 @@
 import React from 'react';
 import { Briefcase, Search, Bell, RefreshCw, LogOut, ShieldCheck, Lock, Unlock } from 'lucide-react';
 
-const DedicatedPartnerNavbar = ({ currentUser, onLogout, onRefresh, refreshing, kycStatus = 'pending' }) => {
+const DedicatedPartnerNavbar = ({ currentUser, onLogout, onRefresh, refreshing, kycStatus = 'pending', isOnline = true, onToggleOnlineClick }) => {
   const isApproved = kycStatus === 'approved';
 
   return (
@@ -33,20 +33,45 @@ const DedicatedPartnerNavbar = ({ currentUser, onLogout, onRefresh, refreshing, 
         />
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            NOROZZ <span className="gradient-text">PARTNER PORTAL</span>
+            NOROZZ <span className="gradient-text">TECHNICIAN PORTAL</span>
           </h2>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            CleanPro Services Agency • Delhi NCR
+            {currentUser?.agencyName || currentUser?.name || 'Service Partner'} • {currentUser?.assignedCity || currentUser?.city || 'Delhi NCR'}
           </span>
         </div>
       </div>
 
-      {/* KYC Status Badge */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      {/* KYC Status & Online Toggle Pill */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <span className={`badge ${isApproved ? 'badge-success' : 'badge-warning'}`} style={{ padding: '6px 14px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
           {isApproved ? <ShieldCheck size={14} /> : <Lock size={14} />}
-          {isApproved ? 'VERIFIED PARTNER (ALL FEATURES UNLOCKED)' : 'KYC PENDING APPROVAL (RESTRICTED ACCESS)'}
+          {isApproved ? 'VERIFIED TECHNICIAN' : 'KYC PENDING APPROVAL'}
         </span>
+
+        {/* Online / Offline Toggle Pill */}
+        {onToggleOnlineClick && (
+          <button
+            type="button"
+            onClick={onToggleOnlineClick}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              fontSize: '0.78rem',
+              fontWeight: '700',
+              background: isOnline ? '#ecfdf5' : '#fef2f2',
+              color: isOnline ? '#059669' : '#dc2626',
+              border: `1px solid ${isOnline ? '#a7f3d0' : '#fecaca'}`,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isOnline ? '#10b981' : '#ef4444' }} />
+            <span>{isOnline ? 'Online' : 'Offline'}</span>
+          </button>
+        )}
       </div>
 
       {/* Right Controls */}
@@ -85,14 +110,14 @@ const DedicatedPartnerNavbar = ({ currentUser, onLogout, onRefresh, refreshing, 
             fontWeight: '800',
             fontSize: '0.85rem'
           }}>
-            P
+            {(currentUser?.name || 'P')[0].toUpperCase()}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-              CleanPro Partner
+              {currentUser?.name || 'Service Partner'}
             </span>
             <span style={{ fontSize: '0.68rem', color: '#0052d4', fontWeight: '700' }}>
-              BUSINESS AGENCY
+              {currentUser?.category || 'SERVICE TECHNICIAN'}
             </span>
           </div>
         </div>

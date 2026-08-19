@@ -6,6 +6,7 @@ import PopularCategories from '../components/customer/PopularCategories';
 import CustomerHomeSections from '../components/customer/CustomerHomeSections';
 import CustomerProfileView from '../components/customer/CustomerProfileView';
 import ServiceDetailsModal from '../components/customer/ServiceDetailsModal';
+import CustomerBookingTrackingPage from './customer/CustomerBookingTrackingPage';
 import BookingFlowPage from './customer/BookingFlowPage';
 import { useCustomer } from '../hooks/useCustomer.js';
 import { useBookings } from '../hooks/useBookings.js';
@@ -36,6 +37,9 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState(null);
   const [selectedDetailService, setSelectedDetailService] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  // Dedicated Full-Page Customer Tracking State
+  const [activeTrackingBooking, setActiveTrackingBooking] = useState(null);
 
   // Full Page Booking Flow State (No popup modal)
   const [isBookingFlowActive, setIsBookingFlowActive] = useState(false);
@@ -132,6 +136,16 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
           setIsBookingFlowActive(false);
           setActiveTab('bookings');
         }}
+      />
+    );
+  }
+
+  if (activeTrackingBooking) {
+    return (
+      <CustomerBookingTrackingPage
+        booking={activeTrackingBooking}
+        currentUser={currentUser}
+        onBack={() => setActiveTrackingBooking(null)}
       />
     );
   }
@@ -474,29 +488,49 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
                   No bookings found. Click '+ Book New Service' to create your first order!
                 </div>
               ) : (
-                myBookings.map((b) => (
-                  <div key={b._id} className="mui-card" style={{ padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#2563eb' }}>
-                        BOOKING REF: {b.bookingNumber || b._id.substring(0, 8).toUpperCase()}
+                myBookings.map((b) => {
+                  const bRef = b.bookingId || b.bookingNumber || `UC-${b._id?.toString().slice(-6).toUpperCase()}`;
+                  const sTitle = b.packageName || b.service?.name || b.serviceName || b.packageTitle || 'Home Service Package';
+                  const sAmount = b.amount || b.totalAmount || b.service?.finalPrice || 599;
+                  const sSlot = b.timeSlot || b.bookingTimeSlot || '10:30 AM';
+                  const sDate = b.bookingDate ? new Date(b.bookingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Today';
+
+                  return (
+                    <div
+                      key={b._id}
+                      className="mui-card"
+                      onClick={() => setActiveTrackingBooking(b)}
+                      style={{
+                        padding: '20px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        transition: 'transform 0.15s ease, boxShadow 0.15s ease'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#2563eb' }}>
+                          BOOKING REF: {bRef}
+                        </div>
+                        <div style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--text-primary)', marginTop: '2px' }}>
+                          {sTitle}
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                          {sDate} • {sSlot} • Status: {b.status}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--text-primary)', marginTop: '2px' }}>
-                        {b.serviceName || b.packageTitle || 'AC Service Package'}
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                        {b.bookingDate} at {b.bookingTimeSlot} • Status: {b.status}
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-primary)' }}>
+                          ₹{sAmount}
+                        </div>
+                        <span className={`badge ${b.status === 'Completed' ? 'badge-success' : 'badge-blue'}`} style={{ marginTop: '4px' }}>
+                          {b.status}
+                        </span>
                       </div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-primary)' }}>
-                        ₹{b.totalAmount || b.finalPrice || 599}
-                      </div>
-                      <span className={`badge ${b.status === 'Completed' ? 'badge-success' : 'badge-blue'}`} style={{ marginTop: '4px' }}>
-                        {b.status}
-                      </span>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

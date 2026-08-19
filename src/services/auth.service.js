@@ -20,6 +20,7 @@ export const authService = {
   verifyPartnerOtpLogin: (data) => axiosInstance.post('/partner/auth/otp/verify', data),
   updatePartnerProfile: (data, config = {}) => axiosInstance.put('/partner/auth/profile', data, config),
   submitPartnerKyc: (data, config = {}) => axiosInstance.post('/partner/auth/kyc-submit', data, config),
+  saveOnboardingLocation: (data, config = {}) => axiosInstance.post('/partner/auth/onboarding/location', data, config),
   saveOnboardingDocuments: (data, config = {}) => axiosInstance.post('/partner/auth/onboarding/documents', data, config),
   saveOnboardingCategory: (data, config = {}) => axiosInstance.post('/partner/auth/onboarding/category', data, config),
   saveOnboardingSkills: (data, config = {}) => axiosInstance.post('/partner/auth/onboarding/skills', data, config),

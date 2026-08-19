@@ -17,7 +17,7 @@ import {
   Briefcase
 } from 'lucide-react';
 
-const DedicatedPartnerSidebar = ({ activeTab, setActiveTab, onLogout, kycStatus = 'pending' }) => {
+const DedicatedPartnerSidebar = ({ activeTab, setActiveTab, onLogout, kycStatus = 'pending', currentUser }) => {
   const isApproved = kycStatus === 'approved';
 
   // 1. Base Unlocked Items for Pending State
@@ -36,7 +36,6 @@ const DedicatedPartnerSidebar = ({ activeTab, setActiveTab, onLogout, kycStatus 
     { id: 'calendar', label: 'Calendar', icon: Calendar },
     { id: 'wallet', label: 'Wallet', icon: Wallet, badge: 'Payouts' },
     { id: 'reviews', label: 'Reviews', icon: Star },
-    { id: 'workers', label: 'Workers', icon: Users, badge: '6 Active' },
     { id: 'transactions', label: 'Transactions', icon: Receipt },
     { id: 'availability', label: 'Availability', icon: Clock },
     { id: 'kycStatus', label: 'KYC Status', icon: ShieldCheck, badge: 'Approved' },
@@ -61,7 +60,7 @@ const DedicatedPartnerSidebar = ({ activeTab, setActiveTab, onLogout, kycStatus 
       boxShadow: 'var(--shadow-sm)'
     }}>
       <div>
-        {/* Partner Agency Header */}
+        {/* Service Partner Header */}
         <div style={{
           padding: '12px 14px',
           background: 'var(--gradient-card-purple)',
@@ -70,14 +69,14 @@ const DedicatedPartnerSidebar = ({ activeTab, setActiveTab, onLogout, kycStatus 
           marginBottom: '20px'
         }}>
           <div style={{ fontSize: '0.72rem', fontWeight: '800', color: 'var(--accent-purple)', textTransform: 'uppercase', letterSpacing: '0.6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Briefcase size={12} /> BUSINESS PARTNER
+            <Briefcase size={12} /> SERVICE TECHNICIAN
           </div>
           <div style={{ fontSize: '1.05rem', fontWeight: '800', color: 'var(--text-primary)', marginTop: '2px' }}>
-            CleanPro Services
+            {currentUser?.name || 'Service Partner'}
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
             {isApproved ? (
-              <span className="badge badge-success" style={{ fontSize: '0.62rem', padding: '1px 6px' }}><ShieldCheck size={10} /> VERIFIED PARTNER</span>
+              <span className="badge badge-success" style={{ fontSize: '0.62rem', padding: '1px 6px' }}><ShieldCheck size={10} /> VERIFIED TECHNICIAN</span>
             ) : (
               <span className="badge badge-warning" style={{ fontSize: '0.62rem', padding: '1px 6px' }}><Lock size={10} /> KYC PENDING</span>
             )}

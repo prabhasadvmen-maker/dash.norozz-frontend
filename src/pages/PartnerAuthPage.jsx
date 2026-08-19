@@ -98,7 +98,7 @@ const PartnerAuthPage = () => {
   const [dob, setDob] = useState('1995-08-15');
   const [gender, setGender] = useState('Male');
   const [workCity, setWorkCity] = useState('Delhi NCR');
-  const [category, setCategory] = useState('AC & Appliance Repair');
+  const [category, setCategory] = useState('');
   const [categoriesList, setCategoriesList] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
 
@@ -142,7 +142,6 @@ const PartnerAuthPage = () => {
         const list = res.data?.data || res.data || [];
         if (Array.isArray(list) && list.length > 0) {
           setCategoriesList(list);
-          if (!category) setCategory(list[0].name);
         }
       } catch (err) {
         console.error('Failed to load categories:', err);
@@ -211,17 +210,16 @@ const PartnerAuthPage = () => {
 
   // Check where partner should be directed after OTP / Profile creation
   const handleEvaluatePartnerNextStep = (userObj, token) => {
-    const isKycDone = userObj?.isKycSubmitted || (userObj?.documents?.aadhaarDoc || userObj?.documents?.aadhaarFront);
-    if (isKycDone) {
-      // KYC is submitted -> If approved, login to Dashboard; If pending, show Approval Pending screen!
+    const isKycSubmitted = userObj?.isKycSubmitted === true;
+    if (isKycSubmitted) {
       if (userObj.kycStatus === 'approved') {
         login(userObj, token);
       } else {
         setStep('approval-pending');
       }
     } else {
-      // KYC NOT submitted -> Guide through Document Upload & Setup!
-      setStep('kyc-docs-list');
+      // KYC NOT completed -> Log in so App.jsx renders PartnerOnboardingPage
+      login(userObj, token);
     }
   };
 
@@ -334,7 +332,6 @@ const PartnerAuthPage = () => {
         dob,
         gender,
         assignedCity: workCity,
-        category,
         profileImage,
       };
 
@@ -342,8 +339,8 @@ const PartnerAuthPage = () => {
       const updatedUser = res.data?.user || res.user || { ...pendingUser, ...updatePayload };
       setPendingUser(updatedUser);
 
-      // Move to Location Permission screen
-      setStep('location-perm');
+      // Log in to trigger PartnerOnboardingPage (Step 1: Allow Location Access)
+      login(updatedUser, pendingToken);
     } catch (err) {
       setError(err.message || 'Failed to update profile. Please try again.');
     }

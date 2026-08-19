@@ -15,32 +15,50 @@ const PartnerWalletCard = () => {
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px', marginBottom: '28px' }}>
       
       {/* Wallet Balance & Instant Withdrawal Card */}
-      <div className="mui-card" style={{ padding: '24px', background: 'var(--gradient-brand)', color: '#ffffff' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: '700', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Wallet size={18} /> Partner E-Wallet Balance
-          </span>
-          <span className="badge" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }}>
-            <ShieldCheck size={12} /> VERIFIED ACCOUNT
-          </span>
+      <div
+        className="mui-card"
+        style={{
+          padding: '24px',
+          background: 'linear-gradient(135deg, #15803d 0%, #16a34a 100%)',
+          color: '#ffffff',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: '0 10px 25px rgba(22, 163, 74, 0.25)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px'
+        }}
+      >
+        <div>
+          <div style={{ fontSize: '0.86rem', fontWeight: '700', opacity: 0.9, marginBottom: '6px' }}>
+            Wallet Balance
+          </div>
+          <div style={{ fontSize: '2.2rem', fontWeight: '800', letterSpacing: '-0.8px' }}>
+            ₹{Number(balance).toLocaleString()}
+          </div>
         </div>
 
-        <div style={{ fontSize: '2.4rem', fontWeight: '800', letterSpacing: '-0.8px', marginBottom: '8px' }}>
-          ₹{Number(balance).toLocaleString()}.00
-        </div>
-
-        <div style={{ fontSize: '0.78rem', opacity: 0.85, marginBottom: '24px' }}>
-          Linked Bank: HDFC Bank • Instant Payout Available
-        </div>
-
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button className="btn" style={{ background: '#ffffff', color: '#2563eb', fontWeight: '800', border: 'none', flex: 1 }}>
-            <ArrowUpRight size={16} /> Withdraw to Bank
-          </button>
-          <button onClick={() => refetch()} className="btn" style={{ background: 'rgba(255,255,255,0.15)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.3)', flex: 1 }}>
-            <RefreshCw size={16} /> Refresh
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            toast.success(`Withdrawal request of ₹${Number(balance).toLocaleString()} initiated to linked bank account!`);
+          }}
+          className="btn"
+          style={{
+            background: '#ffffff',
+            color: '#15803d',
+            fontWeight: '800',
+            fontSize: '0.92rem',
+            padding: '10px 22px',
+            borderRadius: '12px',
+            border: 'none',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+          }}
+        >
+          Withdraw
+        </button>
       </div>
 
       {/* Recent Wallet Transactions */}

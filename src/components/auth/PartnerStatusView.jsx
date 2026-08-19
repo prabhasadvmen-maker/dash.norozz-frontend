@@ -30,8 +30,8 @@ const PartnerStatusView = ({ partnerData, onProceedToLogin }) => {
 
       <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: '1.5' }}>
         {isApproved
-          ? `Congratulations! Your business agency '${partnerData?.agencyName || 'CleanPro Services'}' has been approved by Super Admin.`
-          : `Your onboarding application for '${partnerData?.agencyName || 'CleanPro Services'}' (${partnerData?.category || 'Appliance Repair'}, ${partnerData?.city || 'Delhi NCR'}) has been submitted and is currently being verified by Super Admin.`}
+          ? `Congratulations! Your technician partner account '${partnerData?.agencyName || partnerData?.name || 'Service Partner'}' has been approved.`
+          : `Your technician partner application for '${partnerData?.agencyName || partnerData?.name || 'Service Partner'}' (${partnerData?.category || 'AC & Appliance Repair'}, ${partnerData?.city || 'Delhi NCR'}) has been submitted and is currently being verified.`}
       </p>
 
       {/* Detail Box */}
@@ -45,12 +45,12 @@ const PartnerStatusView = ({ partnerData, onProceedToLogin }) => {
         fontSize: '0.82rem'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <span style={{ color: 'var(--text-muted)' }}>Agency Name:</span>
-          <span style={{ fontWeight: '700' }}>{partnerData?.agencyName || 'CleanPro Services'}</span>
+          <span style={{ color: 'var(--text-muted)' }}>Technician / Display Name:</span>
+          <span style={{ fontWeight: '700' }}>{partnerData?.agencyName || partnerData?.name || 'Service Partner'}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <span style={{ color: 'var(--text-muted)' }}>Official Email:</span>
-          <span style={{ fontWeight: '700' }}>{partnerData?.email || 'partner@cleanpro.com'}</span>
+          <span style={{ color: 'var(--text-muted)' }}>Registered Email:</span>
+          <span style={{ fontWeight: '700' }}>{partnerData?.email || 'partner@norozz.com'}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span style={{ color: 'var(--text-muted)' }}>Approval Status:</span>

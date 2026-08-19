@@ -49,7 +49,7 @@ function App() {
       );
     }
     if (userRole === 'partner') {
-      const isKycDone = currentUser.isKycSubmitted || (currentUser.documents && (currentUser.documents.aadhaarDoc || currentUser.documents.aadhaarFront));
+      const isKycDone = currentUser.isKycSubmitted === true;
 
       if (!isKycDone && !skipOnboarding) {
         return (

@@ -11,95 +11,65 @@ import {
 import { usePartner } from '../../hooks/usePartner.js';
 
 const PartnerMetricCards = () => {
-  const { dashboard, todayBookings, pendingBookings, completedBookings, wallet, isLoading } = usePartner();
+  const { dashboard, todayBookings, wallet, isLoading } = usePartner();
 
-  const todayCount = dashboard?.todayBookingsCount || todayBookings.length || 8;
-  const pendingCount = dashboard?.pendingBookingsCount || pendingBookings.length || 2;
-  const completedCount = dashboard?.completedBookingsCount || completedBookings.length || 142;
-  const walletBalance = wallet?.balance || dashboard?.walletBalance || 18450;
-  const earnings = dashboard?.monthlyEarnings || 142800;
-  const rating = dashboard?.rating || 4.92;
+  const todayEarnings = dashboard?.metrics?.todayEarnings || wallet?.todayEarnings || 2450;
+  const bookingsCount = dashboard?.todayBookingsCount || todayBookings.length || 5;
+  const rating = dashboard?.metrics?.rating || dashboard?.rating || 4.8;
 
   const cards = [
     {
-      title: "Today's Jobs",
-      value: `${todayCount} Jobs`,
-      icon: CalendarCheck,
-      color: '#2563eb',
-      bgColor: '#eff6ff',
-      trend: 'Live Dispatched Queue',
-      classType: ''
-    },
-    {
-      title: 'Pending Jobs',
-      value: `${pendingCount} Jobs`,
-      icon: Clock,
-      color: '#f59e0b',
-      bgColor: '#fffbe6',
-      trend: 'In Progress / Assigned',
-      classType: 'amber'
-    },
-    {
-      title: 'Completed Jobs',
-      value: `${completedCount} Jobs`,
-      icon: CheckCircle2,
-      color: '#10b981',
-      bgColor: '#ecfdf5',
-      trend: 'Completed SLA',
-      classType: 'emerald'
-    },
-    {
-      title: 'Wallet Balance',
-      value: `₹${Number(walletBalance).toLocaleString()}`,
-      icon: Wallet,
-      color: '#7c3aed',
-      bgColor: '#f5f3ff',
-      trend: 'Ready for Instant Payout',
-      classType: 'purple'
-    },
-    {
-      title: 'Monthly Earnings',
-      value: `₹${Number(earnings).toLocaleString()}`,
+      title: "Today's Earnings",
+      value: `₹${Number(todayEarnings).toLocaleString()}`,
+      subtitle: 'Real-time Earnings',
       icon: TrendingUp,
       color: '#10b981',
       bgColor: '#ecfdf5',
-      trend: 'Live Backend Ledger',
-      classType: 'emerald'
     },
     {
-      title: 'Ratings & Reviews',
+      title: 'Bookings',
+      value: `${bookingsCount} Jobs`,
+      subtitle: 'Dispatched Today',
+      icon: CalendarCheck,
+      color: '#2563eb',
+      bgColor: '#eff6ff',
+    },
+    {
+      title: 'Rating',
       value: `${rating} ⭐`,
+      subtitle: 'Customer Ratings',
       icon: Star,
       color: '#f59e0b',
       bgColor: '#fffbe6',
-      trend: 'Live Customer Reviews',
-      classType: 'amber'
-    },
-    {
-      title: 'Active Workers',
-      value: '6 On-Field',
-      icon: Users,
-      color: '#06b6d4',
-      bgColor: '#ecfeff',
-      trend: 'All Technicians Active',
-      classType: ''
     },
   ];
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '18px', marginBottom: '28px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px', marginBottom: '24px' }}>
       {cards.map((card, idx) => {
         const IconComponent = card.icon;
         return (
-          <div key={idx} className={`metric-card ${card.classType}`}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: '700', color: 'var(--text-secondary)' }}>
+          <div
+            key={idx}
+            style={{
+              background: '#ffffff',
+              borderRadius: 'var(--radius-lg)',
+              padding: '20px 22px',
+              border: '1px solid var(--border-light)',
+              boxShadow: 'var(--shadow-sm)',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-secondary)' }}>
                 {card.title}
               </span>
               <div style={{
-                width: '38px',
-                height: '38px',
-                borderRadius: '10px',
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
                 background: card.bgColor,
                 display: 'flex',
                 alignItems: 'center',
@@ -109,12 +79,12 @@ const PartnerMetricCards = () => {
               </div>
             </div>
 
-            <div style={{ fontSize: '1.65rem', fontWeight: '800', color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+            <div style={{ fontSize: '1.75rem', fontWeight: '800', color: card.color, letterSpacing: '-0.5px' }}>
               {isLoading ? '...' : card.value}
             </div>
 
-            <div style={{ fontSize: '0.74rem', color: card.color, fontWeight: '700', marginTop: '6px' }}>
-              {card.trend}
+            <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: '600', marginTop: '6px' }}>
+              {card.subtitle}
             </div>
           </div>
         );

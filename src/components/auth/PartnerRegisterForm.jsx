@@ -38,10 +38,13 @@ const PartnerRegisterForm = ({ onPartnerSubmitted }) => {
     e.preventDefault();
     setLoading(true);
 
+    const displayName = agencyName.trim() || (ownerName ? `${ownerName} (${category || 'Service Partner'})` : '');
+
     setTimeout(() => {
       setLoading(false);
       onPartnerSubmitted({
-        agencyName,
+        name: ownerName,
+        agencyName: displayName,
         category,
         city,
         ownerName,
@@ -55,24 +58,42 @@ const PartnerRegisterForm = ({ onPartnerSubmitted }) => {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="form-group">
-        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Briefcase size={14} /> Agency / Business Name
-        </label>
-        <input
-          type="text"
-          className="form-input"
-          placeholder="e.g. CleanPro Services Agency"
-          value={agencyName}
-          onChange={(e) => setAgencyName(e.target.value)}
-          required
-        />
-      </div>
-
+      {/* 1. Technician Name & Mobile Phone */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
         <div className="form-group">
           <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Grid size={14} /> Primary Service Category
+            <User size={14} /> Technician / Partner Full Name
+          </label>
+          <input
+            type="text"
+            className="form-input"
+            placeholder="e.g. Ramesh Sharma"
+            value={ownerName}
+            onChange={(e) => setOwnerName(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Phone size={14} /> Mobile Phone Number
+          </label>
+          <input
+            type="tel"
+            className="form-input"
+            placeholder="+91 98765 43210"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            required
+          />
+        </div>
+      </div>
+
+      {/* 2. Primary Skill Category & Operational City */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <div className="form-group">
+          <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Grid size={14} /> Profession / Skill Specialty
           </label>
           <select
             className="form-select"
@@ -81,7 +102,7 @@ const PartnerRegisterForm = ({ onPartnerSubmitted }) => {
             disabled={loadingCategories}
           >
             {loadingCategories ? (
-              <option value="">Loading Super Admin categories...</option>
+              <option value="">Loading service categories...</option>
             ) : categoriesList.length > 0 ? (
               categoriesList.map((cat) => (
                 <option key={cat._id || cat.id || cat.slug || cat.name} value={cat.name}>
@@ -90,11 +111,11 @@ const PartnerRegisterForm = ({ onPartnerSubmitted }) => {
               ))
             ) : (
               <>
-                <option value="AC & Appliance Repair">AC & Appliance Repair</option>
-                <option value="Home Deep Cleaning">Home Deep Cleaning</option>
-                <option value="Women Salon & Spa">Women Salon & Spa</option>
-                <option value="Plumbing & Leak Repair">Plumbing & Leak Repair</option>
-                <option value="Electrician & Wiring">Electrician & Wiring</option>
+                <option value="AC & Appliance Repair">AC & Appliance Repair Technician</option>
+                <option value="Home Deep Cleaning">Home Deep Cleaning Professional</option>
+                <option value="Plumbing & Leak Repair">Plumbing & Pipe Specialist</option>
+                <option value="Electrician & Wiring">Electrician & Wiring Expert</option>
+                <option value="Women Salon & Spa">Beautician & Spa Therapist</option>
               </>
             )}
           </select>
@@ -113,45 +134,16 @@ const PartnerRegisterForm = ({ onPartnerSubmitted }) => {
         </div>
       </div>
 
+      {/* 3. Email & Password */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
         <div className="form-group">
           <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <User size={14} /> Owner / Contact Person
-          </label>
-          <input
-            type="text"
-            className="form-input"
-            placeholder="Owner Full Name"
-            value={ownerName}
-            onChange={(e) => setOwnerName(e.target.value)}
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Phone size={14} /> Mobile Phone
-          </label>
-          <input
-            type="tel"
-            className="form-input"
-            placeholder="+91 98765 43210"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            required
-          />
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-        <div className="form-group">
-          <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Mail size={14} /> Official Email
+            <Mail size={14} /> Email Address
           </label>
           <input
             type="email"
             className="form-input"
-            placeholder="partner@cleanpro.com"
+            placeholder="tech.ramesh@gmail.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -174,16 +166,17 @@ const PartnerRegisterForm = ({ onPartnerSubmitted }) => {
         </div>
       </div>
 
+      {/* 4. Business / Brand Display Name (Optional) */}
       <div className="form-group" style={{ marginBottom: '20px' }}>
         <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <FileText size={14} /> GST / Trade License Number (Optional)
+          <Briefcase size={14} /> Business / Brand Display Name (Optional)
         </label>
         <input
           type="text"
           className="form-input"
-          placeholder="e.g. 07AAAAA0000A1Z5"
-          value={license}
-          onChange={(e) => setLicense(e.target.value)}
+          placeholder="e.g. Ramesh AC Expert (Leave blank to use your name & skill)"
+          value={agencyName}
+          onChange={(e) => setAgencyName(e.target.value)}
         />
       </div>
 
@@ -195,11 +188,11 @@ const PartnerRegisterForm = ({ onPartnerSubmitted }) => {
       >
         {loading ? (
           <>
-            <Loader2 size={16} className="spin" /> Submitting Partner Application...
+            <Loader2 size={16} className="spin" /> Registering Service Technician Account...
           </>
         ) : (
           <>
-            Submit Partner Onboarding Application <ArrowRight size={16} />
+            Register as Service Technician <ArrowRight size={16} />
           </>
         )}
       </button>

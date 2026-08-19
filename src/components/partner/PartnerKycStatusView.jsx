@@ -71,9 +71,9 @@ const PartnerKycStatusView = ({ kycStatus, onSimulateStatusChange, partnerData }
         </h2>
 
         <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.6' }}>
-          {isApproved && 'Your agency documents have been verified by City Admin. Full access to Customer Bookings, Wallet, and Reviews is now UNLOCKED!'}
-          {isPending && `Welcome ${partnerData?.name || 'Partner'}! Please fill your full business details and upload compliance documents below to submit your KYC for City Admin verification.`}
-          {isRejected && 'Your trade license/GST document could not be verified. Please re-upload valid documents below or contact City Support.'}
+          {isApproved && 'Your technician documents have been verified by City Admin. Full access to Customer Bookings, Wallet, and Reviews is now UNLOCKED!'}
+          {isPending && `Welcome ${partnerData?.name || 'Technician Partner'}! Please fill your profile details and upload identity documents below to submit your KYC for verification.`}
+          {isRejected && 'Your ID documents could not be verified. Please re-upload valid documents below or contact City Support.'}
         </p>
 
         {/* Feature Restriction Warning */}
@@ -104,7 +104,7 @@ const PartnerKycStatusView = ({ kycStatus, onSimulateStatusChange, partnerData }
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
             <ShieldCheck size={22} color="#7c3aed" />
             <h3 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0 }}>
-              Submit KYC Business Details & Compliance Documents
+              Submit KYC Technician Details & Verification Documents
             </h3>
           </div>
 
@@ -116,16 +116,15 @@ const PartnerKycStatusView = ({ kycStatus, onSimulateStatusChange, partnerData }
 
           <form onSubmit={handleKycFormSubmit}>
             
-            {/* 1. Business Agency Name */}
+            {/* 1. Business / Display Name */}
             <div className="form-group">
-              <label className="form-label">Agency / Business Name</label>
+              <label className="form-label">Technician / Business Display Name (Optional)</label>
               <input
                 type="text"
                 className="form-input"
-                placeholder="e.g. CleanPro Services Agency"
+                placeholder="e.g. Ramesh Sharma (AC Specialist)"
                 value={agencyName}
                 onChange={(e) => setAgencyName(e.target.value)}
-                required
               />
             </div>
 

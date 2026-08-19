@@ -3,7 +3,7 @@ import { CalendarCheck, Clock, CheckCircle2, User, MapPin, Play, Navigation, Key
 import { usePartner } from '../../hooks/usePartner.js';
 import { useBookings } from '../../hooks/useBookings.js';
 
-const PartnerJobsTable = () => {
+const PartnerJobsTable = ({ onOpenFulfillment }) => {
   const { todayBookings, pendingBookings } = usePartner();
   const { acceptBooking, updateBookingStatus, completeBooking } = useBookings();
   const [completeModalOpen, setCompleteModalOpen] = useState(false);
@@ -77,55 +77,54 @@ const PartnerJobsTable = () => {
                 </td>
               </tr>
             ) : (
-              allJobs.map((job) => (
-                <tr key={job._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                  <td style={{ padding: '14px', fontWeight: '800', color: 'var(--accent-purple)', fontSize: '0.85rem' }}>
-                    {job.bookingNumber || job._id.substring(0, 8).toUpperCase()}
-                  </td>
-                  <td style={{ padding: '14px', fontWeight: '700', fontSize: '0.88rem', color: 'var(--text-primary)' }}>
-                    {job.customer?.name || 'Ananya Deshmukh'}
-                  </td>
-                  <td style={{ padding: '14px', fontWeight: '700', fontSize: '0.88rem', color: 'var(--text-primary)' }}>
-                    {job.serviceName || job.packageTitle || 'Service Package'}
-                  </td>
-                  <td style={{ padding: '14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                    <div>{job.bookingDate} at {job.bookingTimeSlot}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <MapPin size={12} color="#2563eb" /> {job.city || 'Delhi NCR'}
-                    </div>
-                  </td>
-                  <td style={{ padding: '14px', fontWeight: '800', color: '#10b981', fontSize: '0.9rem' }}>
-                    ₹{job.totalAmount || job.finalPrice || 599}
-                  </td>
-                  <td style={{ padding: '14px' }}>
-                    {getStatusBadge(job.status)}
-                  </td>
-                  <td style={{ padding: '14px' }}>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      {job.status === 'Assigned' && (
-                        <button onClick={() => acceptBooking(job._id)} className="btn btn-primary btn-sm">
-                          Accept Job
+              allJobs.map((job) => {
+                const bId = job.bookingId || job.bookingNumber || `UC-${job._id.toString().slice(-6).toUpperCase()}`;
+                const custName = job.customer?.name || 'Customer';
+                const sName = job.packageName || job.service?.name || job.serviceName || 'Home Service Package';
+                const slot = job.timeSlot || job.bookingTimeSlot || '10:30 AM';
+                const addr = typeof job.address === 'object'
+                  ? `${job.address?.addressLine ? job.address.addressLine + ', ' : ''}${job.address?.city || job.city || 'Delhi NCR'}`
+                  : (job.address || job.city || 'Delhi NCR');
+                const amt = job.amount || job.totalAmount || job.service?.finalPrice || 599;
+
+                return (
+                  <tr key={job._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                    <td style={{ padding: '14px', fontWeight: '800', color: 'var(--accent-purple)', fontSize: '0.85rem' }}>
+                      {bId}
+                    </td>
+                    <td style={{ padding: '14px', fontWeight: '700', fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                      {custName}
+                    </td>
+                    <td style={{ padding: '14px', fontWeight: '700', fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                      {sName}
+                    </td>
+                    <td style={{ padding: '14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      <div>{slot}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <MapPin size={12} color="#2563eb" /> {addr}
+                      </div>
+                    </td>
+                    <td style={{ padding: '14px', fontWeight: '800', color: '#10b981', fontSize: '0.9rem' }}>
+                      ₹{amt}
+                    </td>
+                    <td style={{ padding: '14px' }}>
+                      {getStatusBadge(job.status)}
+                    </td>
+                    <td style={{ padding: '14px' }}>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => onOpenFulfillment && onOpenFulfillment(job)}
+                          className="btn btn-primary btn-sm"
+                          style={{ borderRadius: '10px', padding: '6px 12px', fontWeight: '700' }}
+                        >
+                          <Navigation size={12} /> View Details & Fulfill
                         </button>
-                      )}
-                      {job.status === 'Accepted' && (
-                        <button onClick={() => updateBookingStatus({ id: job._id, status: 'On The Way' })} className="btn btn-secondary btn-sm" style={{ borderColor: '#7c3aed', color: '#7c3aed' }}>
-                          <Navigation size={12} /> On The Way
-                        </button>
-                      )}
-                      {job.status === 'On The Way' && (
-                        <button onClick={() => updateBookingStatus({ id: job._id, status: 'Started' })} className="btn btn-primary btn-sm">
-                          <Play size={12} /> Start Service
-                        </button>
-                      )}
-                      {job.status === 'Started' && (
-                        <button onClick={() => handleOpenComplete(job)} className="btn btn-success btn-sm">
-                          <CheckCircle2 size={14} /> Complete & Verify OTP
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

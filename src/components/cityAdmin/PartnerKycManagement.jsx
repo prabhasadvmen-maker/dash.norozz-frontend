@@ -63,8 +63,8 @@ const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-              <th style={{ padding: '12px 14px' }}>AGENCY & OWNER</th>
-              <th style={{ padding: '12px 14px' }}>SERVICE CATEGORY</th>
+              <th style={{ padding: '12px 14px' }}>TECHNICIAN & NAME</th>
+              <th style={{ padding: '12px 14px' }}>SKILL CATEGORY</th>
               <th style={{ padding: '12px 14px' }}>CONTACT</th>
               <th style={{ padding: '12px 14px' }}>SUBMITTED DOCUMENTS</th>
               <th style={{ padding: '12px 14px' }}>KYC STATUS</th>
@@ -85,8 +85,8 @@ const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
                 return (
                   <tr key={p._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                     <td style={{ padding: '14px' }}>
-                      <div style={{ fontWeight: '800', fontSize: '0.9rem', color: 'var(--text-primary)' }}>{p.agencyName || p.name}</div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Owner: {p.name}</div>
+                      <div style={{ fontWeight: '800', fontSize: '0.9rem', color: 'var(--text-primary)' }}>{p.name}</div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Display: {p.agencyName || `${p.name} (${p.category || 'Specialist'})`}</div>
                     </td>
                     <td style={{ padding: '14px', fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
                       {p.category || 'AC & Appliance Repair'}
@@ -154,7 +154,7 @@ const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
         <div className="modal-overlay" onClick={() => setIsDocModalOpen(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ padding: '28px', maxWidth: '540px' }}>
             <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <FileCheck size={20} color="#2563eb" /> Verify Compliance Documents: {selectedPartner.agencyName || selectedPartner.name}
+              <FileCheck size={20} color="#2563eb" /> Verify Compliance Documents: {selectedPartner.name} ({selectedPartner.category || 'Technician'})
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>

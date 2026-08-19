@@ -331,7 +331,8 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                      <th style={{ padding: '12px' }}>AGENCY / PARTNER</th>
+                      <th style={{ padding: '12px' }}>TECHNICIAN / PARTNER</th>
+                      <th style={{ padding: '12px' }}>SKILL CATEGORY</th>
                       <th style={{ padding: '12px' }}>EMAIL</th>
                       <th style={{ padding: '12px' }}>CITY</th>
                       <th style={{ padding: '12px' }}>KYC STATUS</th>
@@ -339,11 +340,12 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                   </thead>
                   <tbody>
                     {partners.length === 0 ? (
-                      <tr><td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No partners registered yet.</td></tr>
+                      <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No partners registered yet.</td></tr>
                     ) : (
                       partners.map((p) => (
                         <tr key={p._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                          <td style={{ padding: '12px', fontWeight: '800' }}>{p.agencyName || p.name}</td>
+                          <td style={{ padding: '12px', fontWeight: '800' }}>{p.name}</td>
+                          <td style={{ padding: '12px', fontSize: '0.85rem' }}>{p.category || 'Service Technician'}</td>
                           <td style={{ padding: '12px', fontSize: '0.85rem' }}>{p.email}</td>
                           <td style={{ padding: '12px', fontSize: '0.85rem', color: '#2563eb' }}>{p.assignedCity || p.city || 'Delhi NCR'}</td>
                           <td style={{ padding: '12px' }}>

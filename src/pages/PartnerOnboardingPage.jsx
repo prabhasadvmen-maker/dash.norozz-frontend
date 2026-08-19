@@ -21,9 +21,11 @@ import {
   AlertCircle,
   LogOut,
   User,
+  Navigation as NavigationIcon,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { catalogService } from '../services/catalog.service.js';
+import { partnerService } from '../services/partner.service.js';
 
 const DEFAULT_SCHEDULE = [
   { day: 'Monday', isOpen: true, openTime: '09:00 AM', closeTime: '07:00 PM' },
@@ -125,14 +127,16 @@ const REAL_LOCALITIES_BY_CITY = {
   ],
 };
 
-// Interactive Real Leaflet Map Component with Dynamic Circle Radius
-const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8 }) => {
+// Interactive Real Leaflet Map Component with Dynamic Circle Radius & Live Location Pin
+const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null }) => {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const circleInstanceRef = useRef(null);
   const markerInstanceRef = useRef(null);
 
-  const cityCoords = CITY_COORDINATES[city] || CITY_COORDINATES['Delhi NCR'];
+  const defaultCityCoords = CITY_COORDINATES[city] || CITY_COORDINATES['Delhi NCR'];
+  const activeLat = coords?.lat ? Number(coords.lat) : defaultCityCoords.lat;
+  const activeLng = coords?.lng ? Number(coords.lng) : defaultCityCoords.lng;
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -147,8 +151,8 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8 }) => {
 
     if (!mapInstanceRef.current) {
       const map = L.map(mapContainerRef.current, {
-        center: [cityCoords.lat, cityCoords.lng],
-        zoom: cityCoords.zoom,
+        center: [activeLat, activeLng],
+        zoom: coords?.lat ? 14 : defaultCityCoords.zoom,
         zoomControl: false,
         attributionControl: false,
       });
@@ -157,7 +161,7 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8 }) => {
         maxZoom: 18,
       }).addTo(map);
 
-      const circle = L.circle([cityCoords.lat, cityCoords.lng], {
+      const circle = L.circle([activeLat, activeLng], {
         color: '#16a34a',
         fillColor: '#22c55e',
         fillOpacity: 0.25,
@@ -165,18 +169,13 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8 }) => {
         radius: radiusKm * 1000,
       }).addTo(map);
 
-      const marker = L.marker([cityCoords.lat, cityCoords.lng])
+      const marker = L.marker([activeLat, activeLng])
         .addTo(map)
-        .bindPopup(`<b>${city} Hub</b><br>Radius: ${radiusKm} km`);
+        .bindPopup(`<b>${coords?.lat ? 'Your Current GPS Location' : `${city} Hub`}</b><br>Radius: ${radiusKm} km`);
 
       mapInstanceRef.current = map;
       circleInstanceRef.current = circle;
       markerInstanceRef.current = marker;
-    } else {
-      mapInstanceRef.current.setView([cityCoords.lat, cityCoords.lng], cityCoords.zoom);
-      if (markerInstanceRef.current) {
-        markerInstanceRef.current.setLatLng([cityCoords.lat, cityCoords.lng]);
-      }
     }
 
     return () => {
@@ -186,6 +185,22 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8 }) => {
       }
     };
   }, [city]);
+
+  // Update map view & marker pin in real-time when coords change
+  useEffect(() => {
+    if (coords?.lat && coords?.lng && mapInstanceRef.current) {
+      const cLat = Number(coords.lat);
+      const cLng = Number(coords.lng);
+      mapInstanceRef.current.setView([cLat, cLng], 14);
+      if (markerInstanceRef.current) {
+        markerInstanceRef.current.setLatLng([cLat, cLng]);
+        markerInstanceRef.current.bindPopup(`<b>Your Detected GPS Position</b><br>Lat: ${cLat.toFixed(4)}, Lng: ${cLng.toFixed(4)}`).openPopup();
+      }
+      if (circleInstanceRef.current) {
+        circleInstanceRef.current.setLatLng([cLat, cLng]);
+      }
+    }
+  }, [coords?.lat, coords?.lng]);
 
   // Update dynamic circle radius in real-time when slider moves
   useEffect(() => {
@@ -225,6 +240,7 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8 }) => {
 
 const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) => {
   const {
+    saveOnboardingLocation,
     saveOnboardingDocuments,
     saveOnboardingCategory,
     saveOnboardingSkills,
@@ -233,11 +249,16 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     isLoggingIn,
   } = useAuth();
 
-  // Step state: 1: 'docs-list' | 'aadhaar-upload' | 2: 'category' | 3: 'skills' | 4: 'service-area' | 5: 'working-hours'
+  // Step state: 1: 'location-access' | 2: 'docs-list' | 3: 'category' | 4: 'service-area' | 5: 'working-hours'
   const [step, setStep] = useState(1);
   const [subStep, setSubStep] = useState('list'); // 'list' | 'aadhaar' | 'generic'
 
-  // Documents Memory State
+  // Location Access State
+  const [deviceCoords, setDeviceCoords] = useState(currentUser?.locationCoordinates || null);
+  const [deviceAddress, setDeviceAddress] = useState(currentUser?.address || '');
+  const [isDetectingGps, setIsDetectingGps] = useState(false);
+
+  // Documents Memory & Raw File State
   const [documents, setDocuments] = useState(currentUser?.documents || {
     aadhaarFront: '',
     aadhaarBack: '',
@@ -247,11 +268,14 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     drivingLicenseDoc: '',
   });
 
+  // Raw file objects attached locally before clicking Continue
+  const [documentFiles, setDocumentFiles] = useState({});
+
   const [activeGenericDoc, setActiveGenericDoc] = useState('panDoc');
   const [showGenericModal, setShowGenericModal] = useState(false);
 
   // Category State
-  const [category, setCategory] = useState(currentUser?.category || 'AC & Appliance Repair');
+  const [category, setCategory] = useState(currentUser?.category || '');
   const [categoriesList, setCategoriesList] = useState([]);
   const [searchCatQuery, setSearchCatQuery] = useState('');
 
@@ -298,9 +322,17 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     }
   }, [workCity]);
 
-  // Document Photo Upload Handler
+  // Local Document Attachment Handler (Batched until Continue click)
   const handleDocumentFileSelect = (docKey, file) => {
     if (!file) return;
+
+    // Store raw file in documentFiles state for batch upload on Continue
+    setDocumentFiles((prev) => ({
+      ...prev,
+      [docKey]: file,
+    }));
+
+    // Local thumbnail preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setDocuments((prev) => ({
@@ -308,76 +340,158 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
         [docKey]: reader.result,
         ...(docKey === 'aadhaarFront' || docKey === 'aadhaarBack' ? { aadhaarDoc: reader.result } : {}),
       }));
-      setSuccessMsg(`Photo attached successfully for ${docKey}! 📷`);
+      setSuccessMsg(`📷 Photo attached for ${docKey}! Click Continue to upload all to R2.`);
     };
     reader.readAsDataURL(file);
   };
 
-  // STEP 1: Submit Documents
-  const handleStep1Submit = async () => {
+  // STEP 1: Allow Location Access Handler (Device Geolocation API)
+  const handleAllowLocationAccess = () => {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by your browser.');
+      return;
+    }
+
     setError('');
     setSuccessMsg('');
+    setIsDetectingGps(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        const coordsObj = { lat: latitude, lng: longitude };
+        setDeviceCoords(coordsObj);
+
+        let detectedAddr = `${workCity} (GPS: ${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          );
+          const data = await res.json();
+          if (data?.display_name) {
+            detectedAddr = data.display_name;
+          }
+        } catch (e) {
+          console.warn('Reverse geocoding warning:', e);
+        }
+
+        setDeviceAddress(detectedAddr);
+
+        try {
+          await saveOnboardingLocation({
+            latitude,
+            longitude,
+            address: detectedAddr,
+            city: workCity,
+          });
+          setSuccessMsg('✅ Device location access granted & saved successfully!');
+        } catch (err) {
+          console.error('Failed to save location:', err);
+          setError('Location detected, but failed to sync to server');
+        } finally {
+          setIsDetectingGps(false);
+        }
+      },
+      (err) => {
+        setIsDetectingGps(false);
+        console.error('GPS error:', err);
+        setError('Location permission denied or unavailable. Please enable GPS in browser.');
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
+
+  // STEP 1 Submit: Move to Document Upload Page
+  const handleStep1LocationSubmit = () => {
+    setError('');
+    if (!deviceCoords && !currentUser?.locationCoordinates && !deviceAddress) {
+      setError('Please click "Allow Location Access" button to extract current position!');
+      return;
+    }
+    setStep(2); // Go to Document Upload!
+    setSubStep('list');
+  };
+
+  // STEP 2: Submit All Attached Documents in Single FormData Request to R2
+  const handleStep2DocsSubmit = async () => {
+    setError('');
+    setSuccessMsg('');
+
     try {
-      await saveOnboardingDocuments({ documents });
-      setStep(2);
+      const keys = Object.keys(documentFiles);
+      if (keys.length > 0) {
+        const formData = new FormData();
+        keys.forEach((key) => {
+          if (documentFiles[key]) {
+            formData.append(key, documentFiles[key]);
+          }
+        });
+
+        setSuccessMsg('Uploading all attached documents to Cloudflare R2 storage... ⏳');
+        await partnerService.uploadDocuments(formData);
+      }
+
+      setSuccessMsg('✅ Documents saved successfully! Proceeding to Category Selection...');
+      setStep(3); // Go to Select Service Category Page!
       setSubStep('list');
     } catch (err) {
-      setError(err.message || 'Failed to save documents');
+      console.error('Batch Document Upload Error:', err);
+      setError(err.response?.data?.message || err.message || 'Failed to upload documents');
     }
   };
 
-  // STEP 2: Submit Category
-  const handleStep2Submit = async () => {
+  // STEP 3: Submit Selected Service Category
+  const handleStep3CategorySubmit = async () => {
     setError('');
     setSuccessMsg('');
     if (!category) {
-      setError('Please select a service category');
+      setError('Please select a service category to proceed');
       return;
     }
     try {
       await saveOnboardingCategory({ category });
-      setStep(3);
+      setStep(4); // Go to Step 4: Skills & Experience Page!
     } catch (err) {
       setError(err.message || 'Failed to save service category');
     }
   };
 
-  // STEP 3: Submit Skills & Experience
-  const handleStep3Submit = async () => {
+  // STEP 4: Submit Skills & Experience
+  const handleStep4SkillsSubmit = async () => {
     setError('');
     setSuccessMsg('');
     try {
       await saveOnboardingSkills({ experience, skills, certifications });
-      setStep(4);
+      setStep(5); // Go to Step 5: Service Area Page!
     } catch (err) {
-      setError(err.message || 'Failed to save skills');
+      setError(err.message || 'Failed to save skills and experience');
     }
   };
 
-  // STEP 4: Submit Service Area
-  const handleStep4Submit = async () => {
+  // STEP 5: Submit Service Area
+  const handleStep5AreaSubmit = async () => {
     setError('');
     setSuccessMsg('');
     try {
       await saveOnboardingServiceArea({ workRadius, localities: selectedLocalities });
-      setStep(5);
+      setStep(6); // Go to Step 6: Working Hours Page!
     } catch (err) {
       setError(err.message || 'Failed to save service area');
     }
   };
 
-  // STEP 5: Submit Working Hours & Direct Dashboard Entry!
-  const handleStep5Submit = async () => {
+  // STEP 6: Submit Working Hours & Direct Dashboard Entry!
+  const handleStep6Submit = async () => {
     setError('');
     setSuccessMsg('');
     try {
       await saveOnboardingWorkingHours({ workingHours });
-      setSuccessMsg('Working hours saved successfully! Unlocking Partner Dashboard...');
+      setSuccessMsg('🎉 Onboarding Complete! Redirecting to Partner Dashboard...');
       setTimeout(() => {
         if (onFinishOnboarding) {
           onFinishOnboarding();
         }
-      }, 500);
+      }, 800);
     } catch (err) {
       setError(err.message || 'Failed to save working hours');
     }
@@ -507,13 +621,13 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
         {/* Multi-step Progress Bar Indicator */}
         <div style={{ padding: '14px 24px 4px 24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', fontWeight: '800', color: '#16a34a', marginBottom: '6px' }}>
-            <span>STEP {step} OF 5</span>
-            <span>{step === 1 ? 'Documents Upload' : step === 2 ? 'Select Category' : step === 3 ? 'Skills & Experience' : step === 4 ? 'Service Area' : 'Working Hours'}</span>
+            <span>STEP {step} OF 6</span>
+            <span>{step === 1 ? 'Allow Location Access' : step === 2 ? 'Upload Documents' : step === 3 ? 'Select Category' : step === 4 ? 'Skills & Experience' : step === 5 ? 'Service Area' : 'Working Hours'}</span>
           </div>
           <div style={{ height: '6px', width: '100%', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
             <div style={{
               height: '100%',
-              width: `${(step / 5) * 100}%`,
+              width: `${(step / 6) * 100}%`,
               background: 'linear-gradient(90deg, #16a34a 0%, #059669 100%)',
               transition: 'width 0.3s ease',
             }}></div>
@@ -536,9 +650,114 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
         )}
 
         {/* ============================================================ */}
-        {/* STEP 1A: UPLOAD DOCUMENTS LIST PAGE (upload-documents) */}
+        {/* STEP 1: ALLOW LOCATION ACCESS PAGE (location-access) */}
         {/* ============================================================ */}
-        {step === 1 && subStep === 'list' && (
+        {step === 1 && (
+          <div style={{ padding: '18px 24px 28px 24px' }}>
+            <div style={{ margin: '0 0 16px 0', textAlign: 'center' }}>
+              <div style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: '50%',
+                background: '#dcfce7',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 10px auto',
+                border: '2px solid #bbf7d0',
+                color: '#16a34a',
+              }}>
+                <NavigationIcon size={28} />
+              </div>
+              <span style={{ fontSize: '0.72rem', fontWeight: '800', color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                DEVICE GEOLOCATION
+              </span>
+              <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', margin: '2px 0 0 0' }}>
+                Device Location Permission
+              </h2>
+              <p style={{ color: '#64748b', fontSize: '0.82rem', marginTop: '6px', margin: 0, lineHeight: '1.4' }}>
+                Allow location access to detect your current position, show active service coverage on map, and assign nearby customer job dispatches.
+              </p>
+            </div>
+
+            {/* Interactive Leaflet Map Preview */}
+            <InteractiveServiceMap city={workCity} radiusKm={workRadius} coords={deviceCoords} />
+
+            {/* Detected Location Card or Allow Button */}
+            {deviceAddress ? (
+              <div style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0', padding: '12px 14px', borderRadius: '14px', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.86rem', fontWeight: '800', color: '#15803d', marginBottom: '4px' }}>
+                  <MapPin size={16} /> Current Location Detected
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#334155', fontWeight: '600' }}>
+                  {deviceAddress}
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleAllowLocationAccess}
+                disabled={isDetectingGps}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  borderRadius: '14px',
+                  background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontSize: '0.96rem',
+                  fontWeight: '800',
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  marginBottom: '20px',
+                }}
+              >
+                {isDetectingGps ? (
+                  <>
+                    <Loader2 size={18} className="spin" /> Detecting Current GPS Location...
+                  </>
+                ) : (
+                  <>
+                    <NavigationIcon size={18} /> Allow Location Access
+                  </>
+                )}
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleStep1LocationSubmit}
+              disabled={isLoggingIn}
+              style={{
+                width: '100%',
+                padding: '14px',
+                borderRadius: '14px',
+                background: (deviceCoords || deviceAddress || currentUser?.locationCoordinates) ? '#16a34a' : '#94a3b8',
+                color: '#ffffff',
+                border: 'none',
+                fontSize: '0.98rem',
+                fontWeight: '700',
+                cursor: (deviceCoords || deviceAddress || currentUser?.locationCoordinates) ? 'pointer' : 'not-allowed',
+                boxShadow: (deviceCoords || deviceAddress || currentUser?.locationCoordinates) ? '0 8px 20px rgba(22, 163, 74, 0.3)' : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+              }}
+            >
+              Continue to Document Upload <ArrowRight size={18} />
+            </button>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* STEP 2A: UPLOAD DOCUMENTS LIST PAGE (upload-documents) */}
+        {/* ============================================================ */}
+        {step === 2 && subStep === 'list' && (
           <div style={{ padding: '18px 24px 28px 24px' }}>
             <div style={{ margin: '0 0 16px 0' }}>
               <span style={{ fontSize: '0.72rem', fontWeight: '800', color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -699,7 +918,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
 
             <button
               type="button"
-              onClick={handleStep1Submit}
+              onClick={handleStep2DocsSubmit}
               disabled={isLoggingIn}
               style={{ width: '100%', padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.98rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
@@ -709,9 +928,9 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
         )}
 
         {/* ============================================================ */}
-        {/* STEP 1B: UPLOAD AADHAAR CARD PAGE (upload-aadhaar-card) */}
+        {/* STEP 2B: UPLOAD AADHAAR CARD PAGE (upload-aadhaar-card) */}
         {/* ============================================================ */}
-        {step === 1 && subStep === 'aadhaar' && (
+        {step === 2 && subStep === 'aadhaar' && (
           <div style={{ padding: '18px 24px 28px 24px' }}>
             <div style={{ margin: '0 0 16px 0' }}>
               <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
@@ -823,9 +1042,9 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
         )}
 
         {/* ============================================================ */}
-        {/* STEP 2: SELECT SERVICE CATEGORY PAGE (select-service-category) */}
+        {/* STEP 3: SELECT SERVICE CATEGORY PAGE */}
         {/* ============================================================ */}
-        {step === 2 && (
+        {step === 3 && (
           <div style={{ padding: '18px 24px 28px 24px' }}>
             <div style={{ margin: '0 0 16px 0' }}>
               <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
@@ -849,7 +1068,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
             </div>
 
             {/* Super Admin Active Category Cards Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '22px', maxHeight: '300px', overflowY: 'auto' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '22px', maxHeight: '320px', overflowY: 'auto' }}>
               {(categoriesList.length > 0 ? categoriesList : [
                 { name: 'AC & Appliance Repair' },
                 { name: 'Cleaning & Pest Control' },
@@ -886,26 +1105,26 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
 
             <button
               type="button"
-              onClick={handleStep2Submit}
+              onClick={handleStep3CategorySubmit}
               disabled={isLoggingIn}
               style={{ width: '100%', padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.98rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue <ArrowRight size={18} /></>}
+              {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue to Skills & Experience <ArrowRight size={18} /></>}
             </button>
           </div>
         )}
 
         {/* ============================================================ */}
-        {/* STEP 3: SKILLS & EXPERIENCE PAGE (add-skills-experience) */}
+        {/* STEP 4: SKILLS & EXPERIENCE PAGE */}
         {/* ============================================================ */}
-        {step === 3 && (
+        {step === 4 && (
           <div style={{ padding: '18px 24px 28px 24px' }}>
             <div style={{ margin: '0 0 16px 0' }}>
               <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
                 Skills & Experience
               </h2>
               <p style={{ color: '#64748b', fontSize: '0.82rem', marginTop: '4px', margin: 0 }}>
-                Highlight your experience level & special skills
+                Highlight experience level & skills for {category || 'selected category'}
               </p>
             </div>
 
@@ -1000,19 +1219,19 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
 
             <button
               type="button"
-              onClick={handleStep3Submit}
+              onClick={handleStep4SkillsSubmit}
               disabled={isLoggingIn}
               style={{ width: '100%', padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.98rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue <ArrowRight size={18} /></>}
+              {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue to Service Area <ArrowRight size={18} /></>}
             </button>
           </div>
         )}
 
         {/* ============================================================ */}
-        {/* STEP 4: SERVICE AREA SELECTION PAGE (service-area-selection) */}
+        {/* STEP 5: SERVICE AREA SELECTION PAGE */}
         {/* ============================================================ */}
-        {step === 4 && (
+        {step === 5 && (
           <div style={{ padding: '18px 24px 28px 24px' }}>
             <div style={{ margin: '0 0 16px 0' }}>
               <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
@@ -1083,19 +1302,19 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
 
             <button
               type="button"
-              onClick={handleStep4Submit}
+              onClick={handleStep5AreaSubmit}
               disabled={isLoggingIn}
               style={{ width: '100%', padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.98rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Confirm Area <ArrowRight size={18} /></>}
+              {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue to Working Hours <ArrowRight size={18} /></>}
             </button>
           </div>
         )}
 
         {/* ============================================================ */}
-        {/* STEP 5: WORKING HOURS SETUP PAGE (working-hours-setup) */}
+        {/* STEP 6: WORKING HOURS SETUP PAGE */}
         {/* ============================================================ */}
-        {step === 5 && (
+        {step === 6 && (
           <div style={{ padding: '18px 24px 28px 24px' }}>
             <div style={{ margin: '0 0 14px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
@@ -1154,7 +1373,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
 
             <button
               type="button"
-              onClick={handleStep5Submit}
+              onClick={handleStep6Submit}
               disabled={isLoggingIn}
               style={{
                 width: '100%',

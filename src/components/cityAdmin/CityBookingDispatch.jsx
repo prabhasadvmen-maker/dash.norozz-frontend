@@ -64,7 +64,7 @@ const CityBookingDispatch = ({ assignedCity = 'Delhi NCR' }) => {
               <th style={{ padding: '12px 14px' }}>CUSTOMER</th>
               <th style={{ padding: '12px 14px' }}>SERVICE REQUEST</th>
               <th style={{ padding: '12px 14px' }}>LOCALITY AREA</th>
-              <th style={{ padding: '12px 14px' }}>ASSIGNED PARTNER</th>
+              <th style={{ padding: '12px 14px' }}>ASSIGNED TECHNICIAN</th>
               <th style={{ padding: '12px 14px' }}>AMOUNT</th>
               <th style={{ padding: '12px 14px' }}>STATUS</th>
               <th style={{ padding: '12px 14px' }}>ACTION</th>
@@ -79,7 +79,7 @@ const CityBookingDispatch = ({ assignedCity = 'Delhi NCR' }) => {
               </tr>
             ) : (
               bookings.map((o) => {
-                const partnerName = o.partner?.agencyName || o.partner?.name || 'Unassigned';
+                const partnerName = o.partner?.name ? `${o.partner.name} (${o.partner.category || 'Specialist'})` : (o.partner?.agencyName || 'Unassigned');
                 return (
                   <tr key={o._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                     <td style={{ padding: '14px', fontWeight: '800', color: '#2563eb', fontSize: '0.85rem' }}>
@@ -150,7 +150,7 @@ const CityBookingDispatch = ({ assignedCity = 'Delhi NCR' }) => {
 
             <form onSubmit={handleConfirmAssign}>
               <div className="form-group" style={{ marginBottom: '20px' }}>
-                <label className="form-label">Select Verified City Partner Agency / Technician</label>
+                <label className="form-label">Select Verified City Technician / Service Partner</label>
                 <select
                   className="form-select"
                   value={selectedPartnerId}
@@ -161,7 +161,7 @@ const CityBookingDispatch = ({ assignedCity = 'Delhi NCR' }) => {
                     <option value="">No Approved Partners Available in {assignedCity}</option>
                   ) : (
                     approvedPartners.map((p) => (
-                      <option key={p._id} value={p._id}>{p.agencyName || p.name} ({p.category || 'Service Partner'})</option>
+                      <option key={p._id} value={p._id}>{p.name} - {p.category || 'Technician'}</option>
                     ))
                   )}
                 </select>
