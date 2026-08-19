@@ -14,7 +14,5 @@ export const partnerService = {
   updateAvailability: (data) => axiosInstance.put('/partner/availability', data),
   getNotifications: () => axiosInstance.get('/partner/notifications'),
   getReviews: () => axiosInstance.get('/partner/reviews'),
-  uploadDocuments: (formData) => axiosInstance.post('/partner/auth/upload-documents', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
+  uploadDocuments: (formData) => axiosInstance.post('/partner/auth/upload-documents', formData),
 };
