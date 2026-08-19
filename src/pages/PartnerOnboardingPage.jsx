@@ -322,14 +322,71 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     }
   }, [workCity]);
 
-  // Local Document Attachment Handler (Batched until Continue click)
-  const handleDocumentFileSelect = (docKey, file) => {
+// Helper to compress client-side images before FormData R2 upload (Prevents 413 Payload Too Large)
+const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
+  return new Promise((resolve) => {
+    if (!file || !file.type?.startsWith('image/')) {
+      resolve(file);
+      return;
+    }
+
+    const img = new Image();
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      img.src = e.target.result;
+    };
+
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
+          } else {
+            resolve(file);
+          }
+        },
+        'image/jpeg',
+        quality
+      );
+    };
+
+    img.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+};
+
+  // Local Document Attachment Handler (Batched until Continue click, with auto compression)
+  const handleDocumentFileSelect = async (docKey, file) => {
     if (!file) return;
+
+    let processedFile = file;
+    if (file.type?.startsWith('image/')) {
+      processedFile = await compressImage(file);
+    }
 
     // Store raw file in documentFiles state for batch upload on Continue
     setDocumentFiles((prev) => ({
       ...prev,
-      [docKey]: file,
+      [docKey]: processedFile,
     }));
 
     // Local thumbnail preview
@@ -342,7 +399,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
       }));
       setSuccessMsg(`📷 Photo attached for ${docKey}! Click Continue to upload all to R2.`);
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(processedFile);
   };
 
   // STEP 1: Allow Location Access Handler (Device Geolocation API)
