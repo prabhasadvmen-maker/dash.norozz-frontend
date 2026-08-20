@@ -300,11 +300,55 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     }
   };
 
-  // Skills & Experience State
+  // Skills & Experience State (Dynamic Skills based on Selected Categories)
   const [experience, setExperience] = useState(currentUser?.experience || '3-5 Years');
-  const [skills, setSkills] = useState(currentUser?.skills?.length ? currentUser.skills : ['Split AC Install', 'Gas Refilling']);
+  const [skills, setSkills] = useState(() => {
+    if (Array.isArray(currentUser?.skills)) {
+      return currentUser.skills
+        .map((s) => (typeof s === 'object' && s?._id ? String(s._id) : String(s)))
+        .filter((s) => Boolean(s.match(/^[0-9a-fA-F]{24}$/)));
+    }
+    return [];
+  });
+  const [categorySkills, setCategorySkills] = useState([]);
+  const [loadingSkills, setLoadingSkills] = useState(false);
   const [certificateTitle, setCertificateTitle] = useState('');
   const [certifications, setCertifications] = useState(currentUser?.certifications || []);
+
+  // Fetch Dynamic Skills for Selected Categories from Super Admin API using Category IDs
+  useEffect(() => {
+    if (step !== 4) return;
+    const loadCategorySkills = async () => {
+      setLoadingSkills(true);
+      try {
+        const rawCats = selectedCategories.length > 0
+          ? selectedCategories
+          : (category ? [category] : (currentUser?.categories || (currentUser?.category ? [currentUser.category] : [])));
+        
+        const catIds = rawCats.map((c) => (typeof c === 'object' && c?._id ? c._id : c));
+        const categoriesParam = catIds.join(',');
+
+        const res = await catalogService.getSkills({ categories: categoriesParam });
+        const fetchedSkills = res.data?.data || res.data || [];
+
+        if (Array.isArray(fetchedSkills)) {
+          setCategorySkills(fetchedSkills);
+          setSkills((prevSkills) => {
+            const validOnly = prevSkills.filter((s) => typeof s === 'string' && Boolean(s.match(/^[0-9a-fA-F]{24}$/)));
+            if (!validOnly.length && fetchedSkills.length > 0) {
+              return fetchedSkills.slice(0, 3).map((sk) => String(sk._id || sk.id));
+            }
+            return validOnly;
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to fetch category skills from server:', err);
+      } finally {
+        setLoadingSkills(false);
+      }
+    };
+    loadCategorySkills();
+  }, [step, selectedCategories, category, currentUser]);
 
   // Service Area State
   const [workRadius, setWorkRadius] = useState(currentUser?.workRadius || 8);
@@ -546,7 +590,8 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
     setError('');
     setSuccessMsg('');
     try {
-      await saveOnboardingSkills({ experience, skills, certifications });
+      const validSkillIds = skills.filter((s) => typeof s === 'string' && Boolean(s.match(/^[0-9a-fA-F]{24}$/)));
+      await saveOnboardingSkills({ experience, skills: validSkillIds, certifications });
       setStep(5); // Go to Step 5: Service Area Page!
     } catch (err) {
       setError(err.message || 'Failed to save skills and experience');
@@ -1249,19 +1294,24 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
               </select>
             </div>
 
-            {/* Select Your Special Skills */}
+            {/* Select Your Special Skills (Dynamic Category Skills from Super Admin API) */}
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '8px' }}>
-                Select Your Special Skills
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155' }}>
+                  Select Your Special Skills
+                </label>
+                {loadingSkills && <span style={{ fontSize: '0.75rem', color: '#16a34a' }}>Loading category skills... ⏳</span>}
+              </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {(SKILLS_BY_CATEGORY[category] || SKILLS_BY_CATEGORY['AC & Appliance Repair']).map((tag) => {
-                  const isSelected = skills.includes(tag);
+                {categorySkills.map((sk) => {
+                  const skillId = sk._id || sk.id || sk;
+                  const skillName = sk.name || sk;
+                  const isSelected = skills.includes(skillId);
                   return (
                     <button
-                      key={tag}
+                      key={skillId}
                       type="button"
-                      onClick={() => handleToggleSkill(tag)}
+                      onClick={() => handleToggleSkill(skillId)}
                       style={{
                         padding: '8px 14px',
                         borderRadius: '20px',
@@ -1274,10 +1324,11 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '6px',
+                        boxShadow: isSelected ? '0 4px 10px rgba(22, 163, 74, 0.2)' : 'none',
                       }}
                     >
                       {isSelected && <Check size={14} color="#ffffff" />}
-                      {tag}
+                      {skillName}
                     </button>
                   );
                 })}

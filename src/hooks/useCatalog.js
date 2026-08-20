@@ -104,21 +104,47 @@ export const useCatalog = () => {
     },
   });
 
+  // Dedicated Skills Query
+  const skillsQuery = useQuery({
+    queryKey: ['catalog', 'skills'],
+    queryFn: () => catalogService.getSkills(),
+  });
+
+  // Dedicated Skill Mutations
+  const createSkillMutation = useMutation({
+    mutationFn: (data) => catalogService.createSkill(data),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['catalog'] });
+      toast.success(res.message || 'Skill created successfully');
+    },
+  });
+
+  const deleteSkillMutation = useMutation({
+    mutationFn: (id) => catalogService.deleteSkill(id),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['catalog'] });
+      toast.success(res.message || 'Skill deleted');
+    },
+  });
+
   return {
     categories: categoriesQuery.data?.data || [],
     adminCategories: adminCategoriesQuery.data?.data?.categories || adminCategoriesQuery.data?.data || [],
     subCategories: subCategoriesQuery.data?.data?.items || subCategoriesQuery.data?.data || [],
     services: servicesQuery.data?.data?.items || servicesQuery.data?.data || [],
+    skills: skillsQuery.data?.data || [],
     isLoading:
       categoriesQuery.isLoading ||
       adminCategoriesQuery.isLoading ||
       subCategoriesQuery.isLoading ||
-      servicesQuery.isLoading,
+      servicesQuery.isLoading ||
+      skillsQuery.isLoading,
     refetchCatalog: () => {
       categoriesQuery.refetch();
       adminCategoriesQuery.refetch();
       subCategoriesQuery.refetch();
       servicesQuery.refetch();
+      skillsQuery.refetch();
     },
     createCategory: createCategoryMutation.mutateAsync,
     updateCategory: updateCategoryMutation.mutateAsync,
@@ -129,5 +155,7 @@ export const useCatalog = () => {
     createService: createServiceMutation.mutateAsync,
     updateService: updateServiceMutation.mutateAsync,
     deleteService: deleteServiceMutation.mutateAsync,
+    createSkill: createSkillMutation.mutateAsync,
+    deleteSkill: deleteSkillMutation.mutateAsync,
   };
 };

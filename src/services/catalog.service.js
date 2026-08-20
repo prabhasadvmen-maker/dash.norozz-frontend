@@ -3,6 +3,10 @@ import { axiosInstance } from '../api/axiosInstance.js';
 export const catalogService = {
   // Categories
   getCategories: () => axiosInstance.get('/categories'),
+  getSkillsForCategories: (categories) => {
+    const categoriesParam = Array.isArray(categories) ? categories.join(',') : categories;
+    return axiosInstance.get('/categories/skills', { params: { categories: categoriesParam } });
+  },
   getCategoryBySlug: (slug) => axiosInstance.get(`/categories/slug/${slug}`),
   getAdminCategories: (params) => axiosInstance.get('/categories/admin/all', { params }),
   createCategory: (data) => axiosInstance.post('/categories', data),
@@ -24,5 +28,11 @@ export const catalogService = {
   createService: (data) => axiosInstance.post('/services', data),
   updateService: (id, data) => axiosInstance.put(`/services/${id}`, data),
   deleteService: (id) => axiosInstance.delete(`/services/${id}`),
+
+  // Dedicated Skills
+  getSkills: (params) => axiosInstance.get('/skills', { params }),
+  createSkill: (data) => axiosInstance.post('/skills', data),
+  updateSkill: (id, data) => axiosInstance.put(`/skills/${id}`, data),
+  deleteSkill: (id) => axiosInstance.delete(`/skills/${id}`),
 };
 

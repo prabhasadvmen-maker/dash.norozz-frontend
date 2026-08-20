@@ -31,12 +31,15 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     categories,
     subCategories,
     services,
+    skills,
     createCategory,
     deleteCategory,
     createSubCategory,
     deleteSubCategory,
     createService,
     deleteService,
+    createSkill,
+    deleteSkill,
   } = useCatalog();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [refreshing, setRefreshing] = useState(false);
@@ -46,6 +49,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
   const [newCatName, setNewCatName] = useState('');
   const [newCatDesc, setNewCatDesc] = useState('');
   const [newCatImage, setNewCatImage] = useState('');
+  const [newCatSkills, setNewCatSkills] = useState('');
 
   // SubCategory Modal state
   const [subCatModalOpen, setSubCatModalOpen] = useState(false);
@@ -161,10 +165,17 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
   const handleCreateCategorySubmit = async (e) => {
     e.preventDefault();
     if (!newCatName.trim()) return;
-    await createCategory({ name: newCatName.trim(), description: newCatDesc.trim(), image: newCatImage });
+    const skillsArray = newCatSkills ? newCatSkills.split(',').map((s) => s.trim()).filter(Boolean) : [];
+    await createCategory({
+      name: newCatName.trim(),
+      description: newCatDesc.trim(),
+      image: newCatImage,
+      skills: skillsArray,
+    });
     setNewCatName('');
     setNewCatDesc('');
     setNewCatImage('');
+    setNewCatSkills('');
     setCatModalOpen(false);
   };
 
@@ -217,6 +228,20 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     setSrvModalOpen(false);
   };
 
+  // Skill Inputs State per Category
+  const [skillInputs, setSkillInputs] = useState({});
+
+  const handleAddSkillToCategory = async (catId) => {
+    const inputVal = skillInputs[catId]?.trim();
+    if (!inputVal) return;
+    await createSkill({ name: inputVal, category: catId });
+    setSkillInputs((prev) => ({ ...prev, [catId]: '' }));
+  };
+
+  const handleRemoveSkillFromCategory = async (skillId) => {
+    await deleteSkill(skillId);
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
       
@@ -231,7 +256,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
       {/* Main Layout */}
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 74px)' }}>
         
-        {/* 13-Item Super Admin Sidebar */}
+        {/* 14-Item Super Admin Sidebar */}
         <SuperAdminSidebar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -250,6 +275,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                 {activeTab === 'customers' && `Global Customer Directory (${customers.length} Registered)`}
                 {activeTab === 'partners' && `Verified Marketplace Partners (${partners.length} Agencies)`}
                 {activeTab === 'categories' && 'Service Category Master Directory'}
+                {activeTab === 'skills' && 'Category-wise Skill Options Management'}
                 {activeTab === 'subCategories' && 'Sub Category Services'}
                 {activeTab === 'services' && 'Individual Service Packages & Base Pricing'}
                 {activeTab === 'bookings' && `Master Bookings & Dispatch Log (${bookings.length} Total)`}
@@ -401,6 +427,132 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>/{cat.slug}</span>
                           <button onClick={() => deleteCategory(cat._id)} className="btn btn-danger btn-sm" title="Delete Category">
                             <Trash2 size={14} /> Delete
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 5.5: SKILL MANAGEMENT PAGE */}
+          {activeTab === 'skills' && (
+            <div className="mui-card" style={{ padding: '26px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                    <Grid size={20} color="#7c3aed" /> Category-wise Skill Options Management ({categories.length} Categories)
+                  </h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                    Manage skill choices for each category. Technicians will see these skills on Partner Onboarding Step 4.
+                  </p>
+                </div>
+              </div>
+
+              {categories.length === 0 ? (
+                <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  No categories found. Create a category first.
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '18px' }}>
+                  {categories.map((cat) => {
+                    const catSkills = skills.filter((sk) => {
+                      const cId = typeof sk.category === 'object' ? sk.category?._id : sk.category;
+                      return cId === cat._id;
+                    });
+                    return (
+                      <div
+                        key={cat._id}
+                        style={{
+                          padding: '20px',
+                          background: '#ffffff',
+                          borderRadius: '16px',
+                          border: '1.5px solid #e2e8f0',
+                          boxShadow: '0 4px 14px rgba(0,0,0,0.03)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                            <div style={{ fontWeight: '800', fontSize: '1.05rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <Grid size={18} color="#7c3aed" />
+                              {cat.name}
+                            </div>
+                            <span className="badge badge-purple" style={{ fontSize: '0.75rem', fontWeight: '700' }}>
+                              {catSkills.length} Skills
+                            </span>
+                          </div>
+
+                          {/* Skill Tags List */}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px', minHeight: '42px', alignItems: 'center' }}>
+                            {catSkills.length === 0 ? (
+                              <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                                No skills added yet. Type a skill name below & click Add.
+                              </span>
+                            ) : (
+                              catSkills.map((sk) => (
+                                <span
+                                  key={sk._id}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '5px 10px',
+                                    borderRadius: '20px',
+                                    background: '#f0fdf4',
+                                    border: '1px solid #bbf7d0',
+                                    color: '#15803d',
+                                    fontSize: '0.78rem',
+                                    fontWeight: '700',
+                                  }}
+                                >
+                                  {sk.name}
+                                  <Trash2
+                                    size={12}
+                                    color="#ef4444"
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => handleRemoveSkillFromCategory(sk._id)}
+                                    title="Delete Skill Document"
+                                  />
+                                </span>
+                              ))
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Add Skill Input Box */}
+                        <div style={{ display: 'flex', gap: '8px', paddingTop: '12px', borderTop: '1px dashed #e2e8f0' }}>
+                          <input
+                            type="text"
+                            placeholder="+ Type skill name & hit enter..."
+                            value={skillInputs[cat._id] || ''}
+                            onChange={(e) => setSkillInputs({ ...skillInputs, [cat._id]: e.target.value })}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddSkillToCategory(cat._id);
+                              }
+                            }}
+                            style={{
+                              flex: 1,
+                              padding: '8px 12px',
+                              borderRadius: '10px',
+                              border: '1px solid #cbd5e1',
+                              fontSize: '0.82rem',
+                              outline: 'none',
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleAddSkillToCategory(cat._id)}
+                            className="btn btn-primary btn-sm"
+                            style={{ padding: '8px 14px', borderRadius: '10px', fontSize: '0.8rem', fontWeight: '700' }}
+                          >
+                            <Plus size={14} /> Add
                           </button>
                         </div>
                       </div>
@@ -715,9 +867,22 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                   </div>
                 )}
               </div>
-              <div className="form-group" style={{ marginBottom: '20px' }}>
+              <div className="form-group">
                 <label className="form-label">Description (Optional)</label>
                 <input type="text" className="form-input" placeholder="Short summary" value={newCatDesc} onChange={(e) => setNewCatDesc(e.target.value)} />
+              </div>
+              <div className="form-group" style={{ marginBottom: '20px' }}>
+                <label className="form-label">Category Skills (Comma-separated for Technician Onboarding)</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Split AC Installation, Gas Leakage Repair, PCB Board Repair"
+                  value={newCatSkills}
+                  onChange={(e) => setNewCatSkills(e.target.value)}
+                />
+                <small style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                  These skills will automatically appear on Partner Onboarding Step 4 when this category is selected.
+                </small>
               </div>
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setCatModalOpen(false)}>Cancel</button>

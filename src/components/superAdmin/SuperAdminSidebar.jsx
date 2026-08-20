@@ -14,7 +14,8 @@ import {
   Settings,
   User,
   LogOut,
-  Crown
+  Crown,
+  Sparkles
 } from 'lucide-react';
 
 const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
@@ -24,6 +25,7 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
     { id: 'customers', label: 'Customers', icon: Users },
     { id: 'partners', label: 'Partners', icon: Briefcase },
     { id: 'categories', label: 'Categories', icon: Grid },
+    { id: 'skills', label: 'Skill Management', icon: Sparkles, badge: 'Onboarding' },
     { id: 'subCategories', label: 'Sub Categories', icon: Layers },
     { id: 'services', label: 'Services', icon: Wrench },
     { id: 'bookings', label: 'Bookings', icon: CalendarCheck },
