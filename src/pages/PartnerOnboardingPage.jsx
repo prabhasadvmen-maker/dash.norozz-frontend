@@ -274,10 +274,31 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
   const [activeGenericDoc, setActiveGenericDoc] = useState('panDoc');
   const [showGenericModal, setShowGenericModal] = useState(false);
 
-  // Category State
+  // Category State (Supports Multi-Selection by Category ObjectId)
+  const [selectedCategories, setSelectedCategories] = useState(
+    currentUser?.categories?.length ? currentUser.categories : (currentUser?.category ? [currentUser.category] : [])
+  );
   const [category, setCategory] = useState(currentUser?.category || '');
   const [categoriesList, setCategoriesList] = useState([]);
   const [searchCatQuery, setSearchCatQuery] = useState('');
+
+  // Toggle category ObjectId selection
+  const handleToggleCategory = (catObj) => {
+    const catId = catObj._id || catObj.id || catObj.name;
+    if (selectedCategories.includes(catId)) {
+      const updated = selectedCategories.filter((id) => id !== catId);
+      setSelectedCategories(updated);
+      if (category === catId) {
+        setCategory(updated[0] || '');
+      }
+    } else {
+      const updated = [...selectedCategories, catId];
+      setSelectedCategories(updated);
+      if (!category) {
+        setCategory(catId);
+      }
+    }
+  };
 
   // Skills & Experience State
   const [experience, setExperience] = useState(currentUser?.experience || '3-5 Years');
@@ -305,7 +326,11 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
         const list = res.data?.data || res.data || [];
         if (Array.isArray(list) && list.length > 0) {
           setCategoriesList(list);
-          if (!category) setCategory(list[0].name);
+          if (!selectedCategories.length) {
+            const firstId = list[0]._id || list[0].id || list[0].name;
+            setSelectedCategories([firstId]);
+            setCategory(firstId);
+          }
         }
       } catch (err) {
         console.error('Failed to load active categories:', err);
@@ -497,19 +522,22 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
     }
   };
 
-  // STEP 3: Submit Selected Service Category
+  // STEP 3: Submit Selected Service Category ObjectIds (categories array)
   const handleStep3CategorySubmit = async () => {
     setError('');
     setSuccessMsg('');
-    if (!category) {
-      setError('Please select a service category to proceed');
+
+    if (!selectedCategories.length && !category) {
+      setError('Please select at least one service category to proceed');
       return;
     }
+
     try {
-      await saveOnboardingCategory({ category });
+      const categoriesPayload = selectedCategories.length > 0 ? selectedCategories : [category];
+      await saveOnboardingCategory({ categories: categoriesPayload });
       setStep(4); // Go to Step 4: Skills & Experience Page!
     } catch (err) {
-      setError(err.message || 'Failed to save service category');
+      setError(err.message || 'Failed to save service categories');
     }
   };
 
@@ -1105,10 +1133,10 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
           <div style={{ padding: '18px 24px 28px 24px' }}>
             <div style={{ margin: '0 0 16px 0' }}>
               <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
-                Select Category
+                Select Categories
               </h2>
               <p style={{ color: '#64748b', fontSize: '0.82rem', marginTop: '4px', margin: 0 }}>
-                Choose active category offering created by Super Admin
+                Select one or more active categories ({selectedCategories.length} selected)
               </p>
             </div>
 
@@ -1124,22 +1152,24 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
               />
             </div>
 
-            {/* Super Admin Active Category Cards Grid */}
+            {/* Super Admin Active Category Cards Grid (Multi-Select by ObjectId) */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '22px', maxHeight: '320px', overflowY: 'auto' }}>
               {(categoriesList.length > 0 ? categoriesList : [
-                { name: 'AC & Appliance Repair' },
-                { name: 'Cleaning & Pest Control' },
-                { name: 'Plumbing, Electrical & Carpentry' },
-                { name: 'Salon & Beauty for Women' },
-                { name: "Men's Salon & Grooming" },
-                { name: 'Home Painting & Decor' },
+                { _id: 'cat_ac_repair', name: 'AC & Appliance Repair' },
+                { _id: 'cat_cleaning', name: 'Cleaning & Pest Control' },
+                { _id: 'cat_plumbing', name: 'Plumbing, Electrical & Carpentry' },
+                { _id: 'cat_women_salon', name: 'Salon & Beauty for Women' },
+                { _id: 'cat_men_salon', name: "Men's Salon & Grooming" },
+                { _id: 'cat_painting', name: 'Home Painting & Decor' },
               ]).filter((c) => c.name.toLowerCase().includes(searchCatQuery.toLowerCase())).map((cat) => {
-                const isSelected = category === cat.name;
+                const catIdentifier = cat._id || cat.id || cat.name;
+                const isSelected = selectedCategories.includes(catIdentifier) || selectedCategories.includes(cat.name) || category === catIdentifier || category === cat.name;
                 return (
                   <div
-                    key={cat.name}
-                    onClick={() => setCategory(cat.name)}
+                    key={catIdentifier}
+                    onClick={() => handleToggleCategory(cat)}
                     style={{
+                      position: 'relative',
                       padding: '14px 12px',
                       borderRadius: '16px',
                       border: isSelected ? '2px solid #16a34a' : '1.5px solid #e2e8f0',
@@ -1147,8 +1177,25 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
                       cursor: 'pointer',
                       textAlign: 'center',
                       transition: 'all 0.2s',
+                      boxShadow: isSelected ? '0 4px 12px rgba(22, 163, 74, 0.15)' : 'none',
                     }}
                   >
+                    <div style={{
+                      position: 'absolute',
+                      top: '8px',
+                      right: '8px',
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      background: isSelected ? '#16a34a' : '#e2e8f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s',
+                    }}>
+                      <Check size={12} color={isSelected ? '#ffffff' : '#94a3b8'} />
+                    </div>
+
                     <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: isSelected ? '#dcfce7' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px auto' }}>
                       <Grid size={20} color={isSelected ? '#16a34a' : '#64748b'} />
                     </div>
