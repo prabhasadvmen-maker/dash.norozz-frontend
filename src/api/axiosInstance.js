@@ -60,12 +60,19 @@ axiosInstance.interceptors.response.use(
           originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
           return axiosInstance(originalRequest);
         }
-      } catch (refreshErr) {
+      } catch {
         // Refresh token failed -> Clear session & auto logout
         localStorage.removeItem('norozz_token');
         localStorage.removeItem('norozz_user');
         window.dispatchEvent(new Event('norozz_logout'));
       }
+    }
+
+    // Handle 429 Too Many Requests (Rate Limit Exceeded)
+    if (status === 429) {
+      const rateLimitMsg = error.response?.data?.message || '⚠️ Too many requests. Please wait a moment before trying again.';
+      toast.error(rateLimitMsg);
+      return Promise.reject(error.response?.data || { message: rateLimitMsg });
     }
 
     // Suppress toast for silent profile checks if unauthenticated

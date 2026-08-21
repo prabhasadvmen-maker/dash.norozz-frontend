@@ -17,6 +17,7 @@ const CityAdminModal = ({ isOpen, onClose, onSubmit, initialData, mode }) => {
   const isEditMode = mode === 'edit' || Boolean(initialData);
 
   useEffect(() => {
+    if (!isOpen) return;
     cityService
       .getActiveCities()
       .then((res) => {
@@ -29,7 +30,7 @@ const CityAdminModal = ({ isOpen, onClose, onSubmit, initialData, mode }) => {
         }
       })
       .catch((err) => console.warn('Active cities fetch warning:', err));
-  }, [assignedCity, initialData]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

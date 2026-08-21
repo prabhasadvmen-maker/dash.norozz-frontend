@@ -1,7 +1,6 @@
-import React from 'react';
-import { Briefcase, Search, Bell, RefreshCw, LogOut, ShieldCheck, Lock, Unlock } from 'lucide-react';
+import { RefreshCw, LogOut, ShieldCheck, Lock } from 'lucide-react';
 
-const DedicatedPartnerNavbar = ({ currentUser, onLogout, onRefresh, refreshing, kycStatus = 'pending', isOnline = true, onToggleOnlineClick }) => {
+const DedicatedPartnerNavbar = ({ currentUser, cityName, categoryNames, onLogout, onRefresh, refreshing, kycStatus = 'pending', isOnline = true, onToggleOnlineClick }) => {
   const isApproved = kycStatus === 'approved';
 
   return (
@@ -36,7 +35,7 @@ const DedicatedPartnerNavbar = ({ currentUser, onLogout, onRefresh, refreshing, 
             NOROZZ <span className="gradient-text">TECHNICIAN PORTAL</span>
           </h2>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            {currentUser?.agencyName || currentUser?.name || 'Service Partner'} • {currentUser?.assignedCity || currentUser?.city || 'Delhi NCR'}
+            {currentUser?.agencyName || currentUser?.name || 'Service Partner'} • {cityName || 'Delhi NCR'}
           </span>
         </div>
       </div>
@@ -116,8 +115,8 @@ const DedicatedPartnerNavbar = ({ currentUser, onLogout, onRefresh, refreshing, 
             <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
               {currentUser?.name || 'Service Partner'}
             </span>
-            <span style={{ fontSize: '0.68rem', color: '#0052d4', fontWeight: '700' }}>
-              {currentUser?.category || 'SERVICE TECHNICIAN'}
+            <span style={{ fontSize: '0.68rem', color: '#0052d4', fontWeight: '700', whiteSpace: 'nowrap' }}>
+              {categoryNames || 'SERVICE TECHNICIAN'}
             </span>
           </div>
         </div>

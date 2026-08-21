@@ -25,6 +25,7 @@ import {
 import { useAuth } from '../hooks/useAuth.js';
 import { catalogService } from '../services/catalog.service.js';
 import { cityService } from '../services/city.service.js';
+import { toast } from '../utils/toast.js';
 
 const DEFAULT_SCHEDULE = [
   { day: 'Monday', isOpen: true, openTime: '09:00 AM', closeTime: '07:00 PM' },
@@ -119,12 +120,17 @@ const REAL_LOCALITIES_BY_CITY = {
   ],
 };
 
-// Interactive Real Leaflet Map Component with Dynamic Circle Radius & Live Location Pin
-const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null }) => {
+// Interactive Real Leaflet Map Component with Dynamic Circle Radius & Live Location Pin & Map Click Setter
+const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null, onSelectLocation = null }) => {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const circleInstanceRef = useRef(null);
   const markerInstanceRef = useRef(null);
+  const onSelectLocationRef = useRef(onSelectLocation);
+
+  useEffect(() => {
+    onSelectLocationRef.current = onSelectLocation;
+  }, [onSelectLocation]);
 
   const defaultCityCoords = CITY_COORDINATES[city] || CITY_COORDINATES['Delhi NCR'];
   const activeLat = coords?.lat ? Number(coords.lat) : defaultCityCoords.lat;
@@ -163,7 +169,14 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
 
       const marker = L.marker([activeLat, activeLng])
         .addTo(map)
-        .bindPopup(`<b>${coords?.lat ? 'Your Current GPS Location' : `${city} Hub`}</b><br>Radius: ${radiusKm} km`);
+        .bindPopup(`<b>${coords?.lat ? 'Selected Location' : `${city} Hub`}</b><br>Radius: ${radiusKm} km`);
+
+      // Allow clicking on map to set position manually
+      map.on('click', (e) => {
+        if (onSelectLocationRef.current) {
+          onSelectLocationRef.current(e.latlng.lat, e.latlng.lng);
+        }
+      });
 
       mapInstanceRef.current = map;
       circleInstanceRef.current = circle;
@@ -186,7 +199,7 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
       mapInstanceRef.current.setView([cLat, cLng], 14);
       if (markerInstanceRef.current) {
         markerInstanceRef.current.setLatLng([cLat, cLng]);
-        markerInstanceRef.current.bindPopup(`<b>Your Detected GPS Position</b><br>Lat: ${cLat.toFixed(4)}, Lng: ${cLng.toFixed(4)}`).openPopup();
+        markerInstanceRef.current.bindPopup(`<b>Selected Position</b><br>Lat: ${cLat.toFixed(4)}, Lng: ${cLng.toFixed(4)}`).openPopup();
       }
       if (circleInstanceRef.current) {
         circleInstanceRef.current.setLatLng([cLat, cLng]);
@@ -210,7 +223,26 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '210px', borderRadius: '18px', overflow: 'hidden', border: '2px solid #bbf7d0', boxShadow: '0 4px 14px rgba(22, 163, 74, 0.12)', marginBottom: '18px' }}>
-      <div ref={mapContainerRef} style={{ width: '100%', height: '100%', zIndex: 1 }} />
+      <div ref={mapContainerRef} style={{ width: '100%', height: '100%', zIndex: 1, cursor: 'crosshair' }} />
+      <div style={{
+        position: 'absolute',
+        top: '12px',
+        left: '12px',
+        background: 'rgba(15, 23, 42, 0.75)',
+        color: '#ffffff',
+        backdropFilter: 'blur(6px)',
+        padding: '5px 10px',
+        borderRadius: '20px',
+        fontSize: '0.7rem',
+        fontWeight: '700',
+        zIndex: 10,
+        pointerEvents: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '4px'
+      }}>
+        📍 Tap map to select location manually
+      </div>
       <div style={{
         position: 'absolute',
         top: '12px',
@@ -232,6 +264,57 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
   );
 };
 
+// Helper to calculate exact onboarding step based on currentUser DB progress
+const getInitialStepFromUser = (user) => {
+  if (!user) return 1;
+
+  // Step 1: Location Access
+  const isLocationSaved = Boolean(
+    user.isLocationSaved ||
+    user.locationCoordinates?.lat ||
+    (user.address && user.assignedCity)
+  );
+  if (!isLocationSaved) return 1;
+
+  // Step 2: Document Upload
+  const isDocsUploaded = Boolean(
+    user.isDocumentsUploaded ||
+    (user.documents?.aadhaarFront && user.documents?.aadhaarBack)
+  );
+  if (!isDocsUploaded) return 2;
+
+  // Step 3: Select Categories
+  const isCategorySelected = Boolean(
+    user.isCategorySelected ||
+    (user.categories && user.categories.length > 0) ||
+    user.category
+  );
+  if (!isCategorySelected) return 3;
+
+  // Step 4: Select Skills
+  const isSkillsSelected = Boolean(
+    user.isSkillsSelected ||
+    (user.skills && user.skills.length > 0)
+  );
+  if (!isSkillsSelected) return 4;
+
+  // Step 5: Service Area & Radius
+  const isServiceAreaSet = Boolean(
+    user.isServiceAreaSet ||
+    (user.serviceRadiusKm && user.localities && user.localities.length > 0)
+  );
+  if (!isServiceAreaSet) return 5;
+
+  // Step 6: Working Hours
+  const isWorkingHoursSet = Boolean(
+    user.isWorkingHoursSet ||
+    (user.workingHours && user.workingHours.length > 0)
+  );
+  if (!isWorkingHoursSet) return 6;
+
+  return 6;
+};
+
 const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) => {
   const {
     saveOnboardingLocation,
@@ -245,15 +328,23 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     isLoggingIn,
   } = useAuth();
 
-  // Step state: 1: 'location-access' | 2: 'docs-list' | 3: 'category' | 4: 'skills' | 5: 'service-area' | 6: 'working-hours'
+  // Step state with double-fallback: localStorage cache -> currentUser DB progress calculation -> default 1
   const [step, setStep] = useState(() => {
-    const isLocationSaved = currentUser?.isLocationSaved || currentUser?.locationCoordinates?.lat || (currentUser?.address && currentUser?.assignedCity);
-    if (isLocationSaved && currentUser?.isDocumentsUploaded === false) {
-      return 2; // Jump directly to Document Upload if location is already saved
+    const savedStep = localStorage.getItem('partner_onboarding_step');
+    if (savedStep && !isNaN(Number(savedStep))) {
+      const parsed = Number(savedStep);
+      if (parsed >= 1 && parsed <= 6) return parsed;
     }
-    return 1; // Step 1: Location Access (GPS / Address Upload)
+    return getInitialStepFromUser(currentUser);
   });
   const [subStep, setSubStep] = useState('list'); // 'list' | 'aadhaar' | 'generic'
+
+  // Persist current step to localStorage
+  useEffect(() => {
+    if (step) {
+      localStorage.setItem('partner_onboarding_step', step.toString());
+    }
+  }, [step]);
 
   // Profile Edit Modal State
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
@@ -397,13 +488,25 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     loadCategorySkills();
   }, [step, selectedCategories, category, currentUser]);
 
+  // Service Area S  // Helper to resolve human-readable city name from ObjectId or object
+  const getCityName = (cityVal) => {
+    if (!cityVal) return 'Delhi NCR';
+    if (typeof cityVal === 'object' && cityVal?.name) return cityVal.name;
+    const found = activeCitiesList.find((c) => String(c._id) === String(cityVal) || c.name === cityVal);
+    if (found) return found.name;
+    return typeof cityVal === 'string' && !cityVal.match(/^[0-9a-fA-F]{24}$/) ? cityVal : 'Delhi NCR';
+  };
+
+  const displayCityName = getCityName(currentUser?.assignedCity || currentUser?.city);
+  const workCity = displayCityName;
+
   // Service Area State
   const [workRadius, setWorkRadius] = useState(currentUser?.workRadius || 8);
+  const [dynamicNearbyLocalities, setDynamicNearbyLocalities] = useState([]);
   const [selectedLocalities, setSelectedLocalities] = useState(() => {
     if (currentUser?.localities?.length) return currentUser.localities;
-    const initialCity = currentUser?.assignedCity || currentUser?.city || 'Delhi NCR';
-    const locs = REAL_LOCALITIES_BY_CITY[initialCity] || REAL_LOCALITIES_BY_CITY['Delhi NCR'];
-    return locs.slice(0, 4);
+    const preset = REAL_LOCALITIES_BY_CITY[displayCityName] || [];
+    return preset.slice(0, 4);
   });
 
   // Working Hours State
@@ -411,38 +514,81 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
 
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [nearbyLocalityName, setNearbyLocalityName] = useState('');
   const [customLocalityInput, setCustomLocalityInput] = useState('');
 
-  const workCity = currentUser?.assignedCity || 'Delhi NCR';
+  const [loadingNearbyLocs, setLoadingNearbyLocs] = useState(false);
 
-  // Automatically detect partner's saved position & reverse geocode nearby locality name
-  useEffect(() => {
-    const coordsObj = deviceCoords || currentUser?.locationCoordinates;
-    if (coordsObj?.lat && coordsObj?.lng) {
-      const cLat = Number(coordsObj.lat);
-      const cLng = Number(coordsObj.lng);
-      fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${cLat}&lon=${cLng}&zoom=14`
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          const addr = data?.address || {};
-          const detected = addr.suburb || addr.neighbourhood || addr.residential || addr.subdistrict || addr.town || addr.city_district;
-          if (detected) {
-            const locName = `${detected} (${workCity})`;
-            setNearbyLocalityName(locName);
-            setSelectedLocalities((prev) => {
-              if (!prev.includes(locName)) {
-                return [locName, ...prev];
-              }
-              return prev;
-            });
-          }
-        })
-        .catch((e) => console.warn('Nearby locality reverse geocode warning:', e));
+  // Dynamic reverse-geocoding of localities scaled by Work Radius (2km -> 25km)
+  const fetchLocalitiesForRadius = (lat, lng, radiusKm) => {
+    if (!lat || !lng) return;
+    const cLat = Number(lat);
+    const cLng = Number(lng);
+    setLoadingNearbyLocs(true);
+
+    const rDeg = radiusKm / 111;
+    const numPoints = Math.min(12, Math.max(2, Math.round(radiusKm / 2)));
+    const offsets = [{ lat: cLat, lng: cLng }];
+
+    for (let i = 1; i < numPoints; i++) {
+      const angle = (i * 2 * Math.PI) / (numPoints - 1);
+      const dist = (0.35 + (i % 3) * 0.25) * rDeg;
+      const dLat = dist * Math.cos(angle);
+      const dLng = dist * Math.sin(angle);
+      offsets.push({ lat: cLat + dLat, lng: cLng + dLng });
     }
-  }, [deviceCoords, currentUser?.locationCoordinates, workCity]);
+
+    Promise.all(
+      offsets.map((pt) =>
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pt.lat}&lon=${pt.lng}&zoom=14`)
+          .then((r) => r.json())
+          .catch(() => null)
+      )
+    ).then((results) => {
+      const locNames = [];
+      results.forEach((data) => {
+        if (data?.address) {
+          const addr = data.address;
+          const name =
+            addr.suburb ||
+            addr.neighbourhood ||
+            addr.residential ||
+            addr.subdistrict ||
+            addr.town ||
+            addr.city_district ||
+            addr.village ||
+            addr.county;
+          if (name) {
+            const formatted = `${name} (${displayCityName})`;
+            if (!locNames.includes(formatted)) {
+              locNames.push(formatted);
+            }
+          }
+        }
+      });
+
+      if (locNames.length > 0) {
+        setDynamicNearbyLocalities(locNames);
+        setSelectedLocalities((prev) => {
+          const cleanPrev = displayCityName === 'Delhi NCR'
+            ? prev
+            : prev.filter((p) => !p.includes('Delhi NCR') && !REAL_LOCALITIES_BY_CITY['Delhi NCR'].includes(p));
+          return Array.from(new Set([...locNames, ...cleanPrev]));
+        });
+      }
+      setLoadingNearbyLocs(false);
+    });
+  };
+
+  useEffect(() => {
+    if (step !== 5) return;
+    const coordsObj = deviceCoords || currentUser?.locationCoordinates;
+    if (coordsObj?.lat && coordsObj?.lng && !dynamicNearbyLocalities.length) {
+      const timer = setTimeout(() => {
+        fetchLocalitiesForRadius(coordsObj.lat, coordsObj.lng, workRadius);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
 
   // Load Super Admin Categories from backend
   useEffect(() => {
@@ -545,6 +691,33 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
       setSuccessMsg(`📷 Photo attached for ${docKey}! Click Continue to upload all to R2.`);
     };
     reader.readAsDataURL(processedFile);
+  };
+
+  // Manual Map Pin Click Handler (Tap anywhere on Leaflet map to pin custom location)
+  const handleManualMapSelectLocation = (lat, lng) => {
+    const rLat = Number(Number(lat).toFixed(6));
+    const rLng = Number(Number(lng).toFixed(6));
+    const coordsObj = { lat: rLat, lng: rLng };
+    setDeviceCoords(coordsObj);
+
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${rLat}&lon=${rLng}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.display_name) {
+          setDeviceAddress(data.display_name);
+        } else {
+          setDeviceAddress(`Pinned Location (${rLat}, ${rLng})`);
+        }
+      })
+      .catch(() => {
+        setDeviceAddress(`Pinned Location (${rLat}, ${rLng})`);
+      });
+
+    if (step === 5) {
+      fetchLocalitiesForRadius(rLat, rLng, workRadius);
+    }
+
+    toast.success('📍 Location pinned manually from map click!');
   };
 
   // STEP 1: Allow Location Access Handler (Production-Grade watchPosition + Fallback Strategy)
@@ -1011,7 +1184,12 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
             </div>
 
             {/* Interactive Leaflet Map Preview */}
-            <InteractiveServiceMap city={workCity} radiusKm={workRadius} coords={deviceCoords} />
+            <InteractiveServiceMap
+              city={workCity}
+              radiusKm={workRadius}
+              coords={deviceCoords}
+              onSelectLocation={handleManualMapSelectLocation}
+            />
 
             {/* Detected Location Card or Allow Button */}
             {deviceAddress ? (
@@ -1691,6 +1869,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
               city={workCity}
               radiusKm={workRadius}
               coords={deviceCoords || currentUser?.locationCoordinates}
+              onSelectLocation={handleManualMapSelectLocation}
             />
 
             {/* Work Radius Slider */}
@@ -1704,7 +1883,14 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                 min="2"
                 max="25"
                 value={workRadius}
-                onChange={(e) => setWorkRadius(Number(e.target.value))}
+                onChange={(e) => {
+                  const newRad = Number(e.target.value);
+                  setWorkRadius(newRad);
+                  const coordsObj = deviceCoords || currentUser?.locationCoordinates;
+                  if (coordsObj?.lat && coordsObj?.lng) {
+                    fetchLocalitiesForRadius(coordsObj.lat, coordsObj.lng, newRad);
+                  }
+                }}
                 style={{ width: '100%', accentColor: '#16a34a', cursor: 'pointer' }}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }}>
@@ -1720,8 +1906,14 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                 <label style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155', margin: 0 }}>
                   Available Localities (Customise)
                 </label>
-                <span style={{ fontSize: '0.72rem', color: '#16a34a', fontWeight: '600' }}>
-                  📍 Nearby your saved location
+                <span style={{ fontSize: '0.72rem', color: '#16a34a', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {loadingNearbyLocs ? (
+                    <>
+                      <Loader2 size={12} className="spin" /> Updating radius localities...
+                    </>
+                  ) : (
+                    <>📍 {dynamicNearbyLocalities.length} localities in {workRadius} km radius</>
+                  )}
                 </span>
               </div>
 
@@ -1753,12 +1945,14 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
                 {Array.from(new Set([
-                  ...(nearbyLocalityName ? [nearbyLocalityName] : []),
+                  ...dynamicNearbyLocalities,
                   ...selectedLocalities,
-                  ...(REAL_LOCALITIES_BY_CITY[workCity] || REAL_LOCALITIES_BY_CITY['Delhi NCR']),
-                ])).map((loc) => {
+                  ...(REAL_LOCALITIES_BY_CITY[displayCityName] || []),
+                ]))
+                  .filter((loc) => displayCityName === 'Delhi NCR' || (!loc.includes('Delhi NCR') && !REAL_LOCALITIES_BY_CITY['Delhi NCR'].includes(loc)))
+                  .map((loc) => {
                   const isChecked = selectedLocalities.includes(loc);
-                  const isNearby = loc === nearbyLocalityName;
+                  const isNearby = dynamicNearbyLocalities.includes(loc);
                   return (
                     <div
                       key={loc}

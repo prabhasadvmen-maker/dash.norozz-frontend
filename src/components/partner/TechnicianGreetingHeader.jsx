@@ -1,9 +1,8 @@
-import React from 'react';
-import { User, ShieldCheck } from 'lucide-react';
+// TechnicianGreetingHeader.jsx
 
-const TechnicianGreetingHeader = ({ currentUser, isOnline, onToggleOnlineClick }) => {
+const TechnicianGreetingHeader = ({ currentUser, categoryNames, isOnline, onToggleOnlineClick }) => {
   const techName = currentUser?.name || 'Service Partner';
-  const category = currentUser?.category || 'AC Technician';
+  const category = categoryNames || 'Service Technician';
   const partnerCode = currentUser?._id ? `NZP-${currentUser._id.slice(-4).toUpperCase()}` : 'NZP-9872';
   const profileImg = currentUser?.profileImage;
 

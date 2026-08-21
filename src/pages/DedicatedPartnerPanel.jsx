@@ -13,6 +13,7 @@ import PartnerFulfillmentPage from './partner/PartnerFulfillmentPage';
 import PartnerProfileView from '../components/partner/PartnerProfileView';
 import { socketService } from '../services/socket.service.js';
 import { cityService } from '../services/city.service.js';
+import { catalogService } from '../services/catalog.service.js';
 import { usePartner } from '../hooks/usePartner.js';
 import { toast } from '../utils/toast.js';
 import {
@@ -54,6 +55,22 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
 
   const [resolvedCityName, setResolvedCityName] = useState(initialCityName);
 
+  const [resolvedCategoryNames, setResolvedCategoryNames] = useState(() => {
+    if (Array.isArray(currentUser?.categories) && currentUser.categories.length > 0) {
+      const names = currentUser.categories
+        .map((c) => (typeof c === 'object' && c?.name ? c.name : null))
+        .filter(Boolean);
+      if (names.length > 0) return names.join(' • ');
+    }
+    if (typeof currentUser?.category === 'object' && currentUser?.category?.name) {
+      return currentUser.category.name;
+    }
+    if (typeof currentUser?.category === 'string' && !currentUser.category.match(/^[0-9a-fA-F]{24}$/)) {
+      return currentUser.category;
+    }
+    return '';
+  });
+
   useEffect(() => {
     const raw = currentUser?.assignedCity || currentUser?.city;
     if (typeof raw === 'string' && raw.match(/^[0-9a-fA-F]{24}$/)) {
@@ -63,6 +80,29 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
         if (match?.name) setResolvedCityName(match.name);
       }).catch(() => {});
     }
+
+    catalogService.getCategories().then((res) => {
+      const list = res.data?.data || res.data || [];
+      if (Array.isArray(list) && list.length > 0) {
+        const rawCats = Array.isArray(currentUser?.categories) && currentUser.categories.length > 0
+          ? currentUser.categories
+          : (currentUser?.category ? [currentUser.category] : []);
+
+        const catIds = rawCats.map((c) => (typeof c === 'object' ? c._id || c.id : c));
+
+        const matchedNames = [];
+        catIds.forEach((id) => {
+          const found = list.find((cat) => String(cat._id) === String(id) || String(cat.id) === String(id));
+          if (found?.name && !matchedNames.includes(found.name)) {
+            matchedNames.push(found.name);
+          }
+        });
+
+        if (matchedNames.length > 0) {
+          setResolvedCategoryNames(matchedNames.join(' • '));
+        }
+      }
+    }).catch(() => {});
   }, [currentUser]);
 
   // Real-Time Socket.io Connection Effect
@@ -173,6 +213,8 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
       {/* Header with Live KYC Status Badge & Online Toggle */}
       <DedicatedPartnerNavbar
         currentUser={currentUser}
+        cityName={resolvedCityName}
+        categoryNames={resolvedCategoryNames}
         onLogout={onLogout}
         onRefresh={handleRefresh}
         refreshing={refreshing}
@@ -213,7 +255,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
                 {activeTab === 'profile' && 'Service Technician Partner Profile'}
               </h2>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                {currentUser?.name || 'Service Partner'} ({currentUser?.category || 'Technician'}) • {resolvedCityName} Zone
+                {currentUser?.name || 'Service Partner'} ({resolvedCategoryNames || 'Technician'}) • {resolvedCityName} Zone
               </p>
             </div>
           </div>
@@ -256,6 +298,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
                   {/* Greeting & Technician Code Banner */}
                   <TechnicianGreetingHeader
                     currentUser={currentUser}
+                    categoryNames={resolvedCategoryNames}
                     isOnline={isOnline}
                     onToggleOnlineClick={handleOpenOnlineModal}
                   />
