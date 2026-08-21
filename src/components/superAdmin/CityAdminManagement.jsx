@@ -1,14 +1,42 @@
-import React, { useState } from 'react';
-import { Building2, Plus, KeyRound, MapPin, Power, Search, Edit3, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Building2, Plus, KeyRound, MapPin, Power, Search, Edit3 } from 'lucide-react';
 import CityAdminModal from './CityAdminModal';
 import { useSuperAdmin } from '../../hooks/useSuperAdmin.js';
+import { cityService } from '../../services/city.service.js';
 
 const CityAdminManagement = () => {
-  const { cityAdmins, createCityAdmin, updateCityAdminStatus, deleteCityAdmin } = useSuperAdmin();
+  const { cityAdmins, createCityAdmin, updateCityAdminStatus } = useSuperAdmin();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' | 'edit' | 'resetPassword'
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [citiesMap, setCitiesMap] = useState({});
+
+  useEffect(() => {
+    cityService
+      .getActiveCities()
+      .then((res) => {
+        const list = res.data?.data || res.data || [];
+        if (Array.isArray(list)) {
+          const map = {};
+          list.forEach((c) => {
+            if (c._id && c.name) map[String(c._id)] = c.name;
+          });
+          setCitiesMap(map);
+        }
+      })
+      .catch((err) => console.warn('City map fetch warning:', err));
+  }, []);
+
+  const getCityName = (admin) => {
+    const raw = admin.assignedCity || admin.city || '';
+    if (typeof raw === 'object' && raw?.name) return raw.name;
+    if (typeof raw === 'string') {
+      if (citiesMap[raw]) return citiesMap[raw];
+      if (!raw.match(/^[0-9a-fA-F]{24}$/)) return raw;
+    }
+    return 'Delhi NCR';
+  };
 
   const displayAdmins = cityAdmins;
 
@@ -113,7 +141,7 @@ const CityAdminManagement = () => {
                     </td>
                     <td style={{ padding: '14px' }}>
                       <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <MapPin size={14} color="#2563eb" /> {admin.assignedCity || admin.city || 'Delhi NCR'}
+                        <MapPin size={14} color="#2563eb" /> {getCityName(admin)}
                       </span>
                     </td>
                     <td style={{ padding: '14px' }}>

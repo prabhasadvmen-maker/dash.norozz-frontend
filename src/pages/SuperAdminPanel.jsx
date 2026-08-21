@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import SuperAdminNavbar from '../components/superAdmin/SuperAdminNavbar';
 import SuperAdminSidebar from '../components/superAdmin/SuperAdminSidebar';
 import PlatformAnalyticsGrid from '../components/superAdmin/PlatformAnalyticsGrid';
 import CityAdminManagement from '../components/superAdmin/CityAdminManagement';
+import CityManagementView from '../components/superAdmin/CityManagementView';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import { useSuperAdmin } from '../hooks/useSuperAdmin.js';
 import { useCatalog } from '../hooks/useCatalog.js';
 import {
-  Building2,
   Users,
   Briefcase,
   Grid,
@@ -21,8 +21,6 @@ import {
   User,
   Plus,
   Trash2,
-  MapPin,
-  CheckCircle2,
 } from 'lucide-react';
 
 const SuperAdminPanel = ({ currentUser, onLogout }) => {
@@ -67,7 +65,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
   const [newSrvDuration, setNewSrvDuration] = useState('45 mins');
   const [newSrvDesc, setNewSrvDesc] = useState('');
   const [newSrvImage, setNewSrvImage] = useState('');
-  const [newSrvPackages, setNewSrvPackages] = useState([
+  const [newSrvPackages] = useState([
     { title: 'Basic Clean', price: 999, description: 'Mopping & basic vacuuming', features: 'Mopping & deep vacuuming\nBathroom dry wiping & cleaning\nLiving room basic dusting', isPopular: false },
     { title: 'Standard Deep Clean', price: 1499, description: 'Intense scrubbing & degreasing', features: 'Kitchen chimney + slab degreasing\nIntense bathroom wall scrubbing\nWet mop & mechanised floor scrub\nDry upholstery vacuuming', isPopular: true },
     { title: 'Ultra Premium Scrub', price: 2499, description: 'Complete sanitation & sterilisation', features: 'Complete sanitation & sterilisation\nWet safe shampoo dry wash\nGlass facade & full balcony wash\nWall spots scrubbing & spot clean', isPopular: false }
@@ -272,6 +270,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
               <h2 style={{ fontSize: '1.4rem', fontWeight: '800', margin: 0 }}>
                 {activeTab === 'dashboard' && 'Master Platform Analytics & Overview'}
                 {activeTab === 'cityAdmins' && 'City Admin Management & City Assignment'}
+                {activeTab === 'cities' && 'Dynamic Operational Cities Management'}
                 {activeTab === 'customers' && `Global Customer Directory (${customers.length} Registered)`}
                 {activeTab === 'partners' && `Verified Marketplace Partners (${partners.length} Agencies)`}
                 {activeTab === 'categories' && 'Service Category Master Directory'}
@@ -310,6 +309,11 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
           {/* TAB 2: CITY ADMINS */}
           {activeTab === 'cityAdmins' && (
             <CityAdminManagement />
+          )}
+
+          {/* TAB 2.5: CITIES MANAGEMENT */}
+          {activeTab === 'cities' && (
+            <CityManagementView />
           )}
 
           {/* TAB 3: CUSTOMERS */}

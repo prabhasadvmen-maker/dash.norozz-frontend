@@ -1,7 +1,7 @@
-import React from 'react';
 import {
   LayoutDashboard,
   Building2,
+  MapPin,
   Users,
   Briefcase,
   Grid,
@@ -22,6 +22,7 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: 'Analytics' },
     { id: 'cityAdmins', label: 'City Admins', icon: Building2, badge: 'Assign' },
+    { id: 'cities', label: 'City Management', icon: MapPin, badge: 'Dynamic' },
     { id: 'customers', label: 'Customers', icon: Users },
     { id: 'partners', label: 'Partners', icon: Briefcase },
     { id: 'categories', label: 'Categories', icon: Grid },

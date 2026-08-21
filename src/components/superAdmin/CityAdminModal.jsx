@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Building2, Mail, Lock, User, MapPin, Phone, KeyRound, Loader2 } from 'lucide-react';
+import { cityService } from '../../services/city.service.js';
 
 const CityAdminModal = ({ isOpen, onClose, onSubmit, initialData, mode }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [assignedCity, setAssignedCity] = useState('Delhi NCR');
+  const [name, setName] = useState(initialData?.name || '');
+  const [email, setEmail] = useState(initialData?.email || '');
+  const [phone, setPhone] = useState(initialData?.phone || '');
+  const [assignedCity, setAssignedCity] = useState(initialData?.assignedCity || initialData?.city || '');
+  const [activeCities, setActiveCities] = useState([]);
   const [password, setPassword] = useState('');
-  const [status, setStatus] = useState('active');
+  const status = initialData?.status || 'active';
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -15,23 +17,19 @@ const CityAdminModal = ({ isOpen, onClose, onSubmit, initialData, mode }) => {
   const isEditMode = mode === 'edit' || Boolean(initialData);
 
   useEffect(() => {
-    if (initialData) {
-      setName(initialData.name || '');
-      setEmail(initialData.email || '');
-      setPhone(initialData.phone || '');
-      setAssignedCity(initialData.assignedCity || initialData.city || 'Delhi NCR');
-      setStatus(initialData.status || 'active');
-      setPassword('');
-    } else {
-      setName('');
-      setEmail('');
-      setPhone('');
-      setAssignedCity('Delhi NCR');
-      setStatus('active');
-      setPassword('');
-    }
-    setError('');
-  }, [initialData, isOpen, mode]);
+    cityService
+      .getActiveCities()
+      .then((res) => {
+        const list = res.data?.data || res.data || [];
+        if (Array.isArray(list) && list.length > 0) {
+          setActiveCities(list);
+          if (!assignedCity && !initialData) {
+            setAssignedCity(list[0]._id);
+          }
+        }
+      })
+      .catch((err) => console.warn('Active cities fetch warning:', err));
+  }, [assignedCity, initialData]);
 
   if (!isOpen) return null;
 
@@ -153,15 +151,15 @@ const CityAdminModal = ({ isOpen, onClose, onSubmit, initialData, mode }) => {
                   value={assignedCity}
                   onChange={(e) => setAssignedCity(e.target.value)}
                 >
-                  <option value="Delhi NCR">Delhi NCR</option>
-                  <option value="Mumbai">Mumbai</option>
-                  <option value="Bengaluru">Bengaluru</option>
-                  <option value="Hyderabad">Hyderabad</option>
-                  <option value="Chennai">Chennai</option>
-                  <option value="Kolkata">Kolkata</option>
-                  <option value="Pune">Pune</option>
-                  <option value="Jaipur">Jaipur</option>
-                  <option value="Chandigarh">Chandigarh</option>
+                  {activeCities.length > 0 ? (
+                    activeCities.map((cityObj) => (
+                      <option key={cityObj._id} value={cityObj._id}>
+                        {cityObj.name} {cityObj.state ? `(${cityObj.state})` : ''}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="Delhi NCR">Delhi NCR</option>
+                  )}
                 </select>
               </div>
 

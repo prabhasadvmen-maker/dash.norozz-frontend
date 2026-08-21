@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -10,7 +10,6 @@ import {
   Upload,
   CreditCard,
   Grid,
-  Clock,
   Check,
   Search,
   Plus,
@@ -25,7 +24,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { catalogService } from '../services/catalog.service.js';
-import { partnerService } from '../services/partner.service.js';
+import { cityService } from '../services/city.service.js';
 
 const DEFAULT_SCHEDULE = [
   { day: 'Monday', isOpen: true, openTime: '09:00 AM', closeTime: '07:00 PM' },
@@ -37,14 +36,7 @@ const DEFAULT_SCHEDULE = [
   { day: 'Sunday', isOpen: false, openTime: '09:00 AM', closeTime: '07:00 PM' },
 ];
 
-const SKILLS_BY_CATEGORY = {
-  'AC & Appliance Repair': ['Split AC Install', 'Gas Refilling', 'Deep Cleaning', 'Inverter AC Repair', 'Compressor Check', 'Maintenance'],
-  'Cleaning & Pest Control': ['Bathroom Deep Scrub', 'Kitchen Degreasing', 'Sofa Shampooing', 'Cockroach Gel Treatment', 'Balcony Wash', 'Full Home Polish'],
-  'Plumbing, Electrical & Carpentry': ['Tap & Mixer Fix', 'RO Purifier Filter Service', 'Switch & Fuse Repair', 'Fan & Chandelier Mount', 'Door Lock Fitting', 'Water Heater Repair'],
-  'Salon & Beauty for Women': ['O3+ Glow Facial', 'Rica Waxing', 'Spa Pedicure', 'Hair Spa', 'De-Tan Cleanup', 'Bridal Makeup'],
-  "Men's Salon & Grooming": ['Fade Haircut', 'Beard Shaping', 'Hot Towel Shave', 'Head Massage', 'Hair Color', 'Facial Scrub'],
-  'Home Painting & Decor': ['Accent Wall Paint', 'Wall Waterproofing', 'Damp Treatment', 'Stencil Design', 'POP Repair', 'Emulsion Coating'],
-};
+
 
 const CITY_COORDINATES = {
   'Delhi NCR': { lat: 28.6139, lng: 77.2090, zoom: 11 },
@@ -209,7 +201,9 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
       if (mapInstanceRef.current) {
         try {
           mapInstanceRef.current.fitBounds(circleInstanceRef.current.getBounds(), { padding: [20, 20] });
-        } catch (e) {}
+        } catch {
+          // ignore map fitBounds exception if unmounted
+        }
       }
     }
   }, [radiusKm]);
@@ -246,12 +240,65 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     saveOnboardingSkills,
     saveOnboardingServiceArea,
     saveOnboardingWorkingHours,
+    updatePartnerProfile,
+    updateUser,
     isLoggingIn,
   } = useAuth();
 
-  // Step state: 1: 'location-access' | 2: 'docs-list' | 3: 'category' | 4: 'service-area' | 5: 'working-hours'
-  const [step, setStep] = useState(1);
+  // Step state: 1: 'location-access' | 2: 'docs-list' | 3: 'category' | 4: 'skills' | 5: 'service-area' | 6: 'working-hours'
+  const [step, setStep] = useState(() => {
+    const isLocationSaved = currentUser?.isLocationSaved || currentUser?.locationCoordinates?.lat || (currentUser?.address && currentUser?.assignedCity);
+    if (isLocationSaved && currentUser?.isDocumentsUploaded === false) {
+      return 2; // Jump directly to Document Upload if location is already saved
+    }
+    return 1; // Step 1: Location Access (GPS / Address Upload)
+  });
   const [subStep, setSubStep] = useState('list'); // 'list' | 'aadhaar' | 'generic'
+
+  // Profile Edit Modal State
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [editName, setEditName] = useState(currentUser?.name || '');
+  const [editEmail, setEditEmail] = useState(currentUser?.email || '');
+  const [editDob, setEditDob] = useState(currentUser?.dob || '1995-08-15');
+  const [editGender, setEditGender] = useState(currentUser?.gender || 'Male');
+  const [editCity, setEditCity] = useState(currentUser?.assignedCity || currentUser?.city || '');
+  const [activeCitiesList, setActiveCitiesList] = useState([]);
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  useEffect(() => {
+    cityService.getActiveCities()
+      .then((res) => {
+        const list = res.data?.data || res.data || [];
+        if (Array.isArray(list) && list.length > 0) {
+          setActiveCitiesList(list);
+          if (!editCity) setEditCity(list[0]._id);
+        }
+      })
+      .catch((err) => console.warn('Active cities fetch warning:', err));
+  }, []);
+
+  const handleSaveProfileEdit = async (e) => {
+    e?.preventDefault();
+    setError('');
+    setSavingProfile(true);
+    try {
+      const res = await updatePartnerProfile({
+        name: editName,
+        email: editEmail,
+        dob: editDob,
+        gender: editGender,
+        assignedCity: editCity,
+      });
+      const updatedUser = res.data?.user || res.user || { ...currentUser, name: editName, email: editEmail, dob: editDob, gender: editGender, assignedCity: editCity };
+      updateUser(updatedUser);
+      setSuccessMsg('✅ Profile information updated successfully!');
+      setShowEditProfileModal(false);
+    } catch (err) {
+      setError(err.message || 'Failed to update profile');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   // Location Access State
   const [deviceCoords, setDeviceCoords] = useState(currentUser?.locationCoordinates || null);
@@ -324,7 +371,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
         const rawCats = selectedCategories.length > 0
           ? selectedCategories
           : (category ? [category] : (currentUser?.categories || (currentUser?.category ? [currentUser.category] : [])));
-        
+
         const catIds = rawCats.map((c) => (typeof c === 'object' && c?._id ? c._id : c));
         const categoriesParam = catIds.join(',');
 
@@ -352,15 +399,50 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
 
   // Service Area State
   const [workRadius, setWorkRadius] = useState(currentUser?.workRadius || 8);
-  const [selectedLocalities, setSelectedLocalities] = useState(currentUser?.localities?.length ? currentUser.localities : []);
+  const [selectedLocalities, setSelectedLocalities] = useState(() => {
+    if (currentUser?.localities?.length) return currentUser.localities;
+    const initialCity = currentUser?.assignedCity || currentUser?.city || 'Delhi NCR';
+    const locs = REAL_LOCALITIES_BY_CITY[initialCity] || REAL_LOCALITIES_BY_CITY['Delhi NCR'];
+    return locs.slice(0, 4);
+  });
 
   // Working Hours State
   const [workingHours, setWorkingHours] = useState(currentUser?.workingHours?.length ? currentUser.workingHours : DEFAULT_SCHEDULE);
 
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [nearbyLocalityName, setNearbyLocalityName] = useState('');
+  const [customLocalityInput, setCustomLocalityInput] = useState('');
 
   const workCity = currentUser?.assignedCity || 'Delhi NCR';
+
+  // Automatically detect partner's saved position & reverse geocode nearby locality name
+  useEffect(() => {
+    const coordsObj = deviceCoords || currentUser?.locationCoordinates;
+    if (coordsObj?.lat && coordsObj?.lng) {
+      const cLat = Number(coordsObj.lat);
+      const cLng = Number(coordsObj.lng);
+      fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${cLat}&lon=${cLng}&zoom=14`
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          const addr = data?.address || {};
+          const detected = addr.suburb || addr.neighbourhood || addr.residential || addr.subdistrict || addr.town || addr.city_district;
+          if (detected) {
+            const locName = `${detected} (${workCity})`;
+            setNearbyLocalityName(locName);
+            setSelectedLocalities((prev) => {
+              if (!prev.includes(locName)) {
+                return [locName, ...prev];
+              }
+              return prev;
+            });
+          }
+        })
+        .catch((e) => console.warn('Nearby locality reverse geocode warning:', e));
+    }
+  }, [deviceCoords, currentUser?.locationCoordinates, workCity]);
 
   // Load Super Admin Categories from backend
   useEffect(() => {
@@ -383,65 +465,59 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     fetchCats();
   }, []);
 
-  // Default localities
-  useEffect(() => {
-    const locs = REAL_LOCALITIES_BY_CITY[workCity] || REAL_LOCALITIES_BY_CITY['Delhi NCR'];
-    if (!selectedLocalities.length) {
-      setSelectedLocalities(locs.slice(0, 4));
-    }
-  }, [workCity]);
 
-// Helper to compress client-side images before FormData R2 upload (Prevents 413 Payload Too Large)
-const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
-  return new Promise((resolve) => {
-    if (!file || !file.type?.startsWith('image/')) {
-      resolve(file);
-      return;
-    }
 
-    const img = new Image();
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-      img.src = e.target.result;
-    };
-
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let { width, height } = img;
-
-      if (width > maxWidth) {
-        height = Math.round((height * maxWidth) / width);
-        width = maxWidth;
+  // Helper to compress client-side images before FormData R2 upload (Prevents 413 Payload Too Large)
+  const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
+    return new Promise((resolve) => {
+      if (!file || !file.type?.startsWith('image/')) {
+        resolve(file);
+        return;
       }
 
-      canvas.width = width;
-      canvas.height = height;
+      const img = new Image();
+      const reader = new FileReader();
 
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
+      reader.onload = (e) => {
+        img.src = e.target.result;
+      };
 
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            const compressedFile = new File([blob], file.name, {
-              type: 'image/jpeg',
-              lastModified: Date.now(),
-            });
-            resolve(compressedFile);
-          } else {
-            resolve(file);
-          }
-        },
-        'image/jpeg',
-        quality
-      );
-    };
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
 
-    img.onerror = () => resolve(file);
-    reader.readAsDataURL(file);
-  });
-};
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+
+      img.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    });
+  };
 
   // Local Document Attachment Handler (Batched until Continue click, with auto compression)
   const handleDocumentFileSelect = async (docKey, file) => {
@@ -471,7 +547,7 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
     reader.readAsDataURL(processedFile);
   };
 
-  // STEP 1: Allow Location Access Handler (Device Geolocation API)
+  // STEP 1: Allow Location Access Handler (Device Geolocation API - UI Get & Show Only)
   const handleAllowLocationAccess = () => {
     if (!navigator.geolocation) {
       setError('Geolocation is not supported by your browser.');
@@ -502,21 +578,8 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
         }
 
         setDeviceAddress(detectedAddr);
-
-        try {
-          await saveOnboardingLocation({
-            latitude,
-            longitude,
-            address: detectedAddr,
-            city: workCity,
-          });
-          setSuccessMsg('✅ Device location access granted & saved successfully!');
-        } catch (err) {
-          console.error('Failed to save location:', err);
-          setError('Location detected, but failed to sync to server');
-        } finally {
-          setIsDetectingGps(false);
-        }
+        setSuccessMsg('✅ Current location detected! Click Continue to save.');
+        setIsDetectingGps(false);
       },
       (err) => {
         setIsDetectingGps(false);
@@ -527,15 +590,31 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
     );
   };
 
-  // STEP 1 Submit: Move to Document Upload Page
-  const handleStep1LocationSubmit = () => {
+  // STEP 1 Submit: Save Location to Database on Continue Click & Move to Document Upload Page
+  const handleStep1LocationSubmit = async () => {
     setError('');
-    if (!deviceCoords && !currentUser?.locationCoordinates && !deviceAddress) {
-      setError('Please click "Allow Location Access" button to extract current position!');
+    const targetLat = deviceCoords?.lat || currentUser?.locationCoordinates?.lat;
+    const targetLng = deviceCoords?.lng || currentUser?.locationCoordinates?.lng;
+    const targetAddr = deviceAddress || currentUser?.address;
+
+    if (!targetLat || !targetLng || !targetAddr) {
+      setError('Please click "Allow Location Access" button to extract current position first!');
       return;
     }
-    setStep(2); // Go to Document Upload!
-    setSubStep('list');
+
+    try {
+      await saveOnboardingLocation({
+        latitude: targetLat,
+        longitude: targetLng,
+        address: targetAddr,
+        city: workCity,
+      });
+      setStep(2); // Move to Document Upload Page!
+      setSubStep('list');
+    } catch (err) {
+      console.error('Failed to save location to DB:', err);
+      setError(err.message || 'Failed to save location to database. Please try again.');
+    }
   };
 
   // STEP 2: Submit All Attached Documents in Single FormData Request to R2
@@ -554,7 +633,9 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
         });
 
         setSuccessMsg('Uploading all attached documents to Cloudflare R2 storage... ⏳');
-        await partnerService.uploadDocuments(formData);
+        await saveOnboardingDocuments(formData);
+      } else {
+        await saveOnboardingDocuments({});
       }
 
       setSuccessMsg('✅ Documents saved successfully! Proceeding to Category Selection...');
@@ -694,35 +775,56 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
           borderBottom: '1px solid #f1f5f9',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {(step > 1 || subStep !== 'list') && (
-              <button
-                type="button"
-                onClick={() => {
-                  setError('');
-                  if (subStep === 'aadhaar') setSubStep('list');
-                  else setStep(step - 1);
-                }}
-                style={{
-                  background: '#f1f5f9',
-                  border: 'none',
-                  width: '34px',
-                  height: '34px',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                }}
-              >
-                <ArrowLeft size={16} />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                setError('');
+                if (subStep === 'aadhaar') {
+                  setSubStep('list');
+                } else if (step > 1) {
+                  setStep(step - 1);
+                } else {
+                  setShowEditProfileModal(true);
+                }
+              }}
+              style={{
+                background: '#f1f5f9',
+                border: 'none',
+                width: '34px',
+                height: '34px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+              title="Go back / Edit Profile"
+            >
+              <ArrowLeft size={16} />
+            </button>
+
             <div>
               <div style={{ fontSize: '0.98rem', fontWeight: '800', color: '#0f172a' }}>
                 Partner KYC Setup
               </div>
-              <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
-                {currentUser?.name || 'Partner Agency'} • {workCity}
+              <div style={{ fontSize: '0.74rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>{currentUser?.name || 'Partner Agency'}</span>
+                <button
+                  type="button"
+                  onClick={() => setShowEditProfileModal(true)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#2563eb',
+                    fontSize: '0.74rem',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    padding: 0,
+                  }}
+                >
+                  Edit Profile
+                </button>
               </div>
             </div>
           </div>
@@ -748,12 +850,46 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
           </button>
         </div>
 
-        {/* Multi-step Progress Bar Indicator */}
-        <div style={{ padding: '14px 24px 4px 24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', fontWeight: '800', color: '#16a34a', marginBottom: '6px' }}>
-            <span>STEP {step} OF 6</span>
-            <span>{step === 1 ? 'Allow Location Access' : step === 2 ? 'Upload Documents' : step === 3 ? 'Select Category' : step === 4 ? 'Skills & Experience' : step === 5 ? 'Service Area' : 'Working Hours'}</span>
+        {/* Clickable Multi-step Interactive Progress Indicator */}
+        <div style={{ padding: '14px 20px 4px 20px' }}>
+          <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
+            {[
+              { id: 1, label: '1. Location' },
+              { id: 2, label: '2. Docs' },
+              { id: 3, label: '3. Category' },
+              { id: 4, label: '4. Skills' },
+              { id: 5, label: '5. Area' },
+              { id: 6, label: '6. Hours' },
+            ].map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => {
+                  setError('');
+                  setSubStep('list');
+                  setStep(s.id);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '5px 1px',
+                  borderRadius: '8px',
+                  fontSize: '0.68rem',
+                  fontWeight: '800',
+                  border: step === s.id ? '2px solid #16a34a' : '1px solid #e2e8f0',
+                  background: step === s.id ? '#dcfce7' : s.id < step ? '#f0fdf4' : '#ffffff',
+                  color: step === s.id ? '#15803d' : s.id < step ? '#16a34a' : '#64748b',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  textAlign: 'center',
+                  transition: 'all 0.2s ease',
+                }}
+                title={`Click to jump back to ${s.label}`}
+              >
+                {s.label}
+              </button>
+            ))}
           </div>
+
           <div style={{ height: '6px', width: '100%', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
             <div style={{
               height: '100%',
@@ -857,30 +993,52 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
                 )}
               </button>
             )}
-
-            <button
-              type="button"
-              onClick={handleStep1LocationSubmit}
-              disabled={isLoggingIn}
-              style={{
-                width: '100%',
-                padding: '14px',
-                borderRadius: '14px',
-                background: (deviceCoords || deviceAddress || currentUser?.locationCoordinates) ? '#16a34a' : '#94a3b8',
-                color: '#ffffff',
-                border: 'none',
-                fontSize: '0.98rem',
-                fontWeight: '700',
-                cursor: (deviceCoords || deviceAddress || currentUser?.locationCoordinates) ? 'pointer' : 'not-allowed',
-                boxShadow: (deviceCoords || deviceAddress || currentUser?.locationCoordinates) ? '0 8px 20px rgba(22, 163, 74, 0.3)' : 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-              }}
-            >
-              Continue to Document Upload <ArrowRight size={18} />
-            </button>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
+              <button
+                type="button"
+                onClick={() => setShowEditProfileModal(true)}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  borderRadius: '14px',
+                  background: '#f1f5f9',
+                  color: '#334155',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.88rem',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                }}
+              >
+                <ArrowLeft size={16} /> Edit Profile
+              </button>
+              <button
+                type="button"
+                onClick={handleStep1LocationSubmit}
+                disabled={isLoggingIn}
+                style={{
+                  flex: 1.5,
+                  padding: '14px',
+                  borderRadius: '14px',
+                  background: (deviceCoords || deviceAddress || currentUser?.locationCoordinates) ? '#16a34a' : '#94a3b8',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontSize: '0.94rem',
+                  fontWeight: '700',
+                  cursor: (deviceCoords || deviceAddress || currentUser?.locationCoordinates) ? 'pointer' : 'not-allowed',
+                  boxShadow: (deviceCoords || deviceAddress || currentUser?.locationCoordinates) ? '0 8px 20px rgba(22, 163, 74, 0.3)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                }}
+              >
+                Continue <ArrowRight size={16} />
+              </button>
+            </div>
           </div>
         )}
 
@@ -1005,19 +1163,59 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
 
             </div>
 
-            {/* Generic Document Upload Modal */}
+            {/* GENERIC SINGLE DOC UPLOAD MODAL */}
             {showGenericModal && (
-              <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-                <div style={{ width: '100%', maxWidth: '380px', background: '#ffffff', borderRadius: '20px', padding: '22px', border: '1px solid #e2e8f0' }}>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', margin: '0 0 14px 0' }}>
-                    Attach {activeGenericDoc === 'panDoc' ? 'PAN Card' : activeGenericDoc === 'drivingLicenseDoc' ? 'Driving License' : activeGenericDoc === 'passportPhoto' ? 'Passport Photo' : 'Bank Passbook'}
-                  </h3>
+              <div style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(15, 23, 42, 0.65)',
+                backdropFilter: 'blur(4px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 9999,
+                padding: '16px',
+              }}>
+                <div style={{
+                  width: '100%',
+                  maxWidth: '380px',
+                  background: '#ffffff',
+                  borderRadius: '24px',
+                  padding: '22px',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+                      Upload {activeGenericDoc === 'panDoc' ? 'PAN Card' : activeGenericDoc === 'passportPhoto' ? 'Passport Photo' : activeGenericDoc === 'drivingLicenseDoc' ? 'Driving License' : 'Bank Passbook'}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowGenericModal(false)}
+                      style={{ background: '#f1f5f9', border: 'none', width: '28px', height: '28px', borderRadius: '50%', cursor: 'pointer', fontWeight: '700' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
 
-                  <label htmlFor="generic-doc-file" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '140px', borderRadius: '16px', border: '2px dashed #16a34a', background: '#f0fdf4', cursor: 'pointer', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
+                  <label htmlFor="generic-doc-file" style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '140px',
+                    borderRadius: '16px',
+                    border: documents[activeGenericDoc] ? '2px solid #16a34a' : '2px dashed #bbf7d0',
+                    background: documents[activeGenericDoc] ? '#f0fdf4' : '#f8fafc',
+                    cursor: 'pointer',
+                    padding: '14px',
+                    textAlign: 'center',
+                    marginBottom: '16px',
+                  }}>
                     {documents[activeGenericDoc] ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                         <CheckCircle2 size={32} color="#16a34a" />
-                        <span style={{ fontSize: '0.84rem', fontWeight: '700', color: '#15803d' }}>File Attached Successfully!</span>
+                        <span style={{ fontSize: '0.86rem', fontWeight: '700', color: '#15803d' }}>Document Uploaded! ✓</span>
+                        <span style={{ fontSize: '0.74rem', color: '#64748b' }}>Tap to change file</span>
                       </div>
                     ) : (
                       <>
@@ -1046,14 +1244,23 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={handleStep2DocsSubmit}
-              disabled={isLoggingIn}
-              style={{ width: '100%', padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.98rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            >
-              {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue <ArrowRight size={18} /></>}
-            </button>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                style={{ flex: 1, padding: '14px', borderRadius: '14px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                <ArrowLeft size={16} /> Back
+              </button>
+              <button
+                type="button"
+                onClick={handleStep2DocsSubmit}
+                disabled={isLoggingIn}
+                style={{ flex: 1.5, padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.94rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue <ArrowRight size={16} /></>}
+              </button>
+            </div>
           </div>
         )}
 
@@ -1252,14 +1459,23 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
               })}
             </div>
 
-            <button
-              type="button"
-              onClick={handleStep3CategorySubmit}
-              disabled={isLoggingIn}
-              style={{ width: '100%', padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.98rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            >
-              {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue to Skills & Experience <ArrowRight size={18} /></>}
-            </button>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                style={{ flex: 1, padding: '14px', borderRadius: '14px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                <ArrowLeft size={16} /> Back
+              </button>
+              <button
+                type="button"
+                onClick={handleStep3CategorySubmit}
+                disabled={isLoggingIn}
+                style={{ flex: 1.5, padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.94rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue <ArrowRight size={16} /></>}
+              </button>
+            </div>
           </div>
         )}
 
@@ -1372,14 +1588,23 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={handleStep4SkillsSubmit}
-              disabled={isLoggingIn}
-              style={{ width: '100%', padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.98rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            >
-              {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue to Service Area <ArrowRight size={18} /></>}
-            </button>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
+              <button
+                type="button"
+                onClick={() => setStep(3)}
+                style={{ flex: 1, padding: '14px', borderRadius: '14px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                <ArrowLeft size={16} /> Back
+              </button>
+              <button
+                type="button"
+                onClick={handleStep4SkillsSubmit}
+                disabled={isLoggingIn}
+                style={{ flex: 1.5, padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.94rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue <ArrowRight size={16} /></>}
+              </button>
+            </div>
           </div>
         )}
 
@@ -1397,8 +1622,12 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
               </p>
             </div>
 
-            {/* Interactive Leaflet Map with Real-time Dynamic Circle Radius Overlay */}
-            <InteractiveServiceMap city={workCity} radiusKm={workRadius} />
+            {/* Interactive Leaflet Map with Real-time Dynamic Circle Radius Overlay centered on Current Position */}
+            <InteractiveServiceMap
+              city={workCity}
+              radiusKm={workRadius}
+              coords={deviceCoords || currentUser?.locationCoordinates}
+            />
 
             {/* Work Radius Slider */}
             <div style={{ marginBottom: '22px' }}>
@@ -1423,12 +1652,49 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
 
             {/* Available Localities (Customise) Real Data */}
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '8px' }}>
-                Available Localities (Customise)
-              </label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
-                {(REAL_LOCALITIES_BY_CITY[workCity] || REAL_LOCALITIES_BY_CITY['Delhi NCR']).map((loc) => {
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155', margin: 0 }}>
+                  Available Localities (Customise)
+                </label>
+                <span style={{ fontSize: '0.72rem', color: '#16a34a', fontWeight: '600' }}>
+                  📍 Nearby your saved location
+                </span>
+              </div>
+
+              {/* Add Custom Locality Input */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                <input
+                  type="text"
+                  placeholder="+ Add custom nearby locality..."
+                  value={customLocalityInput}
+                  onChange={(e) => setCustomLocalityInput(e.target.value)}
+                  style={{ flex: 1, padding: '8px 12px', borderRadius: '10px', border: '1.5px dashed #bbf7d0', background: '#f0fdf4', fontSize: '0.84rem', outline: 'none' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (customLocalityInput.trim()) {
+                      const newLoc = customLocalityInput.trim();
+                      if (!selectedLocalities.includes(newLoc)) {
+                        setSelectedLocalities([newLoc, ...selectedLocalities]);
+                      }
+                      setCustomLocalityInput('');
+                    }
+                  }}
+                  style={{ padding: '8px 12px', borderRadius: '10px', background: '#16a34a', color: '#ffffff', border: 'none', fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer' }}
+                >
+                  + Add
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
+                {Array.from(new Set([
+                  ...(nearbyLocalityName ? [nearbyLocalityName] : []),
+                  ...selectedLocalities,
+                  ...(REAL_LOCALITIES_BY_CITY[workCity] || REAL_LOCALITIES_BY_CITY['Delhi NCR']),
+                ])).map((loc) => {
                   const isChecked = selectedLocalities.includes(loc);
+                  const isNearby = loc === nearbyLocalityName;
                   return (
                     <div
                       key={loc}
@@ -1447,22 +1713,33 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
                         color: isChecked ? '#15803d' : '#334155',
                       }}
                     >
-                      <span>📍 {loc}</span>
-                      <input type="checkbox" checked={isChecked} onChange={() => {}} style={{ accentColor: '#16a34a' }} />
+                      <span>
+                        📍 {loc} {isNearby && <span style={{ marginLeft: '6px', fontSize: '0.7rem', background: '#dcfce7', color: '#15803d', padding: '2px 6px', borderRadius: '6px', fontWeight: '700' }}>Your Location</span>}
+                      </span>
+                      <input type="checkbox" checked={isChecked} onChange={() => { }} style={{ accentColor: '#16a34a' }} />
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleStep5AreaSubmit}
-              disabled={isLoggingIn}
-              style={{ width: '100%', padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.98rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            >
-              {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue to Working Hours <ArrowRight size={18} /></>}
-            </button>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
+              <button
+                type="button"
+                onClick={() => setStep(4)}
+                style={{ flex: 1, padding: '14px', borderRadius: '14px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                <ArrowLeft size={16} /> Back
+              </button>
+              <button
+                type="button"
+                onClick={handleStep5AreaSubmit}
+                disabled={isLoggingIn}
+                style={{ flex: 1.5, padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.94rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue <ArrowRight size={16} /></>}
+              </button>
+            </div>
           </div>
         )}
 
@@ -1526,29 +1803,161 @@ const compressImage = (file, maxWidth = 1600, quality = 0.8) => {
               ))}
             </div>
 
-            <button
-              type="button"
-              onClick={handleStep6Submit}
-              disabled={isLoggingIn}
-              style={{
-                width: '100%',
-                padding: '14px',
-                borderRadius: '14px',
-                background: '#16a34a',
-                color: '#ffffff',
-                border: 'none',
-                fontSize: '1rem',
-                fontWeight: '800',
-                cursor: 'pointer',
-                boxShadow: '0 8px 20px rgba(22, 163, 74, 0.35)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-              }}
-            >
-              {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Save Hours & Open Dashboard <CheckCircle2 size={18} /></>}
-            </button>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
+              <button
+                type="button"
+                onClick={() => setStep(5)}
+                style={{ flex: 1, padding: '14px', borderRadius: '14px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                <ArrowLeft size={16} /> Back
+              </button>
+              <button
+                type="button"
+                onClick={handleStep6Submit}
+                disabled={isLoggingIn}
+                style={{
+                  flex: 1.5,
+                  padding: '14px',
+                  borderRadius: '14px',
+                  background: '#16a34a',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontSize: '0.94rem',
+                  fontWeight: '800',
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 20px rgba(22, 163, 74, 0.35)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                }}
+              >
+                {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Save & Complete 🎉</>}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* EDIT PROFILE DETAILS MODAL */}
+        {showEditProfileModal && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '16px',
+          }}>
+            <div style={{
+              width: '100%',
+              maxWidth: '420px',
+              background: '#ffffff',
+              borderRadius: '24px',
+              padding: '24px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+                  Edit Profile Details
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowEditProfileModal(false)}
+                  style={{ background: '#f1f5f9', border: 'none', width: '30px', height: '30px', borderRadius: '50%', cursor: 'pointer', fontWeight: '700' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveProfileEdit}>
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Full Name</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Enter full name"
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', outline: 'none' }}
+                    required
+                  />
+                </div>
+
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Email Address</label>
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    placeholder="name@domain.com"
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', outline: 'none' }}
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Date of Birth</label>
+                    <input
+                      type="date"
+                      value={editDob}
+                      onChange={(e) => setEditDob(e.target.value)}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '0.86rem', outline: 'none' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Gender</label>
+                    <select
+                      value={editGender}
+                      onChange={(e) => setEditGender(e.target.value)}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '0.86rem', outline: 'none', background: '#ffffff' }}
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Assigned City</label>
+                  <select
+                    value={editCity}
+                    onChange={(e) => setEditCity(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '0.86rem', outline: 'none', background: '#ffffff' }}
+                  >
+                    {activeCitiesList.length > 0 ? (
+                      activeCitiesList.map((c) => (
+                        <option key={c._id} value={c._id}>
+                          {c.name} {c.state ? `(${c.state})` : ''}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="Delhi NCR">Delhi NCR</option>
+                    )}
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowEditProfileModal(false)}
+                    style={{ flex: 1, padding: '12px', borderRadius: '12px', background: '#f1f5f9', color: '#334155', border: 'none', fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingProfile}
+                    style={{ flex: 1.5, padding: '12px', borderRadius: '12px', background: '#16a34a', color: '#ffffff', border: 'none', fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer' }}
+                  >
+                    {savingProfile ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 

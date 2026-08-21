@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { catalogService } from '../services/catalog.service.js';
+import { cityService } from '../services/city.service.js';
 
 const DEFAULT_SCHEDULE = [
   { day: 'Monday', isOpen: true, openTime: '09:00 AM', closeTime: '07:00 PM' },
@@ -97,10 +98,23 @@ const PartnerAuthPage = () => {
   const [email, setEmail] = useState('');
   const [dob, setDob] = useState('1995-08-15');
   const [gender, setGender] = useState('Male');
-  const [workCity, setWorkCity] = useState('Delhi NCR');
+  const [workCity, setWorkCity] = useState('');
+  const [activeCitiesList, setActiveCitiesList] = useState([]);
   const [category, setCategory] = useState('');
   const [categoriesList, setCategoriesList] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
+
+  useEffect(() => {
+    cityService.getActiveCities()
+      .then((res) => {
+        const list = res.data?.data || res.data || [];
+        if (Array.isArray(list) && list.length > 0) {
+          setActiveCitiesList(list);
+          if (!workCity) setWorkCity(list[0]._id);
+        }
+      })
+      .catch((err) => console.warn('Active cities fetch warning:', err));
+  }, []);
 
   // Step 4 & 5: Location State
   const [detectedAddress, setDetectedAddress] = useState('');
@@ -208,17 +222,19 @@ const PartnerAuthPage = () => {
     }
   };
 
-  // Check where partner should be directed after OTP / Profile creation
-  const handleEvaluatePartnerNextStep = (userObj, token) => {
+  // Check where partner should be directed after OTP / Profile creation based on server nextStep
+  const handleEvaluatePartnerNextStep = (userObj, token, resData = {}) => {
+    const nextStep = resData?.nextStep || resData?.data?.nextStep;
     const isKycSubmitted = userObj?.isKycSubmitted === true;
-    if (isKycSubmitted) {
-      if (userObj.kycStatus === 'approved') {
-        login(userObj, token);
-      } else {
-        setStep('approval-pending');
-      }
+
+    if (nextStep === 'CREATE_PROFILE' || resData?.onboardingStatus?.isProfileCompleted === false) {
+      setStep('create-profile');
+    } else if (nextStep === 'DONE' || nextStep === 'COMPLETED') {
+      login(userObj, token);
+    } else if (nextStep === 'PENDING_APPROVAL' || (isKycSubmitted && userObj.kycStatus === 'pending')) {
+      setStep('approval-pending');
     } else {
-      // KYC NOT completed -> Log in so App.jsx renders PartnerOnboardingPage
+      // Need onboarding steps (e.g. UPLOAD_LOCATION, UPLOAD_DOCUMENTS, SELECT_CATEGORY, etc.) -> log in to render PartnerOnboardingPage
       login(userObj, token);
     }
   };
@@ -270,9 +286,11 @@ const PartnerAuthPage = () => {
 
     try {
       const res = await verifyPartnerOtp({ phone: formattedPhone, otp: otpCode });
-      const userObj = res.data?.user || res.user || res.data;
-      const accessToken = res.data?.accessToken || res.accessToken;
-      const isProfileCompleted = res.data?.isProfileCompleted ?? res.isProfileCompleted;
+      const responseData = res.data || res;
+      const userObj = responseData?.user || res.user || res.data;
+      const accessToken = responseData?.accessToken || res.accessToken;
+      const nextStep = responseData?.nextStep || res.nextStep;
+      const isProfileCompleted = responseData?.onboardingStatus?.isProfileCompleted ?? responseData?.isProfileCompleted ?? res.isProfileCompleted;
 
       setPendingUser(userObj);
       setPendingToken(accessToken);
@@ -287,12 +305,12 @@ const PartnerAuthPage = () => {
       if (userObj.category) setCategory(userObj.category);
       if (userObj.documents) setDocuments((prev) => ({ ...prev, ...userObj.documents }));
 
-      if (isProfileCompleted) {
-        // Profile is complete -> Check KYC status!
-        handleEvaluatePartnerNextStep(userObj, accessToken);
-      } else {
+      if (nextStep === 'CREATE_PROFILE' || !isProfileCompleted) {
         // New partner or incomplete profile -> Go to Profile Creation!
         setStep('create-profile');
+      } else {
+        // Profile is complete -> Evaluate next step or KYC status!
+        handleEvaluatePartnerNextStep(userObj, accessToken, responseData);
       }
     } catch (err) {
       setError(err.message || 'Invalid or expired OTP code.');
@@ -907,12 +925,15 @@ const PartnerAuthPage = () => {
                   onChange={(e) => setWorkCity(e.target.value)}
                   style={{ width: '100%', padding: '11px 14px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '0.92rem', background: '#ffffff', outline: 'none' }}
                 >
-                  <option value="Delhi NCR">Delhi NCR</option>
-                  <option value="Bengaluru">Bengaluru</option>
-                  <option value="Mumbai">Mumbai</option>
-                  <option value="Hyderabad">Hyderabad</option>
-                  <option value="Pune">Pune</option>
-                  <option value="Jaipur">Jaipur</option>
+                  {activeCitiesList.length > 0 ? (
+                    activeCitiesList.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name} {c.state ? `(${c.state})` : ''}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="Delhi NCR">Delhi NCR</option>
+                  )}
                 </select>
               </div>
 

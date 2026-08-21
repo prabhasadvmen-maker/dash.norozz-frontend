@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import DedicatedPartnerNavbar from '../components/partner/DedicatedPartnerNavbar';
 import DedicatedPartnerSidebar from '../components/partner/DedicatedPartnerSidebar';
-import PartnerKycStatusView from '../components/partner/PartnerKycStatusView';
 import PartnerMetricCards from '../components/partner/PartnerMetricCards';
 import PartnerWalletCard from '../components/partner/PartnerWalletCard';
 import PartnerJobsTable from '../components/partner/PartnerJobsTable';
@@ -11,18 +10,16 @@ import PartnerQuickActions from '../components/partner/PartnerQuickActions';
 import OnlineOfflineModal from '../components/partner/OnlineOfflineModal';
 import IncomingJobOfferModal from '../components/partner/IncomingJobOfferModal';
 import PartnerFulfillmentPage from './partner/PartnerFulfillmentPage';
+import PartnerProfileView from '../components/partner/PartnerProfileView';
 import { socketService } from '../services/socket.service.js';
-import { partnerService } from '../services/partner.service.js';
+import { cityService } from '../services/city.service.js';
 import { usePartner } from '../hooks/usePartner.js';
 import { toast } from '../utils/toast.js';
 import {
   Users,
   Calendar,
   Star,
-  FileText,
   Headphones,
-  User,
-  Upload,
   Lock,
   ZapOff,
 } from 'lucide-react';
@@ -51,6 +48,23 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
   const kycStatus = dashboard?.kycStatus || currentUser?.kycStatus || 'pending';
   const isApproved = kycStatus === 'approved';
 
+  const initialCityName = (typeof currentUser?.assignedCity === 'object' && currentUser?.assignedCity?.name)
+    ? currentUser.assignedCity.name
+    : (currentUser?.city || (typeof currentUser?.assignedCity === 'string' && !currentUser.assignedCity.match(/^[0-9a-fA-F]{24}$/) ? currentUser.assignedCity : 'Delhi NCR'));
+
+  const [resolvedCityName, setResolvedCityName] = useState(initialCityName);
+
+  useEffect(() => {
+    const raw = currentUser?.assignedCity || currentUser?.city;
+    if (typeof raw === 'string' && raw.match(/^[0-9a-fA-F]{24}$/)) {
+      cityService.getActiveCities().then((res) => {
+        const list = res.data?.data || res.data || [];
+        const match = list.find((c) => String(c._id) === String(raw));
+        if (match?.name) setResolvedCityName(match.name);
+      }).catch(() => {});
+    }
+  }, [currentUser]);
+
   // Real-Time Socket.io Connection Effect
   useEffect(() => {
     if (!isApproved || !isOnline || !currentUser?._id) return;
@@ -59,7 +73,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
     socketService.joinPartner({
       partnerId: currentUser._id,
       category: currentUser.category || 'AC & Appliance Repair',
-      city: currentUser.assignedCity || currentUser.city || 'Delhi NCR',
+      city: resolvedCityName,
     });
 
     // Listen for new real-time job offers
@@ -130,7 +144,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
           ? '⚡ You are now ONLINE! High-paying booking requests active.'
           : '🌙 You are now OFFLINE. Booking requests paused.'
       );
-    } catch (err) {
+    } catch {
       // Fallback local toggle if server fails
       setIsOnline(nextStatus);
     } finally {
@@ -199,7 +213,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
                 {activeTab === 'profile' && 'Service Technician Partner Profile'}
               </h2>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                {currentUser?.name || 'Service Partner'} ({currentUser?.category || 'Technician'}) • {currentUser?.assignedCity || currentUser?.city || 'Delhi NCR'} Zone
+                {currentUser?.name || 'Service Partner'} ({currentUser?.category || 'Technician'}) • {resolvedCityName} Zone
               </p>
             </div>
           </div>
@@ -229,15 +243,12 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
                         </div>
                       </div>
                     </div>
-                    <button onClick={() => setActiveTab('kycStatus')} className="btn btn-primary btn-sm">
-                      Check KYC Status
+                    <button onClick={() => setActiveTab('profile')} className="btn btn-primary btn-sm">
+                      View Profile & KYC Details
                     </button>
                   </div>
 
-                  <PartnerKycStatusView
-                    kycStatus={kycStatus}
-                    partnerData={currentUser}
-                  />
+                  <PartnerProfileView partnerData={currentUser} />
                 </div>
               ) : (
                 /* FULL UNLOCKED DASHBOARD VIEW */
@@ -311,35 +322,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
             </>
           )}
 
-          {/* TAB 2: KYC STATUS */}
-          {activeTab === 'kycStatus' && (
-            <PartnerKycStatusView
-              kycStatus={kycStatus}
-              partnerData={currentUser}
-            />
-          )}
 
-          {/* TAB 3: DOCUMENTS */}
-          {activeTab === 'documents' && (
-            <div className="mui-card" style={{ padding: '26px', maxWidth: '600px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <FileText size={20} color="#7c3aed" /> Uploaded ID Verification Documents
-                </h3>
-                <button className="btn btn-secondary btn-sm"><Upload size={14} /> Upload New Doc</button>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {['Aadhaar Card (Front & Back)', 'PAN Card Document', 'Bank Passbook / Cancelled Cheque'].map((doc, idx) => (
-                  <div key={idx} style={{ padding: '14px', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.88rem', fontWeight: '600' }}>{doc}</span>
-                    <span className={`badge ${isApproved ? 'badge-success' : 'badge-warning'}`}>
-                      {isApproved ? 'VERIFIED' : 'PENDING REVIEW'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* TAB 4: SUPPORT */}
           {activeTab === 'support' && (
@@ -355,24 +338,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
 
           {/* TAB 5: PROFILE */}
           {activeTab === 'profile' && (
-            <div className="mui-card" style={{ padding: '26px', maxWidth: '500px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <User size={20} color="#7c3aed" /> Service Technician Partner Profile
-              </h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'linear-gradient(135deg, #7c3aed, #ec4899)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '1.2rem' }}>
-                  {(currentUser?.name || 'T')[0].toUpperCase()}
-                </div>
-                <div>
-                  <div style={{ fontSize: '1rem', fontWeight: '800' }}>{currentUser?.name || 'Service Technician'}</div>
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Skill: {currentUser?.category || 'Individual Professional'}</div>
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{currentUser?.email}</div>
-                  <span className={`badge ${isApproved ? 'badge-success' : 'badge-warning'}`} style={{ marginTop: '6px' }}>
-                    {isApproved ? 'VERIFIED INDIVIDUAL TECHNICIAN' : 'KYC PENDING APPROVAL'}
-                  </span>
-                </div>
-              </div>
-            </div>
+            <PartnerProfileView partnerData={currentUser} />
           )}
 
           {/* UNLOCKED TABS */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DedicatedCityNavbar from '../components/cityAdmin/DedicatedCityNavbar';
 import DedicatedCitySidebar from '../components/cityAdmin/DedicatedCitySidebar';
 import CityMetricCards from '../components/cityAdmin/CityMetricCards';
@@ -6,6 +6,7 @@ import CityCharts from '../components/cityAdmin/CityCharts';
 import PartnerKycManagement from '../components/cityAdmin/PartnerKycManagement';
 import CityBookingDispatch from '../components/cityAdmin/CityBookingDispatch';
 import { useCityAdmin } from '../hooks/useCityAdmin.js';
+import { cityService } from '../services/city.service.js';
 import {
   Briefcase,
   CreditCard,
@@ -18,7 +19,23 @@ const CityAdminPanel = ({ currentUser, onLogout }) => {
   const { partners, revenue, refetch } = useCityAdmin();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [refreshing, setRefreshing] = useState(false);
-  const assignedCity = currentUser?.city || currentUser?.assignedCity || 'Delhi NCR';
+
+  const initialCityName = (typeof currentUser?.assignedCity === 'object' && currentUser?.assignedCity?.name)
+    ? currentUser.assignedCity.name
+    : (currentUser?.city || (typeof currentUser?.assignedCity === 'string' && !currentUser.assignedCity.match(/^[0-9a-fA-F]{24}$/) ? currentUser.assignedCity : 'Delhi NCR'));
+
+  const [assignedCity, setAssignedCity] = useState(initialCityName);
+
+  useEffect(() => {
+    const raw = currentUser?.assignedCity || currentUser?.city;
+    if (typeof raw === 'string' && raw.match(/^[0-9a-fA-F]{24}$/)) {
+      cityService.getActiveCities().then((res) => {
+        const list = res.data?.data || res.data || [];
+        const match = list.find((c) => String(c._id) === String(raw));
+        if (match?.name) setAssignedCity(match.name);
+      }).catch(() => {});
+    }
+  }, [currentUser]);
 
   const handleRefresh = () => {
     setRefreshing(true);

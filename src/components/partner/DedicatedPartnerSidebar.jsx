@@ -1,14 +1,11 @@
-import React from 'react';
 import {
   LayoutDashboard,
-  Users,
   CalendarCheck,
   Calendar,
   Clock,
   Wallet,
   Receipt,
   Star,
-  FileText,
   Headphones,
   User,
   LogOut,
@@ -23,8 +20,6 @@ const DedicatedPartnerSidebar = ({ activeTab, setActiveTab, onLogout, kycStatus 
   // 1. Base Unlocked Items for Pending State
   const baseItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'kycStatus', label: 'KYC Status', icon: ShieldCheck, badge: isApproved ? 'Approved' : 'Pending' },
-    { id: 'documents', label: 'Documents', icon: FileText },
     { id: 'support', label: 'Support', icon: Headphones },
     { id: 'profile', label: 'Profile', icon: User },
   ];
@@ -38,8 +33,6 @@ const DedicatedPartnerSidebar = ({ activeTab, setActiveTab, onLogout, kycStatus 
     { id: 'reviews', label: 'Reviews', icon: Star },
     { id: 'transactions', label: 'Transactions', icon: Receipt },
     { id: 'availability', label: 'Availability', icon: Clock },
-    { id: 'kycStatus', label: 'KYC Status', icon: ShieldCheck, badge: 'Approved' },
-    { id: 'documents', label: 'Documents', icon: FileText },
     { id: 'support', label: 'Support', icon: Headphones },
     { id: 'profile', label: 'Profile', icon: User },
   ];
