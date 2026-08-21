@@ -547,7 +547,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     reader.readAsDataURL(processedFile);
   };
 
-  // STEP 1: Allow Location Access Handler (Device Geolocation API - UI Get & Show Only)
+  // STEP 1: Allow Location Access Handler (Production-Grade watchPosition + Fallback Strategy)
   const handleAllowLocationAccess = () => {
     if (!navigator.geolocation) {
       setError('Geolocation is not supported by your browser.');
@@ -558,36 +558,100 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     setSuccessMsg('');
     setIsDetectingGps(true);
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        const coordsObj = { lat: latitude, lng: longitude };
-        setDeviceCoords(coordsObj);
+    let watchId = null;
+    let isResolved = false;
 
-        let detectedAddr = `${workCity} (GPS: ${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-          );
-          const data = await res.json();
-          if (data?.display_name) {
-            detectedAddr = data.display_name;
-          }
-        } catch (e) {
-          console.warn('Reverse geocoding warning:', e);
+    // Helper to process position, reverse geocode address, and update React state
+    const handleLocationSuccess = async (lat, lng, sourceLabel = 'Device GPS') => {
+      if (isResolved) return;
+      isResolved = true;
+
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+
+      const coordsObj = { lat, lng };
+      setDeviceCoords(coordsObj);
+
+      let detectedAddr = `${workCity} (Location: ${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+        );
+        const data = await res.json();
+        if (data?.display_name) {
+          detectedAddr = data.display_name;
         }
+      } catch (e) {
+        console.warn('Reverse geocoding warning:', e);
+      }
 
-        setDeviceAddress(detectedAddr);
-        setSuccessMsg('✅ Current location detected! Click Continue to save.');
-        setIsDetectingGps(false);
-      },
-      (err) => {
-        setIsDetectingGps(false);
-        console.error('GPS error:', err);
-        setError('Location permission denied or unavailable. Please enable GPS in browser.');
-      },
-      { timeout: 10000, enableHighAccuracy: true }
-    );
+      setDeviceAddress(detectedAddr);
+      setSuccessMsg(`✅ Location detected via ${sourceLabel}! Click Continue to save.`);
+      setIsDetectingGps(false);
+    };
+
+    // Multi-tiered Fallback strategy if hardware GPS is unavailable or times out
+    const triggerFallbackStrategy = async (reason = '') => {
+      if (isResolved) return;
+      console.warn(`Primary GPS acquisition failed (${reason}). Initiating fallback sequence...`);
+
+      // Fallback Tier 1: Try IP Geolocation API
+      try {
+        const ipRes = await fetch('https://ipapi.co/json/').then((r) => r.json());
+        if (ipRes && ipRes.latitude && ipRes.longitude) {
+          await handleLocationSuccess(Number(ipRes.latitude), Number(ipRes.longitude), 'IP Geolocation');
+          return;
+        }
+      } catch (ipErr) {
+        console.warn('IP Geolocation fallback failed:', ipErr);
+      }
+
+      // Fallback Tier 2: Use Selected Work City Default Coordinates
+      const defaultCoords = CITY_COORDINATES[workCity] || CITY_COORDINATES['Delhi NCR'] || { lat: 28.6139, lng: 77.2090 };
+      await handleLocationSuccess(defaultCoords.lat, defaultCoords.lng, 'City Center');
+    };
+
+    // Safety Timeout: 8 seconds for watchPosition to lock on
+    const watchTimeout = setTimeout(() => {
+      if (!isResolved) {
+        console.warn('watchPosition 8s safety timeout reached. Retrying with low-accuracy...');
+        if (watchId !== null) {
+          navigator.geolocation.clearWatch(watchId);
+          watchId = null;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => handleLocationSuccess(pos.coords.latitude, pos.coords.longitude, 'Low-Accuracy GPS'),
+          (err) => triggerFallbackStrategy(err?.message || 'Timeout'),
+          { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+        );
+      }
+    }, 8000);
+
+    try {
+      // Primary Acquisition: watchPosition with maximumAge allowing cached position & active stream lock
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          clearTimeout(watchTimeout);
+          handleLocationSuccess(pos.coords.latitude, pos.coords.longitude, 'Device GPS');
+        },
+        (err) => {
+          clearTimeout(watchTimeout);
+          console.warn('watchPosition error:', err?.message || err);
+          // High-accuracy failed (Code 2 / kCLErrorLocationUnknown): Retry with low-accuracy & maximumAge
+          navigator.geolocation.getCurrentPosition(
+            (pos) => handleLocationSuccess(pos.coords.latitude, pos.coords.longitude, 'Low-Accuracy GPS'),
+            () => triggerFallbackStrategy(err?.message || 'Code 2 Error'),
+            { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+          );
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      );
+    } catch (e) {
+      clearTimeout(watchTimeout);
+      triggerFallbackStrategy(e?.message);
+    }
   };
 
   // STEP 1 Submit: Save Location to Database on Continue Click & Move to Document Upload Page
