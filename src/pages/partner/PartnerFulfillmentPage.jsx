@@ -20,7 +20,9 @@ import {
   AlertCircle,
   ChevronRight,
   Loader2,
-  Key
+  Key,
+  Star,
+  ExternalLink
 } from 'lucide-react';
 import { toast } from '../../utils/toast.js';
 import { useBookings } from '../../hooks/useBookings.js';
@@ -30,6 +32,7 @@ import LiveChatModal from '../../components/common/LiveChatModal.jsx';
 const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) => {
   const { updateBookingStatus, completeBooking } = useBookings();
   const [chatOpen, setChatOpen] = useState(false);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
 
   // Active Step: 1=details, 2=nav, 3=customerInfo, 4=otp, 5=execution, 6=pause, 7=addons, 8=payment
   const [step, setStep] = useState(1);
@@ -96,13 +99,43 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
 
   // Derived Booking details
   const bId = booking.bookingId || booking.bookingNumber || `#NZ${booking._id?.toString().slice(-4).toUpperCase() || '2847'}`;
-  const custName = booking.customer?.name || 'Priya Mehta';
+  const custName = booking.customer?.name || 'ram';
   const custPhone = booking.customer?.phone || '+91 98765 43210';
-  const sTitle = booking.packageName || booking.service?.name || booking.serviceTitle || 'AC Repair - Split AC';
-  const basePrice = booking.amount || booking.service?.finalPrice || 850;
+  const sTitle = booking.packageName || booking.service?.name || booking.serviceTitle || 'Beard Trim & Hot Towel Shave - Beard Styling & Steam';
+  const basePrice = booking.amount || booking.service?.finalPrice || 276;
   const addonsTotal = selectedAddons.reduce((acc, curr) => acc + curr.price, 0);
   const finalTotal = basePrice + addonsTotal;
   const rawId = booking._id || booking.rawId;
+
+  // Full Address String
+  const fullAddressStr = typeof booking.address === 'object'
+    ? `${booking.address.title ? booking.address.title + ': ' : ''}${booking.address.addressLine || booking.address.street || ''}${booking.address.city || booking.city ? ', ' + (booking.address.city || booking.city) : ''}${booking.address.state ? ', ' + booking.address.state : ''}${booking.address.pincode ? ' - ' + booking.address.pincode : ''}`
+    : (booking.address || booking.city || 'Nizamabad, Azamgarh, Uttar Pradesh, 276141, India, Azamgarh');
+
+  // Real Distance & Time Calculation using Haversine
+  const calculateDistanceInfo = () => {
+    const pLat = currentUser?.locationCoordinates?.coordinates?.[1] || 12.9352;
+    const pLng = currentUser?.locationCoordinates?.coordinates?.[0] || 77.6245;
+
+    const cLat = booking.address?.coordinates?.[1] || 12.9121;
+    const cLng = booking.address?.coordinates?.[0] || 77.6445;
+
+    const R = 6371;
+    const dLat = (cLat - pLat) * (Math.PI / 180);
+    const dLon = (cLng - pLng) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(pLat * (Math.PI / 180)) * Math.cos(cLat * (Math.PI / 180)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const dist = R * c;
+    const km = dist > 0.1 ? Number(dist.toFixed(1)) : 3.2;
+    const durationMins = Math.max(4, Math.round((km / 20) * 60));
+    return { km, durationMins };
+  };
+
+  const distanceInfo = calculateDistanceInfo();
+  const joiningYear = booking.customer?.createdAt ? new Date(booking.customer.createdAt).getFullYear() : 2023;
 
   const formatTimer = (totalSecs) => {
     const mins = Math.floor(totalSecs / 60).toString().padStart(2, '0');
@@ -235,51 +268,92 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                 <span className="badge badge-success" style={{ padding: '6px 14px', fontSize: '0.82rem' }}>Confirmed</span>
               </div>
 
-              {/* Customer Info Card */}
-              <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              {/* Customer Info Card (Clickable) */}
+              <div
+                onClick={() => setShowCustomerModal(true)}
+                style={{
+                  padding: '16px',
+                  background: '#f8fafc',
+                  borderRadius: '16px',
+                  border: '1.5px solid var(--border-light)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                className="hover-card"
+              >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(135deg, #7c3aed, #ec4899)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '1.2rem' }}>
-                    {custName.charAt(0)}
+                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(135deg, #7c3aed, #ec4899)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '1.2rem', boxShadow: '0 4px 12px rgba(124, 58, 237, 0.25)' }}>
+                    {custName.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <div style={{ fontWeight: '800', fontSize: '1rem' }}>{custName}</div>
-                    <div style={{ fontSize: '0.78rem', color: '#f59e0b', fontWeight: '700' }}>⭐ 4.7 Customer Rating</div>
+                    <div style={{ fontWeight: '800', fontSize: '1.05rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {custName}
+                      <span style={{ fontSize: '0.72rem', color: '#7c3aed', background: '#f3e8ff', padding: '2px 8px', borderRadius: '12px', fontWeight: '700' }}>
+                        View Full Details
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: '#f59e0b', fontWeight: '700', marginTop: '2px' }}>⭐ 4.9 Customer Rating • Joined {joiningYear}</div>
                   </div>
                 </div>
-                <a href={`tel:${custPhone}`} style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#ecfdf5', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Phone size={20} />
-                </a>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setChatOpen(true);
+                    }}
+                    className="btn btn-sm"
+                    style={{ background: '#eff6ff', color: '#2563eb', fontWeight: '700', borderRadius: '10px', border: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <MessageSquare size={14} /> Live Chat
+                  </button>
+                  <a
+                    href={`tel:${custPhone}`}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#ecfdf5', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+                  >
+                    <Phone size={18} />
+                  </a>
+                </div>
               </div>
 
               {/* Service & Price Card */}
               <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontWeight: '800', fontSize: '1.05rem', color: 'var(--text-primary)' }}>{sTitle}</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>Today, 02:00 PM • Online Payment</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>Today, 10:30 AM • Online Payment</div>
                 </div>
                 <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#16a34a' }}>₹{basePrice}</div>
               </div>
 
-              {/* Delivery Address */}
-              <div>
-                <span style={{ fontSize: '0.78rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase' }}>SERVICE ADDRESS</span>
-                <p style={{ fontSize: '0.92rem', color: 'var(--text-primary)', margin: '4px 0 0 0', fontWeight: '600', lineHeight: '1.4' }}>
-                  Flat 302, Sunrise Apartments, HSR Layout, Sector 5, Bengaluru
+              {/* Delivery Address & Distance Card */}
+              <div style={{ padding: '16px', background: '#eff6ff', borderRadius: '16px', border: '1px solid #bfdbfe' }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#2563eb', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <MapPin size={16} /> FULL CUSTOMER ADDRESS
+                </div>
+                <p style={{ fontSize: '0.94rem', color: '#1e293b', margin: '6px 0 4px 0', fontWeight: '700', lineHeight: '1.4' }}>
+                  {fullAddressStr}
                 </p>
+                <div style={{ fontSize: '0.8rem', color: '#0284c7', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+                  📍 Real Distance: <strong style={{ color: '#16a34a' }}>{distanceInfo.km} km</strong> ({distanceInfo.durationMins} mins travel time)
+                </div>
               </div>
 
               {/* Interactive Route Map Card Preview */}
-              <div style={{ height: '180px', borderRadius: '18px', background: '#e0f2fe', overflow: 'hidden', border: '1px solid #bae6fd', position: 'relative' }}>
+              <div style={{ height: '200px', borderRadius: '18px', background: '#e0f2fe', overflow: 'hidden', border: '1px solid #bae6fd', position: 'relative' }}>
                 <iframe
                   title="Route Preview Map"
                   width="100%"
                   height="100%"
                   frameBorder="0"
-                  src="https://maps.google.com/maps?q=HSR+Layout+Bengaluru&t=&z=13&ie=UTF8&iwloc=&output=embed"
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(fullAddressStr)}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
                   style={{ filter: 'contrast(1.05)' }}
                 />
-                <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'rgba(255,255,255,0.95)', padding: '6px 12px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: '800', color: '#0284c7' }}>
-                  📍 Partner Location ➔ Customer (3.2 km)
+                <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'rgba(255,255,255,0.95)', padding: '6px 14px', borderRadius: '10px', fontSize: '0.82rem', fontWeight: '800', color: '#0284c7', boxShadow: '0 4px 12px rgba(0,0,0,0.12)' }}>
+                  📍 Live Partner ➔ Customer ({distanceInfo.km} km remaining)
                 </div>
               </div>
 
@@ -321,32 +395,89 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                 </div>
               </div>
 
-              {/* Full Route Map */}
+              {/* Full Route Map with Real Calculated Distance */}
               <div style={{ height: '260px', borderRadius: '18px', overflow: 'hidden', border: '1px solid var(--border-light)', position: 'relative' }}>
                 <iframe
                   title="Live Navigation Route Map"
                   width="100%"
                   height="100%"
                   frameBorder="0"
-                  src="https://maps.google.com/maps?q=HSR+Layout+Bengaluru&t=&z=14&ie=UTF8&iwloc=&output=embed"
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(fullAddressStr)}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
                 />
-                <div style={{ position: 'absolute', bottom: '14px', left: '14px', background: '#ffffff', padding: '8px 16px', borderRadius: '12px', boxShadow: '0 4px 14px rgba(0,0,0,0.15)', fontSize: '0.9rem', fontWeight: '800', color: 'var(--text-primary)' }}>
-                  ⏱️ 12 min <span style={{ color: 'var(--text-muted)', fontWeight: '600' }}>(3.2 km remaining)</span>
+                <div style={{ position: 'absolute', bottom: '14px', left: '14px', background: '#ffffff', padding: '8px 16px', borderRadius: '12px', boxShadow: '0 4px 14px rgba(0,0,0,0.15)', fontSize: '0.9rem', fontWeight: '800', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Clock size={16} color="#0284c7" />
+                  <span>⏱️ {distanceInfo.durationMins} min</span>
+                  <span style={{ color: 'var(--text-muted)', fontWeight: '600' }}>({distanceInfo.km} km remaining)</span>
+                </div>
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddressStr)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ position: 'absolute', top: '14px', right: '14px', background: '#ffffff', padding: '6px 12px', borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.12)', fontSize: '0.78rem', fontWeight: '800', color: '#2563eb', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  Open in Maps <ExternalLink size={12} />
+                </a>
+              </div>
+
+              {/* Customer Full Address Display Bar */}
+              <div style={{ padding: '14px 16px', background: '#eff6ff', borderRadius: '16px', border: '1px solid #bfdbfe' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#2563eb', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <MapPin size={15} /> Customer Destination Address
+                </div>
+                <div style={{ fontSize: '0.92rem', fontWeight: '700', color: '#0f172a', marginTop: '4px', lineHeight: '1.4' }}>
+                  {fullAddressStr}
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
-                <div style={{ fontWeight: '800', fontSize: '0.95rem' }}>{custName}</div>
+              {/* Customer Profile Quick Bar (Clickable) */}
+              <div
+                onClick={() => setShowCustomerModal(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '14px 16px',
+                  background: '#ffffff',
+                  borderRadius: '16px',
+                  border: '1.5px solid #e2e8f0',
+                  cursor: 'pointer',
+                  boxShadow: 'var(--shadow-sm)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'linear-gradient(135deg, #7c3aed, #ec4899)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '1.1rem' }}>
+                    {custName.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: '800', fontSize: '0.98rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {custName}
+                      <span style={{ fontSize: '0.7rem', color: '#7c3aed', background: '#f3e8ff', padding: '2px 8px', borderRadius: '10px', fontWeight: '700' }}>
+                        Customer Profile
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.76rem', color: '#64748b' }}>
+                      ⭐ 4.9 Rating • Member Since {joiningYear}
+                    </div>
+                  </div>
+                </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
                     type="button"
-                    onClick={() => setChatOpen(true)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setChatOpen(true);
+                    }}
                     className="btn btn-sm"
                     style={{ background: '#eff6ff', color: '#2563eb', fontWeight: '700', borderRadius: '10px', border: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
                   >
                     <MessageSquare size={14} /> Live Chat
                   </button>
-                  <a href={`tel:${custPhone}`} className="btn btn-sm" style={{ background: '#ecfdf5', color: '#16a34a', fontWeight: '700', borderRadius: '10px', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <a
+                    href={`tel:${custPhone}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="btn btn-sm"
+                    style={{ background: '#ecfdf5', color: '#16a34a', fontWeight: '700', borderRadius: '10px', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
+                  >
                     <Phone size={14} /> Call
                   </a>
                 </div>
@@ -368,30 +499,53 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               <div style={{ textAlign: 'center', padding: '10px 0' }}>
                 <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: 'linear-gradient(135deg, #7c3aed, #ec4899)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '1.8rem', marginBottom: '10px' }}>
-                  {custName.charAt(0)}
+                  {custName.charAt(0).toUpperCase()}
                 </div>
                 <h3 style={{ fontSize: '1.3rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)' }}>{custName}</h3>
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>Member since Jan 2023 • ⭐ 4.7 Rating</div>
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>Member since {joiningYear} • ⭐ 4.9 Rating</div>
               </div>
 
+              {/* Landmark & Address */}
               <div style={{ padding: '16px', background: '#fffbe6', borderRadius: '16px', border: '1px solid #fef08a', fontSize: '0.85rem', color: '#92400e' }}>
-                <div style={{ fontWeight: '800', marginBottom: '4px' }}>📌 LANDMARK:</div>
-                <div style={{ marginBottom: '8px' }}>Opposite Green Glen Park, near corner grocery store.</div>
+                <div style={{ fontWeight: '800', marginBottom: '4px' }}>📍 FULL ADDRESS:</div>
+                <div style={{ marginBottom: '8px', fontWeight: '700' }}>{fullAddressStr}</div>
                 <div style={{ fontWeight: '800', marginBottom: '4px' }}>💬 SPECIAL INSTRUCTIONS FROM CUSTOMER:</div>
                 <div>"Please call when you reach the gate, security requires approval code."</div>
               </div>
 
+              {/* Service History */}
               <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase' }}>SERVICE HISTORY</span>
-                <div style={{ fontWeight: '700', fontSize: '0.9rem', marginTop: '4px', color: 'var(--text-primary)' }}>2 previous bookings completed</div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Last serviced: 5 months ago (AC Deep Clean)</div>
+                <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase' }}>PAST SERVICE HISTORY (LAST 3 JOBS)</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                  <div style={{ fontSize: '0.84rem', fontWeight: '700', color: '#0f172a' }}>1. {sTitle} — ₹{basePrice} (Today)</div>
+                  <div style={{ fontSize: '0.84rem', fontWeight: '700', color: '#0f172a' }}>2. AC Deep Cleaning & Foam Wash — ₹599 (14 Feb 2026)</div>
+                  <div style={{ fontSize: '0.84rem', fontWeight: '700', color: '#0f172a' }}>3. Full Home Deep Cleaning — ₹1,499 (10 Dec 2025)</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setChatOpen(true)}
+                  className="btn btn-primary"
+                  style={{ padding: '12px', borderRadius: '14px', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  <MessageSquare size={16} /> Live Chat
+                </button>
+                <a
+                  href={`tel:${custPhone}`}
+                  className="btn"
+                  style={{ padding: '12px', background: '#16a34a', color: '#ffffff', borderRadius: '14px', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', textDecoration: 'none' }}
+                >
+                  <Phone size={16} /> Call Customer
+                </a>
               </div>
 
               <button
                 type="button"
                 onClick={() => setStep(4)}
                 className="btn"
-                style={{ padding: '14px', background: '#16a34a', color: '#ffffff', fontWeight: '800', fontSize: '1rem', borderRadius: '16px', border: 'none', marginTop: '8px' }}
+                style={{ padding: '14px', background: '#16a34a', color: '#ffffff', fontWeight: '800', fontSize: '1rem', borderRadius: '16px', border: 'none', marginTop: '4px' }}
               >
                 Proceed to OTP Verification ➔
               </button>
@@ -488,7 +642,7 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
               <div style={{ padding: '14px 16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontWeight: '800', fontSize: '0.95rem' }}>{sTitle}</div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{custName} • Flat 302, Sunrise Apartments</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{custName} • {fullAddressStr}</div>
                 </div>
                 <div style={{ fontSize: '0.85rem', color: '#2563eb', fontFamily: 'monospace', fontWeight: '800' }}>{bId}</div>
               </div>
@@ -757,6 +911,104 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
           )}
         </div>
       </main>
+
+      {/* CUSTOMER FULL PROFILE & SERVICE HISTORY MODAL */}
+      {showCustomerModal && (
+        <div className="modal-overlay" onClick={() => setShowCustomerModal(false)} style={{ zIndex: 3500 }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px', padding: '28px', borderRadius: '24px' }}>
+            
+            {/* Modal Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <User size={22} color="#7c3aed" />
+                <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0 }}>Customer Profile & Details</h3>
+              </div>
+              <button type="button" onClick={() => setShowCustomerModal(false)} className="btn btn-secondary btn-sm" style={{ borderRadius: '50%', padding: '6px' }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Customer Avatar & Rating */}
+            <div style={{ padding: '18px', background: 'linear-gradient(135deg, #f3e8ff 0%, #e0f2fe 100%)', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'linear-gradient(135deg, #7c3aed, #ec4899)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: '800', boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)' }}>
+                {custName.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div style={{ fontSize: '1.15rem', fontWeight: '800', color: '#0f172a' }}>{custName}</div>
+                <div style={{ fontSize: '0.82rem', color: '#f59e0b', fontWeight: '700', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  ⭐ 4.9 (Customer Rating) • Member Since {joiningYear}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
+                  📱 Phone: {custPhone}
+                </div>
+              </div>
+            </div>
+
+            {/* Full Address Section */}
+            <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid var(--border-light)', marginBottom: '20px' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#2563eb', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <MapPin size={14} /> Full Customer Service Address
+              </div>
+              <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#1e293b', lineHeight: '1.4' }}>
+                {fullAddressStr}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '6px', fontWeight: '600' }}>
+                📍 Distance from your live location: <strong style={{ color: '#16a34a' }}>{distanceInfo.km} km</strong> (~{distanceInfo.durationMins} mins away)
+              </div>
+            </div>
+
+            {/* Last 3 Service History */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Clock size={14} /> Customer Service History (Last 3 Jobs)
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {[
+                  { title: sTitle, date: 'Today (Current Booking)', price: basePrice, status: 'Active' },
+                  { title: 'AC Deep Foam Cleaning & Sanitization', date: '14 Feb 2026', price: 599, status: 'Completed' },
+                  { title: 'Full Home Deep Cleaning & Dusting', date: '10 Dec 2025', price: 1499, status: 'Completed' },
+                ].map((history, idx) => (
+                  <div key={idx} style={{ padding: '12px 14px', background: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontWeight: '700', fontSize: '0.86rem', color: '#0f172a' }}>{history.title}</div>
+                      <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{history.date}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: '800', color: '#16a34a', fontSize: '0.88rem' }}>₹{history.price}</div>
+                      <span className={`badge ${history.status === 'Active' ? 'badge-blue' : 'badge-success'}`} style={{ fontSize: '0.68rem', padding: '2px 6px' }}>
+                        {history.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Action Buttons: Call & Live Chat */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCustomerModal(false);
+                  setChatOpen(true);
+                }}
+                className="btn btn-primary"
+                style={{ padding: '12px', borderRadius: '14px', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                <MessageSquare size={16} /> Open Live Chat
+              </button>
+              <a
+                href={`tel:${custPhone}`}
+                className="btn"
+                style={{ padding: '12px', background: '#16a34a', color: '#ffffff', borderRadius: '14px', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', textDecoration: 'none' }}
+              >
+                <Phone size={16} /> Call Customer
+              </a>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* REAL-TIME SOCKET.IO LIVE CHAT MODAL */}
       <LiveChatModal

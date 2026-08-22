@@ -20,14 +20,18 @@ import {
   ChevronRight,
   ArrowLeft,
   Loader2,
-  DollarSign
+  DollarSign,
+  ExternalLink
 } from 'lucide-react';
 import { toast } from '../../utils/toast.js';
 import { useBookings } from '../../hooks/useBookings.js';
 import { axiosInstance } from '../../api/axiosInstance.js';
+import LiveChatModal from '../common/LiveChatModal.jsx';
 
-const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
+const PartnerFulfillmentModal = ({ isOpen, booking, currentUser, onClose, onComplete }) => {
   const { updateBookingStatus, completeBooking } = useBookings();
+  const [chatOpen, setChatOpen] = useState(false);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
 
   // Active Step: 1=details, 2=nav, 3=customerInfo, 4=otp, 5=execution, 6=pause, 7=addons, 8=payment
   const [step, setStep] = useState(1);
@@ -95,13 +99,43 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
 
   // Derived Booking details
   const bId = booking.bookingId || booking.bookingNumber || `#NZ${booking._id?.toString().slice(-4).toUpperCase() || '2847'}`;
-  const custName = booking.customer?.name || 'Priya Mehta';
+  const custName = booking.customer?.name || 'ram';
   const custPhone = booking.customer?.phone || '+91 98765 43210';
-  const sTitle = booking.packageName || booking.service?.name || 'AC Repair - Split AC';
-  const basePrice = booking.amount || booking.service?.finalPrice || 850;
+  const sTitle = booking.packageName || booking.service?.name || booking.serviceTitle || 'Beard Trim & Hot Towel Shave - Beard Styling & Steam';
+  const basePrice = booking.amount || booking.service?.finalPrice || 276;
   const addonsTotal = selectedAddons.reduce((acc, curr) => acc + curr.price, 0);
   const finalTotal = basePrice + addonsTotal;
   const rawId = booking._id || booking.rawId;
+
+  // Full Address String
+  const fullAddressStr = typeof booking.address === 'object'
+    ? `${booking.address.title ? booking.address.title + ': ' : ''}${booking.address.addressLine || booking.address.street || ''}${booking.address.city || booking.city ? ', ' + (booking.address.city || booking.city) : ''}${booking.address.state ? ', ' + booking.address.state : ''}${booking.address.pincode ? ' - ' + booking.address.pincode : ''}`
+    : (booking.address || booking.city || 'Nizamabad, Azamgarh, Uttar Pradesh, 276141, India, Azamgarh');
+
+  // Real Distance & Time Calculation using Haversine
+  const calculateDistanceInfo = () => {
+    const pLat = currentUser?.locationCoordinates?.coordinates?.[1] || 12.9352;
+    const pLng = currentUser?.locationCoordinates?.coordinates?.[0] || 77.6245;
+
+    const cLat = booking.address?.coordinates?.[1] || 12.9121;
+    const cLng = booking.address?.coordinates?.[0] || 77.6445;
+
+    const R = 6371;
+    const dLat = (cLat - pLat) * (Math.PI / 180);
+    const dLon = (cLng - pLng) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(pLat * (Math.PI / 180)) * Math.cos(cLat * (Math.PI / 180)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const dist = R * c;
+    const km = dist > 0.1 ? Number(dist.toFixed(1)) : 3.2;
+    const durationMins = Math.max(4, Math.round((km / 20) * 60));
+    return { km, durationMins };
+  };
+
+  const distanceInfo = calculateDistanceInfo();
+  const joiningYear = booking.customer?.createdAt ? new Date(booking.customer.createdAt).getFullYear() : 2023;
 
   const formatTimer = (totalSecs) => {
     const mins = Math.floor(totalSecs / 60).toString().padStart(2, '0');
@@ -264,51 +298,90 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
                 <span className="badge badge-success" style={{ padding: '6px 12px' }}>Confirmed</span>
               </div>
 
-              {/* Customer Info Card */}
-              <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '16px', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              {/* Customer Info Card (Clickable) */}
+              <div
+                onClick={() => setShowCustomerModal(true)}
+                style={{
+                  padding: '14px',
+                  background: '#f8fafc',
+                  borderRadius: '16px',
+                  border: '1.5px solid var(--border-light)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                }}
+              >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'linear-gradient(135deg, #7c3aed, #ec4899)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800' }}>
-                    {custName.charAt(0)}
+                    {custName.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <div style={{ fontWeight: '800', fontSize: '0.95rem' }}>{custName}</div>
-                    <div style={{ fontSize: '0.78rem', color: '#f59e0b', fontWeight: '700' }}>⭐ 4.7 Customer Rating</div>
+                    <div style={{ fontWeight: '800', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {custName}
+                      <span style={{ fontSize: '0.7rem', color: '#7c3aed', background: '#f3e8ff', padding: '2px 6px', borderRadius: '8px' }}>
+                        View Profile
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#f59e0b', fontWeight: '700' }}>⭐ 4.9 Rating • Joined {joiningYear}</div>
                   </div>
                 </div>
-                <a href={`tel:${custPhone}`} style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#ecfdf5', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Phone size={18} />
-                </a>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setChatOpen(true);
+                    }}
+                    className="btn btn-sm"
+                    style={{ background: '#eff6ff', color: '#2563eb', fontWeight: '700', borderRadius: '8px', border: 'none', padding: '4px 8px' }}
+                  >
+                    <MessageSquare size={14} />
+                  </button>
+                  <a
+                    href={`tel:${custPhone}`}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#ecfdf5', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+                  >
+                    <Phone size={16} />
+                  </a>
+                </div>
               </div>
 
               {/* Service & Price */}
               <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '16px', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontWeight: '800', fontSize: '1rem', color: 'var(--text-primary)' }}>{sTitle}</div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Today, 02:00 PM • Online Payment</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Today, 10:30 AM • Online Payment</div>
                 </div>
                 <div style={{ fontSize: '1.3rem', fontWeight: '800', color: '#16a34a' }}>₹{basePrice}</div>
               </div>
 
               {/* Address */}
-              <div>
-                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Service Address</span>
-                <p style={{ fontSize: '0.86rem', color: 'var(--text-primary)', margin: '4px 0 0 0', fontWeight: '600', lineHeight: '1.4' }}>
-                  Flat 302, Sunrise Apartments, HSR Layout, Sector 5, Bengaluru
+              <div style={{ padding: '12px', background: '#eff6ff', borderRadius: '14px', border: '1px solid #bfdbfe' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: '800', color: '#2563eb', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <MapPin size={14} /> FULL SERVICE ADDRESS
+                </span>
+                <p style={{ fontSize: '0.88rem', color: '#0f172a', margin: '4px 0 0 0', fontWeight: '700', lineHeight: '1.4' }}>
+                  {fullAddressStr}
                 </p>
+                <div style={{ fontSize: '0.78rem', color: '#0284c7', fontWeight: '700', marginTop: '4px' }}>
+                  📍 Distance: {distanceInfo.km} km ({distanceInfo.durationMins} mins)
+                </div>
               </div>
 
               {/* Interactive Route Map Card Preview */}
-              <div style={{ height: '140px', borderRadius: '16px', background: '#e0f2fe', overflow: 'hidden', border: '1px solid #bae6fd', position: 'relative' }}>
+              <div style={{ height: '150px', borderRadius: '16px', background: '#e0f2fe', overflow: 'hidden', border: '1px solid #bae6fd', position: 'relative' }}>
                 <iframe
                   title="Route Preview Map"
                   width="100%"
                   height="100%"
                   frameBorder="0"
-                  src="https://maps.google.com/maps?q=HSR+Layout+Bengaluru&t=&z=13&ie=UTF8&iwloc=&output=embed"
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(fullAddressStr)}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
                   style={{ filter: 'contrast(1.05)' }}
                 />
                 <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(255,255,255,0.95)', padding: '4px 10px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: '800', color: '#0284c7' }}>
-                  📍 Partner Location ➔ Customer (3.2 km)
+                  📍 Live Partner ➔ Customer ({distanceInfo.km} km)
                 </div>
               </div>
 
@@ -359,21 +432,50 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
                   width="100%"
                   height="100%"
                   frameBorder="0"
-                  src="https://maps.google.com/maps?q=HSR+Layout+Bengaluru&t=&z=14&ie=UTF8&iwloc=&output=embed"
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(fullAddressStr)}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
                 />
                 <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: '#ffffff', padding: '6px 14px', borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', fontSize: '0.85rem', fontWeight: '800', color: 'var(--text-primary)' }}>
-                  ⏱️ 12 min <span style={{ color: 'var(--text-muted)', fontWeight: '600' }}>(3.2 km remaining)</span>
+                  ⏱️ {distanceInfo.durationMins} min <span style={{ color: 'var(--text-muted)', fontWeight: '600' }}>({distanceInfo.km} km remaining)</span>
+                </div>
+              </div>
+
+              {/* Full Customer Address Box */}
+              <div style={{ padding: '12px 14px', background: '#eff6ff', borderRadius: '14px', border: '1px solid #bfdbfe' }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: '800', color: '#2563eb', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <MapPin size={14} /> Full Customer Address
+                </div>
+                <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0f172a', marginTop: '2px', lineHeight: '1.4' }}>
+                  {fullAddressStr}
                 </div>
               </div>
 
               {/* Quick Customer Contact Bar */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#f8fafc', borderRadius: '14px', border: '1px solid var(--border-light)' }}>
-                <div style={{ fontWeight: '800', fontSize: '0.9rem' }}>{custName}</div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button type="button" onClick={() => setStep(3)} className="btn btn-sm" style={{ background: '#eff6ff', color: '#2563eb', fontWeight: '700', borderRadius: '10px', border: 'none' }}>
-                    View Profile
+              <div
+                onClick={() => setShowCustomerModal(true)}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#f8fafc', borderRadius: '14px', border: '1px solid var(--border-light)', cursor: 'pointer' }}
+              >
+                <div>
+                  <div style={{ fontWeight: '800', fontSize: '0.9rem', color: '#0f172a' }}>{custName}</div>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b' }}>⭐ 4.9 Rating • Click for Profile</div>
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setChatOpen(true);
+                    }}
+                    className="btn btn-sm"
+                    style={{ background: '#eff6ff', color: '#2563eb', fontWeight: '700', borderRadius: '8px', border: 'none', padding: '4px 8px' }}
+                  >
+                    <MessageSquare size={14} />
                   </button>
-                  <a href={`tel:${custPhone}`} className="btn btn-sm" style={{ background: '#ecfdf5', color: '#16a34a', fontWeight: '700', borderRadius: '10px', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <a
+                    href={`tel:${custPhone}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="btn btn-sm"
+                    style={{ background: '#ecfdf5', color: '#16a34a', fontWeight: '700', borderRadius: '8px', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}
+                  >
                     <Phone size={14} /> Call
                   </a>
                 </div>
@@ -396,16 +498,16 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ textAlign: 'center', padding: '10px 0' }}>
                 <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'linear-gradient(135deg, #7c3aed, #ec4899)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '1.6rem', marginBottom: '8px' }}>
-                  {custName.charAt(0)}
+                  {custName.charAt(0).toUpperCase()}
                 </div>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)' }}>{custName}</h3>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>Member since Jan 2023 • ⭐ 4.7 Rating</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>Member since {joiningYear} • ⭐ 4.9 Rating</div>
               </div>
 
               {/* Landmark & Special Instructions */}
               <div style={{ padding: '14px', background: '#fffbe6', borderRadius: '14px', border: '1px solid #fef08a', fontSize: '0.82rem', color: '#92400e' }}>
-                <div style={{ fontWeight: '800', marginBottom: '4px' }}>📌 LANDMARK:</div>
-                <div style={{ marginBottom: '8px' }}>Opposite Green Glen Park, near corner grocery store.</div>
+                <div style={{ fontWeight: '800', marginBottom: '4px' }}>📍 FULL ADDRESS:</div>
+                <div style={{ marginBottom: '8px', fontWeight: '700' }}>{fullAddressStr}</div>
                 <div style={{ fontWeight: '800', marginBottom: '4px' }}>💬 SPECIAL INSTRUCTIONS FROM CUSTOMER:</div>
                 <div>"Please call when you reach the gate, security requires approval code."</div>
               </div>
@@ -413,15 +515,36 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
               {/* Service History */}
               <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '14px', border: '1px solid var(--border-light)' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase' }}>SERVICE HISTORY</span>
-                <div style={{ fontWeight: '700', fontSize: '0.88rem', marginTop: '4px', color: 'var(--text-primary)' }}>2 previous bookings completed</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Last serviced: 5 months ago (AC Deep Clean)</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#0f172a' }}>1. {sTitle} — ₹{basePrice} (Today)</div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#0f172a' }}>2. AC Deep Cleaning & Foam Wash — ₹599 (14 Feb 2026)</div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#0f172a' }}>3. Full Home Deep Cleaning — ₹1,499 (10 Dec 2025)</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setChatOpen(true)}
+                  className="btn btn-primary btn-sm"
+                  style={{ padding: '10px', borderRadius: '12px', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                >
+                  <MessageSquare size={14} /> Live Chat
+                </button>
+                <a
+                  href={`tel:${custPhone}`}
+                  className="btn btn-sm"
+                  style={{ padding: '10px', background: '#16a34a', color: '#ffffff', borderRadius: '12px', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', textDecoration: 'none' }}
+                >
+                  <Phone size={14} /> Call Customer
+                </a>
               </div>
 
               <button
                 type="button"
                 onClick={() => setStep(4)}
                 className="btn"
-                style={{ padding: '13px', background: '#16a34a', color: '#ffffff', fontWeight: '800', borderRadius: '14px', border: 'none', marginTop: '8px' }}
+                style={{ padding: '13px', background: '#16a34a', color: '#ffffff', fontWeight: '800', borderRadius: '14px', border: 'none', marginTop: '4px' }}
               >
                 Proceed to OTP Verification ➔
               </button>
@@ -460,14 +583,12 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
                       newOtp[idx] = val;
                       setOtpDigits(newOtp);
 
-                      // Auto-focus next input field on typing
                       if (val && idx < 3) {
                         const nextElem = document.getElementById(`partner-otp-input-${idx + 1}`);
                         if (nextElem) nextElem.focus();
                       }
                     }}
                     onKeyDown={(e) => {
-                      // Move to previous input field on Backspace
                       if (e.key === 'Backspace' && !digit && idx > 0) {
                         const prevElem = document.getElementById(`partner-otp-input-${idx - 1}`);
                         if (prevElem) prevElem.focus();
@@ -488,12 +609,10 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
                 ))}
               </div>
 
-              {/* Verification Feedback Badge */}
               <div style={{ color: '#059669', fontSize: '0.82rem', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                 <CheckCircle2 size={16} /> OTP code valid & ready
               </div>
 
-              {/* Action Button */}
               <button
                 type="button"
                 onClick={handleVerifyOtp}
@@ -509,7 +628,6 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
           {/* STEP 5: SERVICE EXECUTION & LIVE WORK TIMER */}
           {step === 5 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              {/* Header Status & Live Timer */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: '#ecfdf5', borderRadius: '16px', border: '1px solid #a7f3d0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#059669', fontWeight: '800', fontSize: '0.92rem' }}>
                   <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981' }} />
@@ -520,16 +638,14 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
                 </div>
               </div>
 
-              {/* Booking Summary Mini Bar */}
               <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: '14px', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontWeight: '800', fontSize: '0.9rem' }}>{sTitle}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{custName} • Flat 302, Sunrise Apartments</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{custName} • {fullAddressStr}</div>
                 </div>
                 <div style={{ fontSize: '0.8rem', color: '#2563eb', fontFamily: 'monospace', fontWeight: '700' }}>{bId}</div>
               </div>
 
-              {/* Execution Checklist */}
               <div>
                 <span style={{ fontSize: '0.78rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase' }}>EXECUTION CHECKLIST</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
@@ -557,7 +673,6 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
                 </div>
               </div>
 
-              {/* Secondary Options Bar: Pause & Add Extra */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '4px' }}>
                 <button
                   type="button"
@@ -569,7 +684,7 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setStep(7)} // Open Add extra service screen
+                  onClick={() => setStep(7)}
                   className="btn"
                   style={{ padding: '11px', background: '#eff6ff', color: '#2563eb', fontWeight: '700', borderRadius: '12px', border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
@@ -577,10 +692,9 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
                 </button>
               </div>
 
-              {/* Complete Checklist Action */}
               <button
                 type="button"
-                onClick={() => setStep(8)} // Move to summary & payment
+                onClick={() => setStep(8)}
                 className="btn"
                 style={{ padding: '14px', background: '#16a34a', color: '#ffffff', fontWeight: '800', fontSize: '1rem', borderRadius: '14px', border: 'none', boxShadow: '0 4px 14px rgba(22, 163, 74, 0.35)', marginTop: '4px' }}
               >
@@ -632,7 +746,6 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
                 <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>Select additional services requested by customer.</p>
               </div>
 
-              {/* Popular Add-ons List */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {[
                   { id: 'a1', name: 'Refrigerant Gas Refill (R32)', price: 1200, desc: 'Eco-friendly high cooling gas' },
@@ -679,7 +792,6 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
                 })}
               </div>
 
-              {/* Total Extra Summary */}
               {selectedAddons.length > 0 && (
                 <div style={{ padding: '10px 14px', background: '#ecfdf5', borderRadius: '12px', border: '1px solid #a7f3d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '800', fontSize: '0.88rem', color: '#059669' }}>
                   <span>Total Add-ons Added:</span>
@@ -689,7 +801,7 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
 
               <button
                 type="button"
-                onClick={() => setStep(5)} // Return to execution
+                onClick={() => setStep(5)}
                 className="btn"
                 style={{ padding: '13px', background: '#16a34a', color: '#ffffff', fontWeight: '800', borderRadius: '14px', border: 'none', marginTop: '4px' }}
               >
@@ -701,7 +813,6 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
           {/* STEP 8: COLLECT PAYMENT & SUMMARY */}
           {step === 8 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Checklist Completed Badge */}
               <div style={{ padding: '14px', background: '#ecfdf5', borderRadius: '16px', border: '1px solid #a7f3d0', textAlign: 'center' }}>
                 <div style={{ fontWeight: '800', color: '#059669', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                   <CheckCircle2 size={20} /> Checklist Completed!
@@ -711,7 +822,6 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
                 </div>
               </div>
 
-              {/* Collect Payment Box */}
               <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase' }}>AMOUNT TO COLLECT</span>
                 <div style={{ fontSize: '2rem', fontWeight: '800', color: '#16a34a', margin: '4px 0' }}>
@@ -724,7 +834,6 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
                 )}
               </div>
 
-              {/* Payment Method Selector */}
               <div>
                 <span style={{ fontSize: '0.78rem', fontWeight: '800', color: 'var(--text-secondary)' }}>SELECT PAYMENT METHOD</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
@@ -758,7 +867,6 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
                     </button>
                   </div>
 
-                  {/* QR Code Preview */}
                   {showQr && (
                     <div style={{ padding: '16px', background: '#ffffff', border: '1px solid #16a34a', borderRadius: '16px', textAlign: 'center' }}>
                       <QrCode size={120} color="#16a34a" style={{ margin: '0 auto' }} />
@@ -789,7 +897,6 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
                 </div>
               </div>
 
-              {/* Confirm Payment Action */}
               <button
                 type="button"
                 onClick={handleConfirmFinalPayment}
@@ -801,9 +908,115 @@ const PartnerFulfillmentModal = ({ isOpen, booking, onClose, onComplete }) => {
               </button>
             </div>
           )}
-
         </div>
       </div>
+
+      {/* CUSTOMER FULL PROFILE & HISTORY MODAL */}
+      {showCustomerModal && (
+        <div className="modal-overlay" onClick={() => setShowCustomerModal(false)} style={{ zIndex: 3500 }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px', padding: '24px', borderRadius: '24px' }}>
+            
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <User size={20} color="#7c3aed" />
+                <h3 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0 }}>Customer Profile & History</h3>
+              </div>
+              <button type="button" onClick={() => setShowCustomerModal(false)} className="btn btn-secondary btn-sm" style={{ borderRadius: '50%', padding: '4px' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Customer Header Info */}
+            <div style={{ padding: '16px', background: 'linear-gradient(135deg, #f3e8ff 0%, #e0f2fe 100%)', borderRadius: '18px', display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
+              <div style={{ width: '54px', height: '54px', borderRadius: '50%', background: 'linear-gradient(135deg, #7c3aed, #ec4899)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', fontWeight: '800', boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)' }}>
+                {custName.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a' }}>{custName}</div>
+                <div style={{ fontSize: '0.8rem', color: '#f59e0b', fontWeight: '700', marginTop: '2px' }}>
+                  ⭐ 4.9 (Customer Rating) • Member Since {joiningYear}
+                </div>
+                <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px' }}>
+                  📱 Phone: {custPhone}
+                </div>
+              </div>
+            </div>
+
+            {/* Customer Full Address Section */}
+            <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '14px', border: '1px solid var(--border-light)', marginBottom: '16px' }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: '800', color: '#2563eb', textTransform: 'uppercase', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <MapPin size={14} /> Full Customer Service Address
+              </div>
+              <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#1e293b', lineHeight: '1.4' }}>
+                {fullAddressStr}
+              </div>
+              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '6px', fontWeight: '600' }}>
+                📍 Distance from your live location: <strong style={{ color: '#16a34a' }}>{distanceInfo.km} km</strong> (~{distanceInfo.durationMins} mins away)
+              </div>
+            </div>
+
+            {/* Customer 3 Recent Service History */}
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Clock size={14} /> Recent Service History (Last 3 Jobs)
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {[
+                  { title: sTitle, date: 'Today (Current Booking)', price: basePrice, status: 'Active' },
+                  { title: 'AC Deep Foam Cleaning & Sanitization', date: '14 Feb 2026', price: 599, status: 'Completed' },
+                  { title: 'Full Home Deep Cleaning & Dusting', date: '10 Dec 2025', price: 1499, status: 'Completed' },
+                ].map((history, idx) => (
+                  <div key={idx} style={{ padding: '10px 12px', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontWeight: '700', fontSize: '0.82rem', color: '#0f172a' }}>{history.title}</div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{history.date}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: '800', color: '#16a34a', fontSize: '0.84rem' }}>₹{history.price}</div>
+                      <span className={`badge ${history.status === 'Active' ? 'badge-blue' : 'badge-success'}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
+                        {history.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Action Buttons: Call & Live Chat */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCustomerModal(false);
+                  setChatOpen(true);
+                }}
+                className="btn btn-primary btn-sm"
+                style={{ padding: '10px', borderRadius: '12px', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+              >
+                <MessageSquare size={14} /> Open Live Chat
+              </button>
+              <a
+                href={`tel:${custPhone}`}
+                className="btn btn-sm"
+                style={{ padding: '10px', background: '#16a34a', color: '#ffffff', borderRadius: '12px', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', textDecoration: 'none' }}
+              >
+                <Phone size={14} /> Call Customer
+              </a>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* REAL-TIME SOCKET.IO LIVE CHAT MODAL */}
+      <LiveChatModal
+        isOpen={chatOpen}
+        booking={booking}
+        currentUser={currentUser}
+        userRole="partner"
+        onClose={() => setChatOpen(false)}
+      />
     </div>
   );
 };

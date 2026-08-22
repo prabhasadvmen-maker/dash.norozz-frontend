@@ -1,38 +1,91 @@
-import React, { useState } from 'react';
-import { CalendarCheck, Clock, CheckCircle2, User, MapPin, Play, Navigation, KeyRound, Camera } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import {
+  CalendarCheck,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  User,
+  MapPin,
+  Play,
+  Navigation,
+  KeyRound,
+  Camera,
+  Layers,
+} from 'lucide-react';
 import { usePartner } from '../../hooks/usePartner.js';
 import { useBookings } from '../../hooks/useBookings.js';
 
 const PartnerJobsTable = ({ onOpenFulfillment }) => {
-  const { todayBookings, pendingBookings } = usePartner();
-  const { acceptBooking, updateBookingStatus, completeBooking } = useBookings();
+  const { todayBookings, pendingBookings, completedBookings, cancelledBookings, allBookings } = usePartner();
+  const { completeBooking } = useBookings();
+
+  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'upcoming' | 'completed' | 'cancelled'
   const [completeModalOpen, setCompleteModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [otpInput, setOtpInput] = useState('');
 
-  const allJobs = [...todayBookings, ...pendingBookings];
+  // Consolidate all bookings without duplicates
+  const masterBookingsList = useMemo(() => {
+    const map = new Map();
+    [...(allBookings || []), ...(todayBookings || []), ...(pendingBookings || []), ...(completedBookings || []), ...(cancelledBookings || [])].forEach((b) => {
+      if (b && b._id) {
+        map.set(b._id.toString(), b);
+      }
+    });
+    return Array.from(map.values());
+  }, [allBookings, todayBookings, pendingBookings, completedBookings, cancelledBookings]);
+
+  // Filter lists for tabs
+  const upcomingBookings = useMemo(() => {
+    return masterBookingsList.filter((b) =>
+      ['Accepted', 'accepted', 'Assigned', 'assigned', 'On The Way', 'on_the_way', 'Started', 'started', 'in_progress'].includes(b.status)
+    );
+  }, [masterBookingsList]);
+
+  const completedBookingsList = useMemo(() => {
+    return masterBookingsList.filter((b) =>
+      ['Completed', 'completed'].includes(b.status)
+    );
+  }, [masterBookingsList]);
+
+  const cancelledBookingsList = useMemo(() => {
+    return masterBookingsList.filter((b) =>
+      ['Cancelled', 'cancelled', 'Refunded', 'refunded'].includes(b.status)
+    );
+  }, [masterBookingsList]);
+
+  // Current active display list
+  const currentJobsList = useMemo(() => {
+    switch (activeTab) {
+      case 'upcoming':
+        return upcomingBookings;
+      case 'completed':
+        return completedBookingsList;
+      case 'cancelled':
+        return cancelledBookingsList;
+      case 'all':
+      default:
+        return masterBookingsList;
+    }
+  }, [activeTab, masterBookingsList, upcomingBookings, completedBookingsList, cancelledBookingsList]);
 
   const getStatusBadge = (status) => {
-    switch (status) {
-      case 'Completed':
-        return <span className="badge badge-success"><CheckCircle2 size={12} /> COMPLETED</span>;
-      case 'Started':
-        return <span className="badge badge-blue"><Play size={12} /> IN PROGRESS</span>;
-      case 'On The Way':
-        return <span className="badge badge-purple"><Navigation size={12} /> ON THE WAY</span>;
-      case 'Accepted':
-        return <span className="badge badge-blue"><Clock size={12} /> ACCEPTED</span>;
-      case 'Assigned':
-        return <span className="badge badge-purple"><User size={12} /> ASSIGNED</span>;
-      default:
-        return <span className="badge badge-warning"><Clock size={12} /> {status.toUpperCase()}</span>;
+    const s = String(status || '').toLowerCase();
+    if (s === 'completed') {
+      return <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><CheckCircle2 size={12} /> COMPLETED</span>;
+    } else if (s === 'started' || s === 'in_progress') {
+      return <span className="badge badge-blue" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Play size={12} /> IN PROGRESS</span>;
+    } else if (s === 'on the way' || s === 'on_the_way') {
+      return <span className="badge badge-purple" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Navigation size={12} /> ON THE WAY</span>;
+    } else if (s === 'accepted') {
+      return <span className="badge badge-blue" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Clock size={12} /> ACCEPTED</span>;
+    } else if (s === 'assigned') {
+      return <span className="badge badge-purple" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><User size={12} /> ASSIGNED</span>;
+    } else if (s === 'cancelled' || s === 'refunded') {
+      return <span className="badge badge-danger" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><XCircle size={12} /> CANCELLED</span>;
+    } else {
+      return <span className="badge badge-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Clock size={12} /> {status.toUpperCase()}</span>;
     }
-  };
-
-  const handleOpenComplete = (job) => {
-    setSelectedJob(job);
-    setOtpInput('');
-    setCompleteModalOpen(true);
   };
 
   const handleConfirmComplete = async (e) => {
@@ -45,17 +98,75 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
   return (
     <div className="mui-card" style={{ padding: '26px' }}>
       
+      {/* Top Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
         <div>
-          <h3 style={{ fontSize: '1.15rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
             <CalendarCheck size={22} color="#7c3aed" /> Active Jobs & Field Dispatch Operations
           </h3>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px', margin: 0 }}>
             Accept incoming service assignments, update real-time progress, and complete jobs with OTP verification.
           </p>
         </div>
       </div>
 
+      {/* Filter Tabs Row */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        marginBottom: '20px',
+        borderBottom: '1.5px solid var(--border-light)',
+        paddingBottom: '12px',
+        overflowX: 'auto',
+      }}>
+        {[
+          { id: 'all', label: 'All Bookings', count: masterBookingsList.length, icon: Layers, color: '#2563eb' },
+          { id: 'upcoming', label: 'Upcoming', count: upcomingBookings.length, icon: Clock, color: '#0284c7' },
+          { id: 'completed', label: 'Completed', count: completedBookingsList.length, icon: CheckCircle2, color: '#16a34a' },
+          { id: 'cancelled', label: 'Cancelled', count: cancelledBookingsList.length, icon: XCircle, color: '#dc2626' },
+        ].map((tab) => {
+          const IconComp = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '12px',
+                fontSize: '0.84rem',
+                fontWeight: '800',
+                border: isActive ? `2px solid ${tab.color}` : '1px solid #e2e8f0',
+                background: isActive ? `${tab.color}15` : '#ffffff',
+                color: isActive ? tab.color : '#64748b',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.2s ease',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <IconComp size={15} color={isActive ? tab.color : '#64748b'} />
+              <span>{tab.label}</span>
+              <span style={{
+                background: isActive ? tab.color : '#f1f5f9',
+                color: isActive ? '#ffffff' : '#64748b',
+                padding: '2px 8px',
+                borderRadius: '20px',
+                fontSize: '0.74rem',
+                fontWeight: '800'
+              }}>
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Bookings Table */}
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
@@ -70,14 +181,17 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
             </tr>
           </thead>
           <tbody>
-            {allJobs.length === 0 ? (
+            {currentJobsList.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  No active bookings assigned yet.
+                <td colSpan={7} style={{ padding: '28px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  {activeTab === 'all' && 'No bookings found.'}
+                  {activeTab === 'upcoming' && 'No upcoming accepted jobs.'}
+                  {activeTab === 'completed' && 'No completed jobs yet.'}
+                  {activeTab === 'cancelled' && 'No cancelled bookings.'}
                 </td>
               </tr>
             ) : (
-              allJobs.map((job) => {
+              currentJobsList.map((job) => {
                 const bId = job.bookingId || job.bookingNumber || `UC-${job._id.toString().slice(-6).toUpperCase()}`;
                 const custName = job.customer?.name || 'Customer';
                 const sName = job.packageName || job.service?.name || job.serviceName || 'Home Service Package';

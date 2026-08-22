@@ -25,6 +25,16 @@ export const usePartner = () => {
     queryFn: () => partnerService.getCompletedBookings(),
   });
 
+  const cancelledBookingsQuery = useQuery({
+    queryKey: ['partner', 'bookings', 'cancelled'],
+    queryFn: () => partnerService.getCancelledBookings(),
+  });
+
+  const allBookingsQuery = useQuery({
+    queryKey: ['partner', 'bookings', 'all'],
+    queryFn: () => partnerService.getAllBookings(),
+  });
+
   const walletQuery = useQuery({
     queryKey: ['partner', 'wallet'],
     queryFn: () => partnerService.getWallet(),
@@ -69,6 +79,8 @@ export const usePartner = () => {
     todayBookings: todayBookingsQuery.data?.data || [],
     pendingBookings: pendingBookingsQuery.data?.data || [],
     completedBookings: completedBookingsQuery.data?.data || [],
+    cancelledBookings: cancelledBookingsQuery.data?.data || [],
+    allBookings: allBookingsQuery.data?.data || [],
     wallet: walletQuery.data?.data || null,
     reviews: reviewsQuery.data?.data || [],
     notifications: notificationsQuery.data?.data || [],
@@ -77,6 +89,8 @@ export const usePartner = () => {
       todayBookingsQuery.isLoading ||
       pendingBookingsQuery.isLoading ||
       completedBookingsQuery.isLoading ||
+      cancelledBookingsQuery.isLoading ||
+      allBookingsQuery.isLoading ||
       walletQuery.isLoading,
     isKycLocked: dashboardQuery.data?.data?.kycStatus === 'pending' || dashboardQuery.data?.data?.kycStatus === 'rejected',
     refetch: () => {
@@ -84,6 +98,8 @@ export const usePartner = () => {
       todayBookingsQuery.refetch();
       pendingBookingsQuery.refetch();
       completedBookingsQuery.refetch();
+      cancelledBookingsQuery.refetch();
+      allBookingsQuery.refetch();
       walletQuery.refetch();
       reviewsQuery.refetch();
       notificationsQuery.refetch();
