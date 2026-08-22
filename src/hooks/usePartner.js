@@ -1,54 +1,90 @@
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { partnerService } from '../services/partner.service.js';
 import { toast } from '../utils/toast.js';
 
-export const usePartner = () => {
+// Caching configuration for high performance and zero duplicate calls
+const QUERY_CONFIG = {
+  staleTime: 5 * 60 * 1000, // 5 minutes fresh cache time
+  gcTime: 10 * 60 * 1000,   // 10 minutes cache retention
+  refetchOnWindowFocus: false,
+  refetchOnMount: false,
+};
+
+export const usePartner = (tabOrOptions = 'dashboard') => {
   const queryClient = useQueryClient();
 
+  const activeTab = typeof tabOrOptions === 'string' 
+    ? tabOrOptions 
+    : (tabOrOptions?.activeTab || tabOrOptions?.tab || 'dashboard');
+
+  // Determine enabled queries on demand based on active tab
+  const isDashboard = activeTab === 'dashboard';
+  const isBookings = activeTab === 'bookings';
+  const isWallet = activeTab === 'wallet';
+  const isReviews = activeTab === 'reviews';
+
+  // 1. Dashboard Overview Query (Only active on Dashboard tab)
   const dashboardQuery = useQuery({
     queryKey: ['partner', 'dashboard'],
     queryFn: () => partnerService.getDashboard(),
+    enabled: isDashboard,
+    ...QUERY_CONFIG,
   });
 
-  const todayBookingsQuery = useQuery({
-    queryKey: ['partner', 'bookings', 'today'],
-    queryFn: () => partnerService.getTodayBookings(),
-  });
-
-  const pendingBookingsQuery = useQuery({
-    queryKey: ['partner', 'bookings', 'pending'],
-    queryFn: () => partnerService.getPendingBookings(),
-  });
-
-  const completedBookingsQuery = useQuery({
-    queryKey: ['partner', 'bookings', 'completed'],
-    queryFn: () => partnerService.getCompletedBookings(),
-  });
-
-  const cancelledBookingsQuery = useQuery({
-    queryKey: ['partner', 'bookings', 'cancelled'],
-    queryFn: () => partnerService.getCancelledBookings(),
-  });
-
+  // 2. Consolidated All Bookings Query (Only active on Bookings or Dashboard tab)
   const allBookingsQuery = useQuery({
     queryKey: ['partner', 'bookings', 'all'],
     queryFn: () => partnerService.getAllBookings(),
+    enabled: isBookings || isDashboard,
+    ...QUERY_CONFIG,
   });
 
+  // 3. Wallet Balance Query (Only active on Wallet or Dashboard tab)
   const walletQuery = useQuery({
     queryKey: ['partner', 'wallet'],
     queryFn: () => partnerService.getWallet(),
+    enabled: isWallet || isDashboard,
+    ...QUERY_CONFIG,
   });
 
+  // 4. Customer Reviews Query (Only active on Reviews tab)
   const reviewsQuery = useQuery({
     queryKey: ['partner', 'reviews'],
     queryFn: () => partnerService.getReviews(),
+    enabled: isReviews,
+    ...QUERY_CONFIG,
   });
 
+  // 5. Notifications Query (Only active on Dashboard tab)
   const notificationsQuery = useQuery({
     queryKey: ['partner', 'notifications'],
     queryFn: () => partnerService.getNotifications(),
+    enabled: isDashboard,
+    ...QUERY_CONFIG,
   });
+
+  // Consolidated master bookings list
+  const allBookings = allBookingsQuery.data?.data || [];
+
+  // Derive status subsets in-memory to prevent redundant API calls
+  const todayBookings = useMemo(() => {
+    return allBookings.filter((b) =>
+      ['Assigned', 'Accepted', 'On The Way', 'Started', 'assigned', 'accepted', 'in_progress'].includes(b.status)
+    );
+  }, [allBookings]);
+
+  const pendingBookings = useMemo(() => {
+    return allBookings.filter((b) => ['Pending', 'pending'].includes(b.status));
+  }, [allBookings]);
+
+  const completedBookings = useMemo(() => {
+    return allBookings.filter((b) => ['Completed', 'completed'].includes(b.status));
+  }, [allBookings]);
+
+  const cancelledBookings = useMemo(() => {
+    return allBookings.filter((b) => ['Cancelled', 'Refunded', 'cancelled'].includes(b.status));
+  }, [allBookings]);
 
   const updateAvailabilityMutation = useMutation({
     mutationFn: (data) => partnerService.updateAvailability(data),
@@ -76,34 +112,20 @@ export const usePartner = () => {
 
   return {
     dashboard: dashboardQuery.data?.data || null,
-    todayBookings: todayBookingsQuery.data?.data || [],
-    pendingBookings: pendingBookingsQuery.data?.data || [],
-    completedBookings: completedBookingsQuery.data?.data || [],
-    cancelledBookings: cancelledBookingsQuery.data?.data || [],
-    allBookings: allBookingsQuery.data?.data || [],
+    allBookings,
+    todayBookings,
+    pendingBookings,
+    completedBookings,
+    cancelledBookings,
     wallet: walletQuery.data?.data || null,
     reviews: reviewsQuery.data?.data || [],
     notifications: notificationsQuery.data?.data || [],
-    isLoading:
-      dashboardQuery.isLoading ||
-      todayBookingsQuery.isLoading ||
-      pendingBookingsQuery.isLoading ||
-      completedBookingsQuery.isLoading ||
-      cancelledBookingsQuery.isLoading ||
-      allBookingsQuery.isLoading ||
-      walletQuery.isLoading,
+    isLoading: isBookings ? allBookingsQuery.isLoading : isWallet ? walletQuery.isLoading : isReviews ? reviewsQuery.isLoading : dashboardQuery.isLoading,
     isKycLocked: dashboardQuery.data?.data?.kycStatus === 'pending' || dashboardQuery.data?.data?.kycStatus === 'rejected',
-    refetch: () => {
-      dashboardQuery.refetch();
-      todayBookingsQuery.refetch();
-      pendingBookingsQuery.refetch();
-      completedBookingsQuery.refetch();
-      cancelledBookingsQuery.refetch();
-      allBookingsQuery.refetch();
-      walletQuery.refetch();
-      reviewsQuery.refetch();
-      notificationsQuery.refetch();
-    },
+    refetchBookings: () => allBookingsQuery.refetch(),
+    refetchDashboard: () => dashboardQuery.refetch(),
+    refetchWallet: () => walletQuery.refetch(),
+    refetchAll: () => queryClient.invalidateQueries({ queryKey: ['partner'] }),
     updateAvailability: updateAvailabilityMutation.mutateAsync,
     updateProfile: updateProfileMutation.mutateAsync,
     uploadDocuments: uploadDocumentsMutation.mutateAsync,

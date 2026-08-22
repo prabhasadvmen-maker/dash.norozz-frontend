@@ -3,7 +3,7 @@ import { Wallet, ArrowUpRight, ArrowDownLeft, ShieldCheck, CreditCard, RefreshCw
 import { usePartner } from '../../hooks/usePartner.js';
 
 const PartnerWalletCard = () => {
-  const { wallet, refetch } = usePartner();
+  const { wallet } = usePartner('wallet');
 
   const balance = wallet?.balance || 18450;
   const transactions = wallet?.recentTransactions || [

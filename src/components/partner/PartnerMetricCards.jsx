@@ -11,7 +11,7 @@ import {
 import { usePartner } from '../../hooks/usePartner.js';
 
 const PartnerMetricCards = () => {
-  const { dashboard, todayBookings, wallet, isLoading } = usePartner();
+  const { dashboard, todayBookings, wallet, isLoading } = usePartner('dashboard');
 
   const todayEarnings = dashboard?.metrics?.todayEarnings || wallet?.todayEarnings || 2450;
   const bookingsCount = dashboard?.todayBookingsCount || todayBookings.length || 5;

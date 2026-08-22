@@ -26,8 +26,8 @@ import {
 } from 'lucide-react';
 
 const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
-  const { dashboard, todayBookings, updateAvailability, refetch } = usePartner();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const { dashboard, todayBookings, updateAvailability, refetchAll } = usePartner(activeTab);
   const [refreshing, setRefreshing] = useState(false);
 
   // Online / Offline Status State

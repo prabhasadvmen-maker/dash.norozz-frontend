@@ -11,18 +11,21 @@ import {
   KeyRound,
   Camera,
   Layers,
+  Loader2,
 } from 'lucide-react';
 import { usePartner } from '../../hooks/usePartner.js';
 import { useBookings } from '../../hooks/useBookings.js';
+import { partnerService } from '../../services/partner.service.js';
 
 const PartnerJobsTable = ({ onOpenFulfillment }) => {
-  const { todayBookings, pendingBookings, completedBookings, cancelledBookings, allBookings } = usePartner();
+  const { todayBookings, pendingBookings, completedBookings, cancelledBookings, allBookings } = usePartner('bookings');
   const { completeBooking } = useBookings();
 
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'upcoming' | 'completed' | 'cancelled'
   const [completeModalOpen, setCompleteModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [otpInput, setOtpInput] = useState('');
+  const [fetchingDetailsId, setFetchingDetailsId] = useState(null);
 
   // Consolidate all bookings without duplicates
   const masterBookingsList = useMemo(() => {
@@ -68,6 +71,35 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
         return masterBookingsList;
     }
   }, [activeTab, masterBookingsList, upcomingBookings, completedBookingsList, cancelledBookingsList]);
+
+  // Handle Tab Click - Instant In-Memory Filter Transition
+  const handleTabClick = (tabId) => {
+    setActiveTab(tabId);
+  };
+
+  // Handle View Details Click - Fetch Single Booking Data via API
+  const handleViewDetailsClick = async (job) => {
+    const jobId = job._id || job.rawId;
+    setFetchingDetailsId(jobId);
+    try {
+      if (jobId && !jobId.toString().startsWith('demo')) {
+        const res = await partnerService.getBookingDetails(jobId);
+        const fullBooking = res.data?.data || res.data;
+        if (fullBooking) {
+          onOpenFulfillment && onOpenFulfillment(fullBooking);
+        } else {
+          onOpenFulfillment && onOpenFulfillment(job);
+        }
+      } else {
+        onOpenFulfillment && onOpenFulfillment(job);
+      }
+    } catch (err) {
+      console.warn('API error fetching booking details, using existing job object:', err);
+      onOpenFulfillment && onOpenFulfillment(job);
+    } finally {
+      setFetchingDetailsId(null);
+    }
+  };
 
   const getStatusBadge = (status) => {
     const s = String(status || '').toLowerCase();
@@ -132,7 +164,7 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabClick(tab.id)}
               style={{
                 padding: '8px 16px',
                 borderRadius: '12px',
@@ -201,6 +233,8 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
                   : (job.address || job.city || 'Delhi NCR');
                 const amt = job.amount || job.totalAmount || job.service?.finalPrice || 599;
 
+                const isFetching = fetchingDetailsId === job._id;
+
                 return (
                   <tr key={job._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                     <td style={{ padding: '14px', fontWeight: '800', color: 'var(--accent-purple)', fontSize: '0.85rem' }}>
@@ -228,11 +262,20 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
                       <div style={{ display: 'flex', gap: '6px' }}>
                         <button
                           type="button"
-                          onClick={() => onOpenFulfillment && onOpenFulfillment(job)}
+                          onClick={() => handleViewDetailsClick(job)}
+                          disabled={isFetching}
                           className="btn btn-primary btn-sm"
                           style={{ borderRadius: '10px', padding: '6px 12px', fontWeight: '700' }}
                         >
-                          <Navigation size={12} /> View Details & Fulfill
+                          {isFetching ? (
+                            <>
+                              <Loader2 size={12} className="spin" /> Fetching Details...
+                            </>
+                          ) : (
+                            <>
+                              <Navigation size={12} /> View Details & Fulfill
+                            </>
+                          )}
                         </button>
                       </div>
                     </td>
