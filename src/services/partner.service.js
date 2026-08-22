@@ -7,6 +7,7 @@ export const partnerService = {
   getCompletedBookings: () => axiosInstance.get('/partner/bookings/completed'),
   getCancelledBookings: () => axiosInstance.get('/partner/bookings/cancelled'),
   getAllBookings: () => axiosInstance.get('/partner/bookings/all'),
+  getBookingDetails: (id) => axiosInstance.get(`/partner/bookings/${id}`),
   getWallet: () => axiosInstance.get('/partner/wallet'),
   getEarnings: () => axiosInstance.get('/partner/earnings'),
   getRating: () => axiosInstance.get('/partner/rating'),
