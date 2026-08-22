@@ -279,7 +279,9 @@ const getInitialStepFromUser = (user) => {
   // Step 2: Document Upload
   const isDocsUploaded = Boolean(
     user.isDocumentsUploaded ||
-    (user.documents?.aadhaarFront && user.documents?.aadhaarBack)
+    (user.documents?.aadhaarFront && user.documents?.aadhaarBack) ||
+    user.documents?.aadhaarDoc ||
+    user.documents?.panDoc
   );
   if (!isDocsUploaded) return 2;
 
@@ -294,6 +296,7 @@ const getInitialStepFromUser = (user) => {
   // Step 4: Select Skills
   const isSkillsSelected = Boolean(
     user.isSkillsSelected ||
+    user.isSkillsUpdated ||
     (user.skills && user.skills.length > 0)
   );
   if (!isSkillsSelected) return 4;
@@ -301,7 +304,7 @@ const getInitialStepFromUser = (user) => {
   // Step 5: Service Area & Radius
   const isServiceAreaSet = Boolean(
     user.isServiceAreaSet ||
-    (user.serviceRadiusKm && user.localities && user.localities.length > 0)
+    (user.localities && user.localities.length > 0)
   );
   if (!isServiceAreaSet) return 5;
 
@@ -328,10 +331,11 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     isLoggingIn,
   } = useAuth();
 
-  // Step state with double-fallback: localStorage cache -> currentUser DB progress calculation -> default 1
+  // Step state with double-fallback: localStorage cache (for current user only) -> currentUser DB progress calculation -> default 1
   const [step, setStep] = useState(() => {
+    const savedUserId = localStorage.getItem('partner_onboarding_user_id');
     const savedStep = localStorage.getItem('partner_onboarding_step');
-    if (savedStep && !isNaN(Number(savedStep))) {
+    if (savedUserId === currentUser?._id && savedStep && !isNaN(Number(savedStep))) {
       const parsed = Number(savedStep);
       if (parsed >= 1 && parsed <= 6) return parsed;
     }
@@ -339,12 +343,13 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
   });
   const [subStep, setSubStep] = useState('list'); // 'list' | 'aadhaar' | 'generic'
 
-  // Persist current step to localStorage
+  // Persist current step to localStorage per user
   useEffect(() => {
-    if (step) {
+    if (step && currentUser?._id) {
       localStorage.setItem('partner_onboarding_step', step.toString());
+      localStorage.setItem('partner_onboarding_user_id', currentUser._id);
     }
-  }, [step]);
+  }, [step, currentUser?._id]);
 
   // Profile Edit Modal State
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
