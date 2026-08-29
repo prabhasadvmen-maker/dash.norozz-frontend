@@ -83,15 +83,18 @@ const CityAdminManagement = () => {
     setLoggingInId(admin._id);
     try {
       const res = await impersonateCityAdmin(admin._id);
-      const targetUser = res.data?.user || res.user;
-      const token = res.data?.accessToken || res.accessToken;
+      const responseData = res?.data || res;
+      const targetUser = responseData?.user || responseData?.admin || responseData;
+      const token = responseData?.accessToken || responseData?.token || res?.accessToken;
 
       if (targetUser && token) {
-        toast.success(`🔐 Logged in directly as City Admin (${targetUser.name})!`);
+        toast.success(`🔐 Logged in directly as City Admin (${targetUser.name || admin.name})!`);
         login(targetUser, token);
+      } else {
+        toast.error('Impersonation token missing from server response');
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Failed to login as City Admin');
+      console.error('City Admin direct login error:', err);
     } finally {
       setLoggingInId(null);
     }
