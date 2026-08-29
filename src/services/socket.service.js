@@ -38,6 +38,11 @@ class SocketService {
     this.socket.emit('join_partner', { partnerId, category, city });
   }
 
+  joinUser({ userId }) {
+    if (!this.socket) this.connect();
+    this.socket.emit('join_user', { userId });
+  }
+
   onNewJobOffer(callback) {
     if (!this.socket) this.connect();
     this.socket.off('new_job_offer');

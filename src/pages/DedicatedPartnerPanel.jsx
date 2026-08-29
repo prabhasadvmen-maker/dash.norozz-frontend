@@ -107,9 +107,9 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
 
   // Real-Time Socket.io Connection Effect
   useEffect(() => {
-    if (!isApproved || !isOnline || !currentUser?._id) return;
+    if (!currentUser?._id) return;
 
-    socketService.connect();
+    const socket = socketService.connect();
     socketService.joinPartner({
       partnerId: currentUser._id,
       category: currentUser.category || 'AC & Appliance Repair',
@@ -130,9 +130,23 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
       }
     });
 
+    // Background Chat Listener: Notify partner when customer sends a message even if chat modal is closed
+    const handleIncomingChatMessage = (msgPayload) => {
+      if (msgPayload && msgPayload.sender !== currentUser._id) {
+        toast.info(`💬 Message from ${msgPayload.senderName || 'Customer'}: "${msgPayload.message}"`, {
+          duration: 6000,
+        });
+      }
+    };
+
+    socket.on('new_chat_message', handleIncomingChatMessage);
+    socket.on('new_chat_notification', handleIncomingChatMessage);
+
     return () => {
       socketService.off('new_job_offer');
       socketService.off('job_claimed');
+      socket.off('new_chat_message', handleIncomingChatMessage);
+      socket.off('new_chat_notification', handleIncomingChatMessage);
     };
   }, [isApproved, isOnline, currentUser?._id, currentUser?.category, currentUser?.city, currentUser?.assignedCity]);
 
@@ -251,6 +265,10 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
                 {activeTab === 'transactions' && 'Payout & Earnings Ledger'}
                 {activeTab === 'reviews' && 'Customer Ratings & Reviews'}
                 {activeTab === 'documents' && 'Aadhaar, PAN & ID Verification Documents'}
+                {activeTab === 'bankDetails' && 'Bank Account & UPI Payout Settings'}
+                {activeTab === 'referral' && 'Technician Referral & Earn Program'}
+                {activeTab === 'editProfile' && 'Edit Service Technician Profile'}
+                {activeTab === 'settings' && 'Technician Portal Preferences & Security Settings'}
                 {activeTab === 'support' && 'Technician Priority Helpdesk'}
                 {activeTab === 'profile' && 'Service Technician Partner Profile'}
               </h2>
@@ -260,7 +278,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
             </div>
           </div>
 
-          {/* TAB 1: DASHBOARD */}
+          {/* TAB: DASHBOARD */}
           {activeTab === 'dashboard' && (
             <>
               {!isApproved ? (
@@ -281,7 +299,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
                       <div>
                         <div style={{ fontWeight: '800', fontSize: '1rem' }}>Your technician account is under verification.</div>
                         <div style={{ fontSize: '0.82rem', opacity: 0.9 }}>
-                          Bookings, Work Calendar, Wallet Payouts, and Ratings will unlock as soon as City Admin approves your KYC.
+                          Bookings, Work Calendar, and Ratings will unlock as soon as City Admin approves your KYC.
                         </div>
                       </div>
                     </div>
@@ -290,7 +308,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
                     </button>
                   </div>
 
-                  <PartnerProfileView partnerData={currentUser} />
+                  <PartnerProfileView partnerData={currentUser} initialSubTab="overview" onTabChange={(t) => setActiveTab(t)} />
                 </div>
               ) : (
                 /* FULL UNLOCKED DASHBOARD VIEW */
@@ -365,9 +383,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
             </>
           )}
 
-
-
-          {/* TAB 4: SUPPORT */}
+          {/* TAB: SUPPORT */}
           {activeTab === 'support' && (
             <div className="mui-card" style={{ padding: '26px' }}>
               <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -379,31 +395,19 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
             </div>
           )}
 
-          {/* TAB 5: PROFILE */}
-          {activeTab === 'profile' && (
-            <PartnerProfileView partnerData={currentUser} />
-          )}
+          {/* PROFILE & SUB TABS (PROFILE, EDIT PROFILE, DOCUMENTS, BANK DETAILS, REFERRAL, WALLET, SETTINGS) */}
+          {activeTab === 'profile' && <PartnerProfileView partnerData={currentUser} initialSubTab="overview" onTabChange={(t) => setActiveTab(t)} />}
+          {activeTab === 'editProfile' && <PartnerProfileView partnerData={currentUser} initialSubTab="edit" onTabChange={(t) => setActiveTab(t)} />}
+          {activeTab === 'documents' && <PartnerProfileView partnerData={currentUser} initialSubTab="documents" onTabChange={(t) => setActiveTab(t)} />}
+          {activeTab === 'bankDetails' && <PartnerProfileView partnerData={currentUser} initialSubTab="bank" onTabChange={(t) => setActiveTab(t)} />}
+          {activeTab === 'referral' && <PartnerProfileView partnerData={currentUser} initialSubTab="referral" onTabChange={(t) => setActiveTab(t)} />}
+          {activeTab === 'wallet' && <PartnerProfileView partnerData={currentUser} initialSubTab="wallet" onTabChange={(t) => setActiveTab(t)} />}
+          {activeTab === 'settings' && <PartnerProfileView partnerData={currentUser} initialSubTab="settings" onTabChange={(t) => setActiveTab(t)} />}
 
-          {/* UNLOCKED TABS */}
+          {/* UNLOCKED TABS FOR APPROVED PARTNERS */}
           {isApproved && (
             <>
               {activeTab === 'bookings' && <PartnerJobsTable onOpenFulfillment={handleOpenFulfillment} />}
-              {activeTab === 'wallet' && <PartnerWalletCard />}
-              {activeTab === 'workers' && (
-                <div className="mui-card" style={{ padding: '26px' }}>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Users size={20} color="#7c3aed" /> Field Technicians Roster
-                  </h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
-                    {['Rajesh Kumar (AC Specialist)', 'Amitabh Verma (Plumber)', 'Sunil Malhotra (Electrician)', 'Vikram Das (Cleaner)'].map((w, i) => (
-                      <div key={i} style={{ padding: '14px', background: '#f8fafc', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
-                        <div style={{ fontWeight: '700', fontSize: '0.88rem' }}>{w}</div>
-                        <span className="badge badge-success" style={{ marginTop: '4px' }}>ACTIVE</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
               {activeTab === 'calendar' && (
                 <div className="mui-card" style={{ padding: '26px' }}>
                   <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>

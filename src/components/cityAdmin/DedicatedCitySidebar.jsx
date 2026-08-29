@@ -12,11 +12,18 @@ import {
   MapPin
 } from 'lucide-react';
 
-const DedicatedCitySidebar = ({ activeTab, setActiveTab, onLogout, assignedCity = 'Delhi NCR' }) => {
+const DedicatedCitySidebar = ({
+  activeTab,
+  setActiveTab,
+  onLogout,
+  assignedCity = 'Delhi NCR',
+  partnersCount = null,
+  pendingKycCount = null
+}) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: 'Live' },
-    { id: 'partners', label: 'Partners', icon: Briefcase, badge: '185' },
-    { id: 'partnerKyc', label: 'Partner KYC', icon: ShieldCheck, badge: '3 Pending' },
+    { id: 'partners', label: 'Partners', icon: Briefcase, badge: partnersCount !== null ? String(partnersCount) : '1' },
+    { id: 'partnerKyc', label: 'Partner KYC', icon: ShieldCheck, badge: pendingKycCount !== null ? `${pendingKycCount} Pending` : '1 Pending' },
     { id: 'bookings', label: 'Bookings', icon: CalendarCheck, badge: 'Dispatch' },
     { id: 'payments', label: 'Payments', icon: CreditCard },
     { id: 'reports', label: 'Reports', icon: BarChart3 },

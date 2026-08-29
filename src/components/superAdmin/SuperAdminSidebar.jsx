@@ -15,7 +15,9 @@ import {
   User,
   LogOut,
   Crown,
-  Sparkles
+  Sparkles,
+  Star,
+  Tag
 } from 'lucide-react';
 
 const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
@@ -23,6 +25,7 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, badge: 'Analytics' },
     { id: 'cityAdmins', label: 'City Admins', icon: Building2, badge: 'Assign' },
     { id: 'cities', label: 'City Management', icon: MapPin, badge: 'Dynamic' },
+    { id: 'coupons', label: 'Coupons & Promos', icon: Tag, badge: 'Offers' },
     { id: 'customers', label: 'Customers', icon: Users },
     { id: 'partners', label: 'Partners', icon: Briefcase },
     { id: 'categories', label: 'Categories', icon: Grid },
@@ -31,6 +34,7 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
     { id: 'services', label: 'Services', icon: Wrench },
     { id: 'bookings', label: 'Bookings', icon: CalendarCheck },
     { id: 'payments', label: 'Payments', icon: CreditCard },
+    { id: 'reviews', label: 'Reviews & Ratings', icon: Star, badge: 'Moderation' },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'settings', label: 'Settings', icon: Settings },

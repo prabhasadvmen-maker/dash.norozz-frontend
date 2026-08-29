@@ -5,6 +5,7 @@ export const cityAdminService = {
   getPartners: () => axiosInstance.get('/city-admin/partners'),
   approvePartner: (id) => axiosInstance.patch(`/city-admin/partners/${id}/approve`),
   rejectPartner: (id, reason) => axiosInstance.patch(`/city-admin/partners/${id}/reject`, { reason }),
+  updateDocumentStatus: (id, docKey, status, rejectionReason) => axiosInstance.patch(`/city-admin/partners/${id}/documents/status`, { docKey, status, rejectionReason }),
   verifyPartnerKyc: (id) => axiosInstance.patch(`/city-admin/partners/${id}/kyc-verify`),
   suspendPartner: (id) => axiosInstance.patch(`/city-admin/partners/${id}/suspend`),
   activatePartner: (id) => axiosInstance.patch(`/city-admin/partners/${id}/activate`),

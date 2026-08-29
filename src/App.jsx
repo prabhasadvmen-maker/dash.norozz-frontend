@@ -49,7 +49,7 @@ function App() {
       );
     }
     if (userRole === 'partner') {
-      const isKycDone = currentUser.isKycSubmitted === true;
+      const isKycDone = (currentUser.isKycSubmitted === true && (currentUser.isWorkingHoursSet === true || currentUser.workingHours?.length > 0)) || currentUser.kycStatus === 'approved';
 
       if (!isKycDone && !skipOnboarding) {
         return (

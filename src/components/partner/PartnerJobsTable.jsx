@@ -41,6 +41,29 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
   // Filter lists for tabs
   const upcomingBookings = useMemo(() => {
     return masterBookingsList.filter((b) =>
+      ['Pending', 'pending', 'Accepted', 'accepted', 'Assigned', 'assigned', 'On The Way', 'on_the_way', 'Started', 'started', 'in_progress'].includes(b.status)
+    );
+  }, [masterBookingsList]);
+
+  const [acceptingId, setAcceptingId] = useState(null);
+
+  const handleAcceptJob = async (job) => {
+    const jobId = job._id;
+    setAcceptingId(jobId);
+    try {
+      await partnerService.claimJobOffer(jobId);
+      toast.success('🎉 Congratulations! Job accepted successfully!');
+      window.location.reload();
+    } catch (err) {
+      console.error('Accept job error:', err);
+      toast.error(err.response?.data?.message || 'Failed to accept job.');
+    } finally {
+      setAcceptingId(null);
+    }
+  };
+
+  const acceptedBookingsList = useMemo(() => {
+    return masterBookingsList.filter((b) =>
       ['Accepted', 'accepted', 'Assigned', 'assigned', 'On The Way', 'on_the_way', 'Started', 'started', 'in_progress'].includes(b.status)
     );
   }, [masterBookingsList]);
@@ -62,6 +85,8 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
     switch (activeTab) {
       case 'upcoming':
         return upcomingBookings;
+      case 'accepted':
+        return acceptedBookingsList;
       case 'completed':
         return completedBookingsList;
       case 'cancelled':
@@ -70,7 +95,7 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
       default:
         return masterBookingsList;
     }
-  }, [activeTab, masterBookingsList, upcomingBookings, completedBookingsList, cancelledBookingsList]);
+  }, [activeTab, masterBookingsList, upcomingBookings, acceptedBookingsList, completedBookingsList, cancelledBookingsList]);
 
   // Handle Tab Click - Instant In-Memory Filter Transition
   const handleTabClick = (tabId) => {
@@ -155,6 +180,7 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
         {[
           { id: 'all', label: 'All Bookings', count: masterBookingsList.length, icon: Layers, color: '#2563eb' },
           { id: 'upcoming', label: 'Upcoming', count: upcomingBookings.length, icon: Clock, color: '#0284c7' },
+          { id: 'accepted', label: 'Accepted', count: acceptedBookingsList.length, icon: CalendarCheck, color: '#7c3aed' },
           { id: 'completed', label: 'Completed', count: completedBookingsList.length, icon: CheckCircle2, color: '#16a34a' },
           { id: 'cancelled', label: 'Cancelled', count: cancelledBookingsList.length, icon: XCircle, color: '#dc2626' },
         ].map((tab) => {
@@ -217,7 +243,8 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
               <tr>
                 <td colSpan={7} style={{ padding: '28px', textAlign: 'center', color: 'var(--text-muted)' }}>
                   {activeTab === 'all' && 'No bookings found.'}
-                  {activeTab === 'upcoming' && 'No upcoming accepted jobs.'}
+                  {activeTab === 'upcoming' && 'No upcoming open jobs.'}
+                  {activeTab === 'accepted' && 'No accepted jobs for today.'}
                   {activeTab === 'completed' && 'No completed jobs yet.'}
                   {activeTab === 'cancelled' && 'No cancelled bookings.'}
                 </td>
@@ -259,7 +286,18 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
                       {getStatusBadge(job.status)}
                     </td>
                     <td style={{ padding: '14px' }}>
-                      <div style={{ display: 'flex', gap: '6px' }}>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {(job.status === 'Pending' || job.status === 'pending' || !job.partner) && (
+                          <button
+                            type="button"
+                            onClick={() => handleAcceptJob(job)}
+                            disabled={acceptingId === job._id}
+                            className="btn btn-success btn-sm"
+                            style={{ borderRadius: '10px', padding: '6px 12px', fontWeight: '800', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                          >
+                            {acceptingId === job._id ? <Loader2 size={12} className="spin" /> : '✓ Accept Job'}
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleViewDetailsClick(job)}
@@ -273,7 +311,7 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
                             </>
                           ) : (
                             <>
-                              <Navigation size={12} /> View Details & Fulfill
+                              <Navigation size={12} /> View Details
                             </>
                           )}
                         </button>

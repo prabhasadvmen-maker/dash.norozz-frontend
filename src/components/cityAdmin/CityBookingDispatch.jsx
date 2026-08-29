@@ -89,7 +89,7 @@ const CityBookingDispatch = ({ assignedCity = 'Delhi NCR' }) => {
                       {o.customer?.name || 'Ananya Deshmukh'}
                     </td>
                     <td style={{ padding: '14px', fontWeight: '700', fontSize: '0.88rem', color: 'var(--text-primary)' }}>
-                      {o.serviceName || o.packageTitle || 'AC Service'}
+                      {o.packageName || o.packageSnapshot?.title || (typeof o.service === 'object' ? o.service?.name : o.serviceName || 'Service Package')}
                     </td>
                     <td style={{ padding: '14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                       <MapPin size={12} color="#2563eb" style={{ display: 'inline', marginRight: '4px' }} />
@@ -99,7 +99,7 @@ const CityBookingDispatch = ({ assignedCity = 'Delhi NCR' }) => {
                       {partnerName}
                     </td>
                     <td style={{ padding: '14px', fontWeight: '800', color: '#10b981', fontSize: '0.9rem' }}>
-                      ₹{o.totalAmount || o.finalPrice || 599}
+                      ₹{o.totalAmount || o.financialSnapshot?.customerPayable || o.amount || 599}
                     </td>
                     <td style={{ padding: '14px' }}>
                       <span className={`badge ${o.status === 'Pending' ? 'badge-warning' : o.status === 'Assigned' ? 'badge-purple' : 'badge-blue'}`}>
@@ -144,7 +144,10 @@ const CityBookingDispatch = ({ assignedCity = 'Delhi NCR' }) => {
 
             <div style={{ padding: '14px', background: '#f8fafc', borderRadius: 'var(--radius-md)', marginBottom: '20px', fontSize: '0.85rem' }}>
               <div><strong>Customer:</strong> {selectedOrder.customer?.name || 'Customer'}</div>
-              <div><strong>Service:</strong> {selectedOrder.serviceName || selectedOrder.packageTitle}</div>
+              <div><strong>Package:</strong> {selectedOrder.packageName || selectedOrder.packageSnapshot?.title || selectedOrder.serviceName}</div>
+              {selectedOrder.packageSnapshot?.duration && (
+                <div><strong>Duration:</strong> {selectedOrder.packageSnapshot.duration}</div>
+              )}
               <div><strong>Jurisdiction:</strong> {assignedCity}</div>
             </div>
 

@@ -66,36 +66,24 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
     '07:00 PM'
   ];
 
-  // Coupon State
-  const [appliedCoupon, setAppliedCoupon] = useState({ code: 'HOME50', discount: 50, discountType: 'flat' });
+  // Coupon State - NO AUTO APPLY
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponCodeInput, setCouponCodeInput] = useState('');
+  const [couponsList, setCouponsList] = useState([]);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
 
-  const couponsList = [
-    {
-      code: 'FIRST30',
-      discountType: 'percent',
-      value: 30,
-      badgeText: '30% OFF',
-      title: '30% Off on your first booking',
-      subtitle: 'Valid on bookings above ₹1,000'
-    },
-    {
-      code: 'HOME50',
-      discountType: 'flat',
-      value: 50,
-      badgeText: '₹50 OFF',
-      title: 'Flat ₹50 Off on Deep Cleaning',
-      subtitle: 'Can be applied once per user'
-    },
-    {
-      code: 'WEEKEND80',
-      discountType: 'max',
-      value: 80,
-      badgeText: 'UP TO ₹80',
-      title: 'Up to ₹80 Off on weekends',
-      subtitle: 'Valid on Saturday & Sunday only'
-    }
-  ];
+  useEffect(() => {
+    const fetchCoupons = async () => {
+      try {
+        const res = await customerService.getOffers();
+        const list = res.data?.data || res.data || [];
+        setCouponsList(Array.isArray(list) ? list : []);
+      } catch (err) {
+        console.warn('Failed to load live coupons:', err);
+      }
+    };
+    fetchCoupons();
+  }, []);
 
   // Payment Method State
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('UPI');
@@ -170,23 +158,19 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
       setSavedAddresses(defaultUserAddr);
       setSelectedAddressId('user_profile_addr');
     } else {
-      const fallbackAddrs = [
-        { id: '1', label: 'Home', address: '91 Orchard St, New York, NY 10002', type: 'home' },
-        { id: '2', label: 'Office', address: '234 W 42nd St, New York, NY 10036', type: 'office' }
-      ];
-      setSavedAddresses(fallbackAddrs);
-      setSelectedAddressId('1');
+      setSavedAddresses([]);
+      setSelectedAddressId('');
     }
   }, [addresses, currentUser]);
 
   const currentPackage = packageList[selectedPackageIndex] || packageList[1] || packageList[0] || { title: 'Standard Deep Clean', price: 1499, formattedPrice: '₹1,499' };
-  const activeAddressObj = savedAddresses.find((a) => a.id === selectedAddressId) || savedAddresses[0] || { address: '91 Orchard St, New York, NY 10002' };
+  const activeAddressObj = savedAddresses.find((a) => a.id === selectedAddressId) || savedAddresses[0] || { address: currentUser?.address || 'Please add delivery address' };
 
   // Calculations
-  const subtotal = currentPackage.price;
-  const couponDiscountVal = appliedCoupon ? (appliedCoupon.discountType === 'percent' ? Math.round((subtotal * appliedCoupon.value) / 100) : (appliedCoupon.discount || 50)) : 0;
-  const taxAndFee = 157;
-  const totalAmount = Math.max(0, subtotal - couponDiscountVal + taxAndFee);
+  const subtotal = service?.finalPrice || service?.price || currentPackage.price || 799;
+  const platformFee = Math.round(subtotal * 0.05);
+  const couponDiscountVal = appliedCoupon ? (appliedCoupon.discountAmount ?? (appliedCoupon.discount || 0)) : 0;
+  const totalAmount = Math.max(0, subtotal + platformFee - couponDiscountVal);
 
   // Add Address Handler with LIVE Backend Persistence
   const handleAddNewAddress = async () => {
@@ -240,22 +224,35 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
     }
   };
 
-  // Apply Coupon Handler
-  const handleApplyCoupon = (c) => {
-    if (typeof c === 'string') {
-      const found = couponsList.find((item) => item.code.toUpperCase() === c.trim().toUpperCase());
-      if (found) {
-        setAppliedCoupon(found);
-        toast.success(`Coupon ${found.code} applied!`);
-      } else {
-        setAppliedCoupon({ code: c.toUpperCase(), discount: 50, discountType: 'flat' });
-        toast.success(`Promo code ${c.toUpperCase()} applied!`);
-      }
-    } else {
-      setAppliedCoupon(c);
-      toast.success(`Coupon ${c.code} applied!`);
+  // Live API Coupon Application Handler
+  const handleApplyCoupon = async (cInput) => {
+    const targetCode = typeof cInput === 'object' ? cInput.code : (cInput || couponCodeInput);
+    if (!targetCode || !targetCode.trim()) {
+      toast.error('Please enter a valid coupon code.');
+      return;
     }
-    setCurrentStep('booking_summary');
+
+    setApplyingCoupon(true);
+    try {
+      const res = await customerService.applyCoupon({
+        code: targetCode.trim(),
+        bookingAmount: subtotal,
+      });
+
+      const resData = res.data?.data || res.data;
+      if (resData?.coupon || resData?.applied) {
+        const couponResult = resData.coupon || resData;
+        setAppliedCoupon(couponResult);
+        toast.success(res.data?.message || `Coupon '${couponResult.code}' applied successfully!`);
+        setCouponCodeInput('');
+        setCurrentStep('booking_summary');
+      }
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Failed to apply coupon';
+      toast.error(errMsg);
+    } finally {
+      setApplyingCoupon(false);
+    }
   };
 
   // Start Payment & Searching Partner Radar Handler
@@ -266,14 +263,17 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
     try {
       const res = await createBooking({
         category: service?.category?._id || service?.category || '65f0a0000000000000000001',
-        service: service?._id || '65f0a0000000000000000002',
-        packageName: `${service?.name || service?.title || 'Home Deep Cleaning'} - ${currentPackage.title}`,
+        service: service?.serviceId || service?._id || '65f0a0000000000000000002',
+        packageId: service?.packageId || service?.package?._id || currentPackage?._id || null,
+        packageName: service?.packageName || `${service?.name || service?.title || 'Home Deep Cleaning'} - ${currentPackage.title}`,
         addressLine: activeAddressObj.address,
         city: currentUser?.city || 'Delhi NCR',
         pincode: '110001',
         bookingDate: new Date(),
         timeSlot: `${selectedDate} • ${selectedTimeSlot}`,
         amount: totalAmount,
+        discountAmount: couponDiscountVal,
+        couponCode: appliedCoupon?.code || null,
         paymentMethod: selectedPaymentMethod
       });
 
@@ -1008,34 +1008,34 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
                 </div>
               </div>
 
-              {/* Payment Breakdown */}
+              {/* Payment Breakdown (Transparent Customer Platform Fee) */}
               <div style={{ marginTop: '10px' }}>
                 <h3 style={{ fontSize: '0.92rem', fontWeight: '700', color: '#94a3b8', marginBottom: '12px' }}>
-                  Payment Details
+                  Payment & Fee Breakdown
                 </h3>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.9rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
-                    <span>Subtotal</span>
+                    <span>Service Price</span>
                     <span style={{ color: '#ffffff', fontWeight: '800' }}>₹{subtotal.toLocaleString()}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                    <span>Customer Platform Fee (5%)</span>
+                    <span style={{ color: '#38bdf8', fontWeight: '800' }}>+ ₹{platformFee.toLocaleString()}</span>
                   </div>
 
                   {couponDiscountVal > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10b981' }}>
-                      <span>Coupon Discount ({appliedCoupon.code})</span>
-                      <span style={{ fontWeight: '800' }}>-₹{couponDiscountVal}</span>
+                      <span>Discount ({appliedCoupon.code})</span>
+                      <span style={{ fontWeight: '800' }}>- ₹{couponDiscountVal.toLocaleString()}</span>
                     </div>
                   )}
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
-                    <span>Tax & Service Fee</span>
-                    <span style={{ color: '#ffffff', fontWeight: '800' }}>₹{taxAndFee}</span>
-                  </div>
 
                   <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.08)', margin: '6px 0' }} />
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: '900' }}>
-                    <span style={{ color: '#ffffff' }}>Total Amount</span>
+                    <span style={{ color: '#ffffff' }}>Final Payable Amount</span>
                     <span style={{ color: '#10b981' }}>₹{totalAmount.toLocaleString()}</span>
                   </div>
                 </div>

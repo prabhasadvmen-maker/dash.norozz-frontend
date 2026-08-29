@@ -23,4 +23,11 @@ export const customerService = {
   addAddress: (data) => axiosInstance.post('/customer/auth/addresses', data),
   updateAddress: (id, data) => axiosInstance.put(`/customer/auth/addresses/${id}`, data),
   deleteAddress: (id) => axiosInstance.delete(`/customer/auth/addresses/${id}`),
+
+  // Referral System API
+  getReferralData: () => axiosInstance.get('/customer/referral'),
+  sendReferralInvite: (data) => axiosInstance.post('/customer/referral/invite', data),
+
+  // Coupon Validation & Application API
+  applyCoupon: (data) => axiosInstance.post('/customer/coupons/apply', data),
 };

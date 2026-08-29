@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useBookings } from '../../hooks/useBookings.js';
 import { useCustomer } from '../../hooks/useCustomer.js';
+import { customerService } from '../../services/customer.service.js';
 import { toast } from '../../utils/toast.js';
 
 const BookingModal = ({ isOpen, onClose, initialService, onBookingConfirmed, onNavigateToBookings }) => {
@@ -112,36 +113,24 @@ const BookingModal = ({ isOpen, onClose, initialService, onBookingConfirmed, onN
     '07:00 PM'
   ];
 
-  // Coupons State
-  const [appliedCoupon, setAppliedCoupon] = useState({ code: 'HOME50', discount: 50 });
+  // Coupons State - NO AUTO APPLY
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponCodeInput, setCouponCodeInput] = useState('');
+  const [couponsList, setCouponsList] = useState([]);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
 
-  const couponsList = [
-    {
-      code: 'FIRST30',
-      discountType: 'percent',
-      value: 30,
-      badgeText: '30% OFF',
-      title: '30% Off on your first booking',
-      subtitle: 'Valid on bookings above ₹1,000'
-    },
-    {
-      code: 'HOME50',
-      discountType: 'flat',
-      value: 50,
-      badgeText: '₹50 OFF',
-      title: 'Flat ₹50 Off on Deep Cleaning',
-      subtitle: 'Can be applied once per user'
-    },
-    {
-      code: 'WEEKEND80',
-      discountType: 'max',
-      value: 80,
-      badgeText: 'UP TO ₹80',
-      title: 'Up to ₹80 Off on weekends',
-      subtitle: 'Valid on Saturday & Sunday only'
-    }
-  ];
+  useEffect(() => {
+    const fetchCoupons = async () => {
+      try {
+        const res = await customerService.getOffers();
+        const list = res.data?.data || res.data || [];
+        setCouponsList(Array.isArray(list) ? list : []);
+      } catch (err) {
+        console.warn('Failed to load live coupons:', err);
+      }
+    };
+    fetchCoupons();
+  }, []);
 
   // Payment Method State
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('UPI'); // 'UPI' | 'Card' | 'NetBanking' | 'Wallets'
@@ -187,7 +176,7 @@ const BookingModal = ({ isOpen, onClose, initialService, onBookingConfirmed, onN
 
   // Calculations
   const subtotal = currentPackage.price;
-  const couponDiscountVal = appliedCoupon ? (appliedCoupon.discountType === 'percent' ? Math.round((subtotal * appliedCoupon.value) / 100) : (appliedCoupon.discount || 50)) : 0;
+  const couponDiscountVal = appliedCoupon ? (appliedCoupon.discountAmount ?? (appliedCoupon.discount || 0)) : 0;
   const taxAndFee = 157;
   const totalAmount = Math.max(0, subtotal - couponDiscountVal + taxAndFee);
 
@@ -210,21 +199,34 @@ const BookingModal = ({ isOpen, onClose, initialService, onBookingConfirmed, onN
     toast.success('New address added!');
   };
 
-  const handleApplyCoupon = (c) => {
-    if (typeof c === 'string') {
-      const found = couponsList.find((item) => item.code.toUpperCase() === c.trim().toUpperCase());
-      if (found) {
-        setAppliedCoupon(found);
-        toast.success(`Coupon ${found.code} applied!`);
-      } else {
-        setAppliedCoupon({ code: c.toUpperCase(), discount: 50, discountType: 'flat' });
-        toast.success(`Promo code ${c.toUpperCase()} applied!`);
-      }
-    } else {
-      setAppliedCoupon(c);
-      toast.success(`Coupon ${c.code} applied!`);
+  const handleApplyCoupon = async (cInput) => {
+    const targetCode = typeof cInput === 'object' ? cInput.code : (cInput || couponCodeInput);
+    if (!targetCode || !targetCode.trim()) {
+      toast.error('Please enter a valid coupon code.');
+      return;
     }
-    setCurrentScreen('booking_summary');
+
+    setApplyingCoupon(true);
+    try {
+      const res = await customerService.applyCoupon({
+        code: targetCode.trim(),
+        bookingAmount: subtotal,
+      });
+
+      const resData = res.data?.data || res.data;
+      if (resData?.coupon || resData?.applied) {
+        const couponResult = resData.coupon || resData;
+        setAppliedCoupon(couponResult);
+        toast.success(res.data?.message || `Coupon '${couponResult.code}' applied successfully!`);
+        setCouponCodeInput('');
+        setCurrentScreen('booking_summary');
+      }
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Failed to apply coupon';
+      toast.error(errMsg);
+    } finally {
+      setApplyingCoupon(false);
+    }
   };
 
   const handleStartPaymentAndFindingPartner = async () => {

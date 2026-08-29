@@ -258,7 +258,7 @@ const CustomerDashboard = ({ currentUser, onLogout, selectedCity }) => {
 
         {/* SCREEN 5: PROFILE */}
         {activeTab === 'profile' && (
-          <CustomerProfileView currentUser={currentUser} onLogout={onLogout} />
+          <CustomerProfileView currentUser={currentUser} onLogout={onLogout} onNavigateTab={(tab) => setActiveTab(tab)} />
         )}
 
       </main>

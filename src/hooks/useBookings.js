@@ -2,12 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bookingService } from '../services/booking.service.js';
 import { toast } from '../utils/toast.js';
 
-export const useBookings = () => {
+export const useBookings = (enabled = true) => {
   const queryClient = useQueryClient();
 
   const myBookingsQuery = useQuery({
     queryKey: ['bookings', 'myBookings'],
     queryFn: () => bookingService.getMyBookings(),
+    enabled: !!enabled,
+    staleTime: 60 * 1000,
   });
 
   const createBookingMutation = useMutation({

@@ -1,47 +1,82 @@
-import React, { useState } from 'react';
-import { ShieldCheck, CheckCircle2, XCircle, FileCheck, Power } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShieldCheck, CheckCircle2, XCircle, FileCheck, Power, Eye } from 'lucide-react';
 import { useCityAdmin } from '../../hooks/useCityAdmin.js';
+import { catalogService } from '../../services/catalog.service.js';
+import PartnerKycDetailPage from './PartnerKycDetailPage';
 
 const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
-  const { partners, approvePartner, rejectPartner, verifyPartnerKyc, suspendPartner, activatePartner } = useCityAdmin();
+  const { partners, approvePartner, rejectPartner, updateDocumentStatus, verifyPartnerKyc, suspendPartner, activatePartner } = useCityAdmin();
   const [selectedPartner, setSelectedPartner] = useState(null);
-  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
-  const [rejectReasonModal, setRejectReasonModal] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
+  const [categoryMap, setCategoryMap] = useState({});
+
+  useEffect(() => {
+    catalogService.getCategories()
+      .then((res) => {
+        const list = res.data?.data || res.data || [];
+        if (Array.isArray(list)) {
+          const map = {};
+          list.forEach((c) => {
+            if (c._id && c.name) map[String(c._id)] = c.name;
+          });
+          setCategoryMap(map);
+        }
+      })
+      .catch((err) => console.warn('Categories map fetch warning:', err));
+  }, []);
+
+  const getDisplayCategory = (partner) => {
+    const rawCat = partner.category;
+    if (rawCat && !rawCat.match(/^[0-9a-fA-F]{24}$/)) {
+      return rawCat;
+    }
+    if (rawCat && categoryMap[rawCat]) {
+      return categoryMap[rawCat];
+    }
+    if (Array.isArray(partner.categories) && partner.categories.length > 0) {
+      const names = partner.categories
+        .map((c) => (typeof c === 'object' && c?.name ? c.name : categoryMap[String(c)] || null))
+        .filter(Boolean);
+      if (names.length > 0) return names.join(', ');
+    }
+    return 'General Service Technician';
+  };
 
   const handleApprove = async (partnerId) => {
     await approvePartner(partnerId);
   };
 
-  const handleVerifyKyc = async (partnerId) => {
-    await verifyPartnerKyc(partnerId);
+  const handleReject = async (partnerId, reason) => {
+    await rejectPartner({ id: partnerId, reason });
   };
 
   const handleToggleSuspend = async (partner) => {
-    if (partner.status === 'suspended') {
+    if (partner.status === 'suspended' || partner.status === 'blocked') {
       await activatePartner(partner._id);
     } else {
       await suspendPartner(partner._id);
     }
   };
 
-  const handleOpenReject = (partner) => {
-    setSelectedPartner(partner);
-    setRejectReason('');
-    setRejectReasonModal(true);
-  };
-
-  const handleConfirmReject = async (e) => {
-    e.preventDefault();
-    if (!selectedPartner) return;
-    await rejectPartner({ id: selectedPartner._id, reason: rejectReason });
-    setRejectReasonModal(false);
-  };
-
   const handleOpenDocVerify = (partner) => {
     setSelectedPartner(partner);
-    setIsDocModalOpen(true);
   };
+
+  // IF PARTNER SELECTED: RENDER FULL PAGE VIEW (NOT MODAL)
+  if (selectedPartner) {
+    return (
+      <PartnerKycDetailPage
+        partner={selectedPartner}
+        onBack={() => setSelectedPartner(null)}
+        onApprove={handleApprove}
+        onReject={handleReject}
+        onToggleSuspend={handleToggleSuspend}
+        onUpdateDocumentStatus={(id, docKey, status, rejectionReason) =>
+          updateDocumentStatus({ id, docKey, status, rejectionReason })
+        }
+        categoryMap={categoryMap}
+      />
+    );
+  }
 
   return (
     <div className="mui-card" style={{ padding: '26px' }}>
@@ -53,7 +88,7 @@ const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
             <ShieldCheck size={22} color="#2563eb" /> Partner KYC & Onboarding Approvals ({assignedCity})
           </h3>
           <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-            Verify uploaded compliance documents, approve active service agencies, or reject invalid applications.
+            Click any partner row to open full-page compliance inspection, view profile details, approve or reject applications.
           </p>
         </div>
       </div>
@@ -81,15 +116,27 @@ const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
             ) : (
               partners.map((p) => {
                 const status = p.kycStatus || 'pending';
-                const isSuspended = p.status === 'suspended';
+                const isSuspended = p.status === 'suspended' || p.status === 'blocked';
                 return (
-                  <tr key={p._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                  <tr
+                    key={p._id}
+                    onClick={() => handleOpenDocVerify(p)}
+                    style={{
+                      borderBottom: '1px solid var(--border-light)',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  >
                     <td style={{ padding: '14px' }}>
-                      <div style={{ fontWeight: '800', fontSize: '0.9rem', color: 'var(--text-primary)' }}>{p.name}</div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Display: {p.agencyName || `${p.name} (${p.category || 'Specialist'})`}</div>
+                      <div style={{ fontWeight: '800', fontSize: '0.9rem', color: '#2563eb', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {p.name} <Eye size={13} color="#94a3b8" />
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Display: {p.agencyName || `${p.name} (${getDisplayCategory(p)})`}</div>
                     </td>
                     <td style={{ padding: '14px', fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-                      {p.category || 'AC & Appliance Repair'}
+                      {getDisplayCategory(p)}
                     </td>
                     <td style={{ padding: '14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                       <div>{p.phone || '+91 98765 43210'}</div>
@@ -97,11 +144,15 @@ const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
                     </td>
                     <td style={{ padding: '14px' }}>
                       <button
-                        onClick={() => handleOpenDocVerify(p)}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenDocVerify(p);
+                        }}
                         className="btn btn-secondary btn-sm"
-                        style={{ fontSize: '0.75rem' }}
+                        style={{ fontSize: '0.75rem', fontWeight: '700' }}
                       >
-                        <FileCheck size={14} color="#2563eb" /> Verify Documents
+                        <FileCheck size={14} color="#2563eb" /> Inspect Documents
                       </button>
                     </td>
                     <td style={{ padding: '14px' }}>
@@ -110,9 +161,10 @@ const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
                       </span>
                     </td>
                     <td style={{ padding: '14px' }}>
-                      <div style={{ display: 'flex', gap: '6px' }}>
+                      <div style={{ display: 'flex', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
                         {status !== 'approved' && (
                           <button
+                            type="button"
                             onClick={() => handleApprove(p._id)}
                             className="btn btn-primary btn-sm"
                             style={{ padding: '6px 10px', fontSize: '0.78rem' }}
@@ -121,17 +173,8 @@ const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
                           </button>
                         )}
 
-                        {status !== 'rejected' && (
-                          <button
-                            onClick={() => handleOpenReject(p)}
-                            className="btn btn-danger btn-sm"
-                            style={{ padding: '6px 10px', fontSize: '0.78rem' }}
-                          >
-                            <XCircle size={14} /> Reject
-                          </button>
-                        )}
-
                         <button
+                          type="button"
                           onClick={() => handleToggleSuspend(p)}
                           className={`btn btn-sm ${isSuspended ? 'btn-success' : 'btn-secondary'}`}
                           style={{ padding: '6px 8px', fontSize: '0.75rem' }}
@@ -148,68 +191,6 @@ const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
           </tbody>
         </table>
       </div>
-
-      {/* DOCUMENT VERIFICATION INSPECTION MODAL */}
-      {isDocModalOpen && selectedPartner && (
-        <div className="modal-overlay" onClick={() => setIsDocModalOpen(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ padding: '28px', maxWidth: '540px' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <FileCheck size={20} color="#2563eb" /> Verify Compliance Documents: {selectedPartner.name} ({selectedPartner.category || 'Technician'})
-            </h3>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
-              {['Aadhaar Document', 'PAN Card', 'GST Certificate', 'Bank Passbook'].map((doc, idx) => (
-                <div key={idx} style={{ padding: '14px', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontWeight: '700', fontSize: '0.88rem' }}>{doc}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Verified against official registry</div>
-                  </div>
-                  <span className="badge badge-success">VALID DOC</span>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button className="btn btn-secondary" onClick={() => setIsDocModalOpen(false)} style={{ flex: 1 }}>
-                Close
-              </button>
-              <button className="btn btn-primary" onClick={() => { handleVerifyKyc(selectedPartner._id); setIsDocModalOpen(false); }} style={{ flex: 1 }}>
-                Mark All Docs Verified
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* REJECT REASON MODAL */}
-      {rejectReasonModal && selectedPartner && (
-        <div className="modal-overlay" onClick={() => setRejectReasonModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ padding: '28px', maxWidth: '480px' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <XCircle size={20} color="#ef4444" /> Reject Partner Application: {selectedPartner.agencyName || selectedPartner.name}
-            </h3>
-
-            <form onSubmit={handleConfirmReject}>
-              <div className="form-group" style={{ marginBottom: '20px' }}>
-                <label className="form-label">Reason for Rejection</label>
-                <textarea
-                  className="form-input"
-                  rows={3}
-                  placeholder="e.g. Invalid GST registration document or failed police verification."
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setRejectReasonModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-danger">Confirm Rejection</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
     </div>
   );

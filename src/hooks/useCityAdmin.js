@@ -41,6 +41,14 @@ export const useCityAdmin = () => {
     },
   });
 
+  const updateDocumentStatusMutation = useMutation({
+    mutationFn: ({ id, docKey, status, rejectionReason }) => cityAdminService.updateDocumentStatus(id, docKey, status, rejectionReason),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['cityAdmin'] });
+      toast.success(res.message || 'Document status updated');
+    },
+  });
+
   const verifyPartnerKycMutation = useMutation({
     mutationFn: (id) => cityAdminService.verifyPartnerKyc(id),
     onSuccess: (res) => {
@@ -99,6 +107,7 @@ export const useCityAdmin = () => {
     },
     approvePartner: approvePartnerMutation.mutateAsync,
     rejectPartner: rejectPartnerMutation.mutateAsync,
+    updateDocumentStatus: updateDocumentStatusMutation.mutateAsync,
     verifyPartnerKyc: verifyPartnerKycMutation.mutateAsync,
     suspendPartner: suspendPartnerMutation.mutateAsync,
     activatePartner: activatePartnerMutation.mutateAsync,

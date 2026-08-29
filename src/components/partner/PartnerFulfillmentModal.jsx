@@ -21,18 +21,21 @@ import {
   ArrowLeft,
   Loader2,
   DollarSign,
-  ExternalLink
+  ExternalLink,
+  Star
 } from 'lucide-react';
 import { toast } from '../../utils/toast.js';
 import { useBookings } from '../../hooks/useBookings.js';
 import { axiosInstance } from '../../api/axiosInstance.js';
 import { partnerService } from '../../services/partner.service.js';
 import LiveChatModal from '../common/LiveChatModal.jsx';
+import ReviewModal from '../common/ReviewModal.jsx';
 
 const PartnerFulfillmentModal = ({ isOpen, booking, currentUser, onClose, onComplete }) => {
   const { updateBookingStatus, completeBooking } = useBookings();
   const [chatOpen, setChatOpen] = useState(false);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
 
   // Full Booking Data from API
   const [fullBookingData, setFullBookingData] = useState(booking);
@@ -935,12 +938,36 @@ const PartnerFulfillmentModal = ({ isOpen, booking, currentUser, onClose, onComp
                 </div>
               </div>
 
+              {/* Rate Customer CTA */}
+              <button
+                type="button"
+                onClick={() => setReviewModalOpen(true)}
+                className="btn"
+                style={{
+                  padding: '12px',
+                  background: '#fef3c7',
+                  color: '#b45309',
+                  fontWeight: '800',
+                  fontSize: '0.9rem',
+                  borderRadius: '14px',
+                  border: '1px solid #fde68a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  marginTop: '4px',
+                }}
+              >
+                <Star size={18} fill="#f59e0b" color="#f59e0b" /> Rate Customer Experience
+              </button>
+
               <button
                 type="button"
                 onClick={handleConfirmFinalPayment}
                 disabled={completingPayment}
                 className="btn"
-                style={{ padding: '14px', background: '#16a34a', color: '#ffffff', fontWeight: '800', fontSize: '1rem', borderRadius: '14px', border: 'none', boxShadow: '0 4px 14px rgba(22, 163, 74, 0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '6px' }}
+                style={{ padding: '14px', background: '#16a34a', color: '#ffffff', fontWeight: '800', fontSize: '1rem', borderRadius: '14px', border: 'none', boxShadow: '0 4px 14px rgba(22, 163, 74, 0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '4px' }}
               >
                 {completingPayment ? <Loader2 size={18} className="spin" /> : <ShieldCheck size={18} />} Confirm Payment & Complete Service
               </button>
@@ -1056,6 +1083,17 @@ const PartnerFulfillmentModal = ({ isOpen, booking, currentUser, onClose, onComp
         currentUser={currentUser}
         userRole="partner"
         onClose={() => setChatOpen(false)}
+      />
+
+      {/* TWO-WAY RATING MODAL (Partner Rates Customer) */}
+      <ReviewModal
+        isOpen={reviewModalOpen}
+        onClose={() => setReviewModalOpen(false)}
+        booking={currentBooking}
+        targetRole="CUSTOMER"
+        onSuccess={() => {
+          toast.success('Customer rating & review submitted!');
+        }}
       />
     </div>
   );

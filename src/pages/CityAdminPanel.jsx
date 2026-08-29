@@ -4,6 +4,7 @@ import DedicatedCitySidebar from '../components/cityAdmin/DedicatedCitySidebar';
 import CityMetricCards from '../components/cityAdmin/CityMetricCards';
 import CityCharts from '../components/cityAdmin/CityCharts';
 import PartnerKycManagement from '../components/cityAdmin/PartnerKycManagement';
+import PartnerKycDetailPage from '../components/cityAdmin/PartnerKycDetailPage';
 import CityBookingDispatch from '../components/cityAdmin/CityBookingDispatch';
 import { useCityAdmin } from '../hooks/useCityAdmin.js';
 import { cityService } from '../services/city.service.js';
@@ -13,12 +14,18 @@ import {
   BarChart3,
   Headphones,
   User,
+  Eye
 } from 'lucide-react';
 
 const CityAdminPanel = ({ currentUser, onLogout }) => {
-  const { partners, revenue, refetch } = useCityAdmin();
+  const { partners, revenue, refetch, approvePartner, rejectPartner, updateDocumentStatus, suspendPartner, activatePartner } = useCityAdmin();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedPartner, setSelectedPartner] = useState(null);
+  const [partnerModalOpen, setPartnerModalOpen] = useState(false);
+
+  const partnersCount = partners.length;
+  const pendingKycCount = partners.filter((p) => (p.kycStatus || 'pending').toLowerCase() === 'pending').length;
 
   const initialCityName = (typeof currentUser?.assignedCity === 'object' && currentUser?.assignedCity?.name)
     ? currentUser.assignedCity.name
@@ -67,6 +74,8 @@ const CityAdminPanel = ({ currentUser, onLogout }) => {
           setActiveTab={setActiveTab}
           onLogout={onLogout}
           assignedCity={assignedCity}
+          partnersCount={partnersCount}
+          pendingKycCount={pendingKycCount}
         />
 
         {/* Content View Area */}
@@ -114,41 +123,76 @@ const CityAdminPanel = ({ currentUser, onLogout }) => {
 
           {/* TAB 2: PARTNERS */}
           {activeTab === 'partners' && (
-            <div className="mui-card" style={{ padding: '26px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Briefcase size={20} color="#2563eb" /> {assignedCity} Verified Service Partners ({partners.length} Total)
-              </h3>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                      <th style={{ padding: '12px' }}>TECHNICIAN NAME</th>
-                      <th style={{ padding: '12px' }}>SKILL CATEGORY</th>
-                      <th style={{ padding: '12px' }}>EMAIL</th>
-                      <th style={{ padding: '12px' }}>KYC STATUS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {partners.length === 0 ? (
-                      <tr><td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No partners registered in {assignedCity}.</td></tr>
-                    ) : (
-                      partners.map((p) => (
-                        <tr key={p._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                          <td style={{ padding: '12px', fontWeight: '800' }}>{p.name}</td>
-                          <td style={{ padding: '12px' }}>{p.category || 'Service Technician'}</td>
-                          <td style={{ padding: '12px', fontSize: '0.85rem' }}>{p.email}</td>
-                          <td style={{ padding: '12px' }}>
-                            <span className={`badge ${p.kycStatus === 'approved' ? 'badge-success' : 'badge-warning'}`}>
-                              {(p.kycStatus || 'pending').toUpperCase()}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+            selectedPartner ? (
+              <PartnerKycDetailPage
+                partner={selectedPartner}
+                onBack={() => setSelectedPartner(null)}
+                onApprove={async (id) => {
+                  await approvePartner(id);
+                }}
+                onReject={async (id, reason) => {
+                  await rejectPartner({ id, reason });
+                }}
+                onToggleSuspend={async (p) => {
+                  if (p.status === 'suspended' || p.status === 'blocked') {
+                    await activatePartner(p._id);
+                  } else {
+                    await suspendPartner(p._id);
+                  }
+                }}
+                onUpdateDocumentStatus={async (id, docKey, status, rejectionReason) => {
+                  await updateDocumentStatus({ id, docKey, status, rejectionReason });
+                }}
+              />
+            ) : (
+              <div className="mui-card" style={{ padding: '26px' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Briefcase size={20} color="#2563eb" /> {assignedCity} Verified Service Partners ({partners.length} Total)
+                </h3>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                        <th style={{ padding: '12px' }}>TECHNICIAN NAME</th>
+                        <th style={{ padding: '12px' }}>SKILL CATEGORY</th>
+                        <th style={{ padding: '12px' }}>EMAIL</th>
+                        <th style={{ padding: '12px' }}>KYC STATUS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {partners.length === 0 ? (
+                        <tr><td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No partners registered in {assignedCity}.</td></tr>
+                      ) : (
+                        partners.map((p) => (
+                          <tr
+                            key={p._id}
+                            onClick={() => setSelectedPartner(p)}
+                            style={{
+                              borderBottom: '1px solid var(--border-light)',
+                              cursor: 'pointer',
+                              transition: 'background-color 0.15s ease',
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                          >
+                            <td style={{ padding: '12px', fontWeight: '800', color: '#2563eb', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {p.name} <Eye size={14} color="#94a3b8" />
+                            </td>
+                            <td style={{ padding: '12px', fontWeight: '700' }}>{p.category || 'Service Technician'}</td>
+                            <td style={{ padding: '12px', fontSize: '0.85rem' }}>{p.email}</td>
+                            <td style={{ padding: '12px' }}>
+                              <span className={`badge ${p.kycStatus === 'approved' ? 'badge-success' : 'badge-warning'}`}>
+                                {(p.kycStatus || 'pending').toUpperCase()}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            )
           )}
 
           {/* TAB 3: PARTNER KYC */}

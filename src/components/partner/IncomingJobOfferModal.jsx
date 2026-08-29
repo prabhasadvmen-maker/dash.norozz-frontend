@@ -126,7 +126,29 @@ const IncomingJobOfferModal = ({ offer, onAccept, onDecline, claiming }) => {
           </div>
         </div>
 
-        {/* Customer Address Details Card */}
+        {/* Booking Financial Breakdown Card for Partner Transparency */}
+        {(() => {
+          const serviceVal = offer.financialSnapshot?.servicePrice || offer.amount || 1000;
+          const comm = offer.financialSnapshot?.partnerCommission || Math.round(serviceVal * 0.05);
+          const netEarning = offer.financialSnapshot?.partnerNetEarning || (serviceVal - comm);
+
+          return (
+            <div style={{ padding: '14px 16px', background: '#f0fdf4', borderRadius: '16px', border: '1px solid #bbf7d0', marginBottom: '18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#475569', marginBottom: '4px' }}>
+                <span>Service Value</span>
+                <span style={{ fontWeight: '700', color: '#0f172a' }}>₹{serviceVal.toLocaleString('en-IN')}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#dc2626', marginBottom: '6px' }}>
+                <span>Norozz Platform Commission</span>
+                <span style={{ fontWeight: '700' }}>- ₹{comm.toLocaleString('en-IN')}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #bbf7d0', paddingTop: '8px', marginTop: '4px' }}>
+                <span style={{ fontSize: '0.88rem', fontWeight: '900', color: '#166534', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Your Net Earning</span>
+                <span style={{ fontSize: '1.45rem', fontWeight: '900', color: '#16a34a' }}>₹{netEarning.toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+          );
+        })()}
         <div
           style={{
             padding: '14px',

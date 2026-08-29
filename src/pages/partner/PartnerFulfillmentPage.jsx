@@ -398,19 +398,41 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                 <button type="button" onClick={onBack} className="btn" style={{ padding: '13px', background: '#f1f5f9', color: '#64748b', fontWeight: '700', borderRadius: '14px', border: '1px solid var(--border-light)' }}>
                   Back to Dashboard
                 </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (rawId && !rawId.toString().startsWith('demo')) {
-                      await updateBookingStatus({ id: rawId, status: 'On The Way' });
-                    }
-                    setStep(2); // Go to Navigation
-                  }}
-                  className="btn"
-                  style={{ padding: '13px', background: '#16a34a', color: '#ffffff', fontWeight: '800', fontSize: '1rem', borderRadius: '14px', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                >
-                  <Navigation size={18} /> Start Journey / Navigate ➔
-                </button>
+                {(currentBooking.status === 'Pending' || currentBooking.status === 'pending' || !currentBooking.partner) ? (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (rawId && !rawId.toString().startsWith('demo')) {
+                        try {
+                          await partnerService.claimJobOffer(rawId);
+                          toast.success('🎉 Congratulations! You have accepted this job offer.');
+                          const res = await partnerService.getBookingDetails(rawId);
+                          if (res.data?.data) setFullBookingData(res.data.data);
+                        } catch (err) {
+                          toast.error(err.response?.data?.message || 'Failed to accept job.');
+                        }
+                      }
+                    }}
+                    className="btn"
+                    style={{ padding: '13px', background: '#16a34a', color: '#ffffff', fontWeight: '800', fontSize: '1rem', borderRadius: '14px', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  >
+                    ✓ Accept This Job Offer
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (rawId && !rawId.toString().startsWith('demo')) {
+                        await updateBookingStatus({ id: rawId, status: 'On The Way' });
+                      }
+                      setStep(2); // Go to Navigation
+                    }}
+                    className="btn"
+                    style={{ padding: '13px', background: '#16a34a', color: '#ffffff', fontWeight: '800', fontSize: '1rem', borderRadius: '14px', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  >
+                    <Navigation size={18} /> Start Journey / Navigate ➔
+                  </button>
+                )}
               </div>
             </div>
           )}

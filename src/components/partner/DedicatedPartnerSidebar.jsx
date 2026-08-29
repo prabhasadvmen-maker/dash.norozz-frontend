@@ -8,6 +8,11 @@ import {
   Star,
   Headphones,
   User,
+  UserCheck,
+  FileText,
+  Landmark,
+  Gift,
+  Settings,
   LogOut,
   Lock,
   ShieldCheck,
@@ -20,8 +25,11 @@ const DedicatedPartnerSidebar = ({ activeTab, setActiveTab, onLogout, kycStatus 
   // 1. Base Unlocked Items for Pending State
   const baseItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'profile', label: 'Profile Overview', icon: User },
+    { id: 'editProfile', label: 'Edit Profile', icon: UserCheck },
+    { id: 'documents', label: 'My Documents', icon: FileText },
+    { id: 'bankDetails', label: 'Bank Details', icon: Landmark },
     { id: 'support', label: 'Support', icon: Headphones },
-    { id: 'profile', label: 'Profile', icon: User },
   ];
 
   // 2. Full Feature Set Unlocked after Approval
@@ -29,12 +37,16 @@ const DedicatedPartnerSidebar = ({ activeTab, setActiveTab, onLogout, kycStatus 
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'bookings', label: 'Bookings', icon: CalendarCheck, badge: 'Jobs' },
     { id: 'calendar', label: 'Calendar', icon: Calendar },
-    { id: 'wallet', label: 'Wallet', icon: Wallet, badge: 'Payouts' },
+    { id: 'wallet', label: 'Wallet & Payouts', icon: Wallet, badge: 'Payouts' },
+    { id: 'profile', label: 'Profile Overview', icon: User },
+    { id: 'editProfile', label: 'Edit Profile', icon: UserCheck },
+    { id: 'documents', label: 'My Documents', icon: FileText },
+    { id: 'bankDetails', label: 'Bank Details', icon: Landmark },
+    { id: 'referral', label: 'Referral Program', icon: Gift, badge: '₹500' },
     { id: 'reviews', label: 'Reviews', icon: Star },
-    { id: 'transactions', label: 'Transactions', icon: Receipt },
     { id: 'availability', label: 'Availability', icon: Clock },
+    { id: 'settings', label: 'Settings', icon: Settings },
     { id: 'support', label: 'Support', icon: Headphones },
-    { id: 'profile', label: 'Profile', icon: User },
   ];
 
   const menuItems = isApproved ? fullItems : baseItems;

@@ -62,6 +62,10 @@ export const useSuperAdmin = () => {
     },
   });
 
+  const impersonateCityAdminMutation = useMutation({
+    mutationFn: (id) => superAdminService.impersonateCityAdmin(id),
+  });
+
   return {
     dashboard: dashboardQuery.data?.data || null,
     cityAdmins: cityAdminsQuery.data?.data || [],
@@ -85,5 +89,6 @@ export const useSuperAdmin = () => {
     updateCityAdmin: updateCityAdminMutation.mutateAsync,
     updateCityAdminStatus: updateCityAdminStatusMutation.mutateAsync,
     deleteCityAdmin: deleteCityAdminMutation.mutateAsync,
+    impersonateCityAdmin: impersonateCityAdminMutation.mutateAsync,
   };
 };

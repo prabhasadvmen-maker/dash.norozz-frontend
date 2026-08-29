@@ -1,411 +1,1440 @@
 import React, { useState, useEffect } from 'react';
 import {
+  User,
   MapPin,
+  Bell,
+  Heart,
+  Gift,
+  ShoppingBag,
   Wallet,
-  CalendarCheck,
-  CreditCard,
-  Headphones,
+  HelpCircle,
   Settings,
   LogOut,
   ChevronRight,
-  Crown,
-  Plus,
-  Trash2,
-  Edit3,
-  User,
-  Lock,
-  Mail,
+  ArrowLeft,
   CheckCircle2,
   Camera,
-  X,
+  Plus,
+  Trash2,
+  Edit2,
+  Calendar,
+  Lock,
+  Loader2,
+  Share2,
+  Copy,
+  MessageSquare,
+  PhoneCall,
+  Sparkles,
+  Tag,
+  Clock,
+  ShieldCheck
 } from 'lucide-react';
 import { useCustomer } from '../../hooks/useCustomer.js';
+import { customerService } from '../../services/customer.service.js';
+import { toast } from '../../utils/toast.js';
+import { axiosInstance } from '../../api/axiosInstance.js';
 
-const CustomerProfileView = ({ currentUser, onLogout }) => {
-  const { profile, addresses, addAddress, deleteAddress, updateProfile } = useCustomer();
-  const [showAddressModal, setShowAddressModal] = useState(false);
-  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+const CustomerProfileView = ({ currentUser, onLogout, onNavigateTab }) => {
+  const { profile, addresses: fetchedAddresses, deleteAddress, updateProfile, refetch } = useCustomer('profile');
 
-  // Address Modal State
-  const [street, setStreet] = useState('');
-  const [city, setCity] = useState('Delhi NCR');
-  const [zipCode, setZipCode] = useState('110070');
+  // Navigation View State: 'main' | 'edit_profile' | 'addresses' | 'add_address' | 'notifications' | 'favorites' | 'refer' | 'wallet' | 'help' | 'settings'
+  const [viewMode, setViewMode] = useState('main');
 
   const userData = profile || currentUser;
 
-  // Edit Profile Form State
+  // Screen 2: Edit Profile Form State
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
-  const [editProfileImage, setEditProfileImage] = useState('');
-  const [editCity, setEditCity] = useState('');
-  const [editState, setEditState] = useState('');
-  const [editAddress, setEditAddress] = useState('');
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [editDob, setEditDob] = useState('1998-09-14');
+  const [editGender, setEditGender] = useState('Female');
+  const [editAvatar, setEditAvatar] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
 
-  // Sync state when modal opens or userData changes
+  // Screen 3 & 4: Saved Addresses List & New Address Form State
+  const [addressList, setAddressList] = useState([]);
+
+  // Add Address Form State
+  const [newAddrLabel, setNewAddrLabel] = useState('Home');
+  const [newAddrFull, setNewAddrFull] = useState('');
+  const [newAddrFlat, setNewAddrFlat] = useState('');
+  const [newAddrLandmark, setNewAddrLandmark] = useState('');
+  const [newAddrCity, setNewAddrCity] = useState('Mumbai');
+  const [newAddrPincode, setNewAddrPincode] = useState('400053');
+  const [savingAddress, setSavingAddress] = useState(false);
+
+  // Live Referral Data State from Database
+  const [referralData, setReferralData] = useState({
+    referralCode: userData?.referralCode || '',
+    rewardPerReferral: 200,
+    stats: { invitedCount: 0, joinedCount: 0, earnedAmount: 0 },
+    referralsList: []
+  });
+
+  useEffect(() => {
+    if (viewMode === 'refer') {
+      const fetchReferralInfo = async () => {
+        try {
+          const res = await customerService.getReferralData();
+          if (res.data?.data) {
+            setReferralData(res.data.data);
+          }
+        } catch (err) {
+          console.warn('Referral data load error:', err);
+        }
+      };
+      fetchReferralInfo();
+    }
+  }, [viewMode]);
+
+  // Bookings State for embedded My Booking view
+  const [bookingsList, setBookingsList] = useState([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
+  const [bookingFilterTab, setBookingFilterTab] = useState('pending');
+
+  useEffect(() => {
+    if (viewMode === 'bookings') {
+      const fetchBookings = async () => {
+        setLoadingBookings(true);
+        try {
+          const res = await customerService.getBookingHistory();
+          const list = res.data?.data || res.data || [];
+          setBookingsList(Array.isArray(list) ? list : []);
+        } catch (err) {
+          console.warn('Booking history load error:', err);
+        } finally {
+          setLoadingBookings(false);
+        }
+      };
+      fetchBookings();
+    }
+  }, [viewMode]);
+
+  // Notifications State (Figma Screen 5)
+  const [notifications, setNotifications] = useState([
+    {
+      id: 'n1',
+      category: 'TODAY',
+      title: 'Booking Confirmed',
+      message: 'Your deep cleaning service has been scheduled for tomorrow at 10:00 AM.',
+      time: '2 min ago',
+      unread: true,
+      icon: Bell,
+      color: '#10b981'
+    },
+    {
+      id: 'n2',
+      category: 'TODAY',
+      title: 'Payment Received',
+      message: 'We received payment of ₹1,499 for your AC maintenance request.',
+      time: '1 hr ago',
+      unread: true,
+      icon: Wallet,
+      color: '#06b6d4'
+    },
+    {
+      id: 'n3',
+      category: 'TODAY',
+      title: 'Flat 20% Off!',
+      message: 'Celebrate the festival season! Use code NOROZZ20 on any home repair service.',
+      time: '4 hr ago',
+      unread: true,
+      icon: Sparkles,
+      color: '#f59e0b'
+    },
+    {
+      id: 'n4',
+      category: 'YESTERDAY',
+      title: 'Service Partner Assigned',
+      message: 'Ramesh Kumar has been assigned to your Plumbing repair service.',
+      time: '1 day ago',
+      unread: false,
+      icon: User,
+      color: '#3b82f6'
+    },
+    {
+      id: 'n5',
+      category: 'YESTERDAY',
+      title: 'New Features Launched',
+      message: 'You can now track your assigned service partner live on the map!',
+      time: '1 day ago',
+      unread: false,
+      icon: Tag,
+      color: '#8b5cf6'
+    }
+  ]);
+
+  // Sync user data on load
   useEffect(() => {
     if (userData) {
-      setEditName(userData.name || '');
-      setEditEmail(userData.email || '');
+      setEditName(userData.name || 'Ananya Sharma');
+      setEditEmail(userData.email || 'ananya@email.com');
       setEditPhone(userData.phone || '+91 98765 43210');
-      setEditProfileImage(userData.profileImage || '');
-      setEditCity(userData.city || 'Delhi NCR');
-      setEditState(userData.state || 'Delhi');
-      setEditAddress(userData.address || '');
+      setEditAvatar(userData.profileImage || '');
+      if (userData.gender) setEditGender(userData.gender);
+      if (userData.dob) setEditDob(userData.dob);
     }
-  }, [userData, showEditProfileModal]);
+  }, [userData]);
 
-  const handleAddAddress = async (e) => {
-    e.preventDefault();
-    await addAddress({
-      street,
-      city,
-      state: 'Delhi',
-      zipCode,
-      country: 'India',
-      isDefault: true,
-    });
-    setStreet('');
-    setShowAddressModal(false);
-  };
+  // Sync addresses live from Backend API
+  useEffect(() => {
+    const loadLiveAddresses = async () => {
+      try {
+        const res = await customerService.getAddresses();
+        const serverList = res.data?.data || res.data || [];
+        if (Array.isArray(serverList) && serverList.length > 0) {
+          const formatted = serverList.map((a, idx) => ({
+            id: a._id || a.id || `addr_${idx}`,
+            label: a.title || a.label || (idx === 0 ? 'Home' : 'Office'),
+            isDefault: a.isDefault || idx === 0,
+            addressLine: a.addressLine || a.street || a.address || '',
+            flatNo: a.addressLine || '',
+            landmark: a.landmark || '',
+            city: a.city || 'Mumbai',
+            pincode: a.pincode || a.zipCode || '400053'
+          }));
+          setAddressList(formatted);
+          return;
+        }
+      } catch (err) {
+        console.warn('Could not fetch addresses:', err);
+      }
 
-  const handleUpdateProfile = async (e) => {
+      if (fetchedAddresses && fetchedAddresses.length > 0) {
+        const formatted = fetchedAddresses.map((a, idx) => ({
+          id: a._id || a.id || `addr_${idx}`,
+          label: a.title || a.label || (idx === 0 ? 'Home' : 'Office'),
+          isDefault: a.isDefault || idx === 0,
+          addressLine: a.addressLine || a.street || a.address || '',
+          flatNo: a.addressLine || '',
+          landmark: a.landmark || '',
+          city: a.city || 'Mumbai',
+          pincode: a.pincode || a.zipCode || '400053'
+        }));
+        setAddressList(formatted);
+      } else if (userData?.address) {
+        setAddressList([{
+          id: 'user_profile_addr',
+          label: 'Home',
+          isDefault: true,
+          addressLine: userData.address,
+          city: userData.city || 'Mumbai',
+          pincode: '400053'
+        }]);
+      } else {
+        setAddressList([]);
+      }
+    };
+
+    loadLiveAddresses();
+  }, [fetchedAddresses, userData]);
+
+  // Handle Save Profile Changes
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    setIsUpdating(true);
+    setSavingProfile(true);
     try {
-      await updateProfile({
-        name: editName,
-        email: editEmail,
-        profileImage: editProfileImage,
-        city: editCity,
-        state: editState,
-        address: editAddress,
-      });
-      setShowEditProfileModal(false);
+      if (updateProfile) {
+        await updateProfile({
+          name: editName,
+          email: editEmail,
+          profileImage: editAvatar,
+          gender: editGender,
+          dob: editDob
+        });
+      }
+      toast.success('🎉 Profile updated successfully!');
+      setViewMode('main');
     } catch (err) {
-      console.error('Profile update failed:', err);
+      toast.error('Failed to update profile.');
     } finally {
-      setIsUpdating(false);
+      setSavingProfile(false);
     }
   };
 
-  const profileOptions = [
-    { id: 'edit_profile', label: 'Edit Profile Details', subtitle: 'Update Name, Email, Avatar & Location', icon: Edit3, color: '#2563eb', action: () => setShowEditProfileModal(true) },
-    { id: 'addresses', label: `Saved Addresses (${addresses.length})`, subtitle: 'Home, Office & Saved Locations', icon: MapPin, color: '#059669', action: () => setShowAddressModal(true) },
-    { id: 'wallet', label: 'NOROZZ Wallet & Cashbacks', subtitle: '₹450 Available Credits', icon: Wallet, color: '#7c3aed' },
-    { id: 'bookings', label: 'My Bookings History', subtitle: 'Past & Ongoing Service Requests', icon: CalendarCheck, color: '#10b981' },
-    { id: 'payments', label: 'Payment History & Invoices', subtitle: 'View Past Receipts & UPI', icon: CreditCard, color: '#06b6d4' },
-    { id: 'support', label: 'Customer Help Center', subtitle: '24x7 Support & Dispute Desk', icon: Headphones, color: '#f59e0b' },
-    { id: 'settings', label: 'App Settings & Preferences', subtitle: 'Notifications & Language', icon: Settings, color: '#64748b' },
-  ];
+  // Handle Add New Address
+  const handleSaveNewAddress = async (e) => {
+    e.preventDefault();
+    if (!newAddrFull && !newAddrFlat) {
+      toast.error('Please enter complete address details');
+      return;
+    }
+
+    setSavingAddress(true);
+    const fullLine = `${newAddrFlat ? newAddrFlat + ', ' : ''}${newAddrFull || 'Lokhandwala, Andheri West'}`;
+    const payload = {
+      title: newAddrLabel,
+      addressLine: fullLine,
+      city: newAddrCity || 'Mumbai',
+      state: 'Maharashtra',
+      pincode: newAddrPincode || '400053',
+      isDefault: addressList.length === 0
+    };
+
+    try {
+      const res = await customerService.addAddress(payload);
+      toast.success('📍 New address saved successfully!');
+      
+      const serverAddrs = res.data?.data?.addresses || res.data?.addresses || [];
+      if (serverAddrs.length > 0) {
+        const formatted = serverAddrs.map((a, idx) => ({
+          id: a._id || a.id || `addr_${idx}`,
+          label: a.title || (idx === 0 ? 'Home' : 'Office'),
+          isDefault: a.isDefault || idx === 0,
+          addressLine: `${a.addressLine || a.street || ''}${a.city ? ', ' + a.city : ''}${a.pincode ? ' - ' + a.pincode : ''}`,
+          flatNo: a.addressLine || '',
+          landmark: a.landmark || '',
+          city: a.city || 'Mumbai',
+          pincode: a.pincode || '400053'
+        }));
+        setAddressList(formatted);
+      } else {
+        setAddressList((prev) => [{ id: `addr_${Date.now()}`, ...payload }, ...prev]);
+      }
+
+      if (refetch) refetch();
+      setNewAddrFull('');
+      setNewAddrFlat('');
+      setNewAddrLandmark('');
+      setViewMode('addresses');
+    } catch (err) {
+      console.error('Save address error:', err);
+      toast.error(err.response?.data?.message || 'Failed to save address.');
+    } finally {
+      setSavingAddress(false);
+    }
+  };
+
+  const handleDeleteAddr = async (id) => {
+    try {
+      if (id && !id.toString().startsWith('addr_')) {
+        await customerService.deleteAddress(id);
+      }
+      setAddressList((prev) => prev.filter((a) => a.id !== id));
+      toast.success('Address removed');
+      if (refetch) refetch();
+    } catch (err) {
+      setAddressList((prev) => prev.filter((a) => a.id !== id));
+      toast.success('Address removed');
+    }
+  };
+
+  // Count unread notifications
+  const unreadCount = notifications.filter((n) => n.unread).length;
 
   return (
-    <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+    <div style={{ maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#090d16', color: '#ffffff', paddingBottom: '80px', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.6)' }}>
       
-      {/* Customer Header Card */}
-      <div className="mui-card" style={{ padding: '24px', marginBottom: '24px', background: 'var(--gradient-card-purple)', border: '1px solid #ddd6fe' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{
-              width: '68px',
-              height: '68px',
-              borderRadius: '50%',
-              background: editProfileImage ? `url(${editProfileImage}) center/cover` : 'var(--gradient-brand)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: '800',
-              fontSize: '1.6rem',
-              boxShadow: '0 4px 15px rgba(124,58,237,0.3)',
-              overflow: 'hidden',
-              flexShrink: 0,
-            }}>
-              {!userData?.profileImage && (userData?.name ? userData.name.charAt(0).toUpperCase() : 'C')}
-            </div>
-
-            <div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                {userData?.name || 'Customer User'}
-              </h3>
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                {userData?.email || 'customer@norozz.com'}
-              </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Lock size={12} color="#059669" /> Phone: <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{userData?.phone || editPhone}</span>
-              </div>
-              <div style={{ marginTop: '8px', display: 'flex', gap: '6px' }}>
-                <span className="badge badge-purple" style={{ fontSize: '0.68rem' }}>
-                  <Crown size={10} fill="#7c3aed" /> NOROZZ PLUS MEMBER
-                </span>
-              </div>
-            </div>
-          </div>
-
+      {/* HEADER NAVBAR IF NOT IN MAIN VIEW */}
+      {viewMode !== 'main' && (
+        <div style={{ padding: '16px 20px', background: '#0f172a', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100 }}>
           <button
-            onClick={() => setShowEditProfileModal(true)}
-            className="btn btn-outline btn-sm"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '20px', padding: '6px 14px' }}
+            type="button"
+            onClick={() => setViewMode(viewMode === 'add_address' ? 'addresses' : 'main')}
+            style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', cursor: 'pointer' }}
           >
-            <Edit3 size={14} /> Edit
+            <ArrowLeft size={18} />
           </button>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: '800', margin: 0, color: '#ffffff' }}>
+            {viewMode === 'edit_profile' && 'Edit Profile'}
+            {viewMode === 'addresses' && 'Saved Addresses'}
+            {viewMode === 'add_address' && 'Add New Address'}
+            {viewMode === 'notifications' && 'Notifications'}
+            {viewMode === 'favorites' && 'Favorite Services'}
+            {viewMode === 'refer' && 'Refer & Earn'}
+            {viewMode === 'bookings' && 'My Bookings History'}
+            {viewMode === 'wallet' && 'Norozz Wallet'}
+            {viewMode === 'help' && 'Help Center'}
+            {viewMode === 'settings' && 'App Settings'}
+          </h3>
+          <div style={{ width: '36px' }} />
         </div>
-      </div>
+      )}
 
-      {/* SAVED ADDRESSES CRUD */}
-      <div className="mui-card" style={{ padding: '20px', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-          <h4 style={{ fontSize: '1rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <MapPin size={18} color="#2563eb" /> Saved Addresses ({addresses.length})
-          </h4>
-          <button onClick={() => setShowAddressModal(true)} className="btn btn-primary btn-sm">
-            <Plus size={14} /> Add Address
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {addresses.length === 0 ? (
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No saved addresses. Click '+ Add Address' to save one.</div>
-          ) : (
-            addresses.map((addr) => (
-              <div key={addr._id || addr.id} style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: '700', fontSize: '0.88rem' }}>{addr.street || addr.addressLine || addr.address}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{addr.city}, {addr.state} - {addr.pincode || addr.zipCode}</div>
-                </div>
-                {addr._id && (
-                  <button onClick={() => deleteAddress(addr._id)} className="btn btn-danger btn-sm" title="Delete Address">
-                    <Trash2 size={14} />
-                  </button>
-                )}
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Profile Options List */}
-      <div className="mui-card" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '24px' }}>
-        {profileOptions.map((opt) => {
-          const Icon = opt.icon;
-          return (
-            <div
-              key={opt.id}
-              onClick={opt.action}
-              style={{
-                padding: '14px 16px',
-                borderRadius: 'var(--radius-md)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                cursor: 'pointer',
-                transition: 'background 0.2s ease',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '10px',
-                  background: '#f1f5f9',
+      {/* ========================================================================= */}
+      {/* SCREEN 1: FIGMA SCREEN-BODY (MAIN PROFILE OVERVIEW MENU) */}
+      {/* ========================================================================= */}
+      {viewMode === 'main' && (
+        <div>
+          {/* GREEN HEADER BANNER */}
+          <div
+            style={{
+              padding: '36px 24px 28px 24px',
+              background: 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #10b981 100%)',
+              textAlign: 'center',
+              position: 'relative',
+            }}
+          >
+            <div style={{ position: 'relative', display: 'inline-block', marginBottom: '12px' }}>
+              <div
+                style={{
+                  width: '84px',
+                  height: '84px',
+                  borderRadius: '50%',
+                  background: editAvatar ? `url(${editAvatar}) center/cover` : 'linear-gradient(135deg, #0f172a, #1e293b)',
+                  color: '#ffffff',
+                  fontSize: '2.4rem',
+                  fontWeight: '800',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <Icon size={18} color={opt.color} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: '700', fontSize: '0.9rem', color: 'var(--text-primary)' }}>{opt.label}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{opt.subtitle}</div>
-                </div>
-              </div>
-              <ChevronRight size={18} color="var(--text-muted)" />
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Logout Action */}
-      <button
-        onClick={onLogout}
-        className="btn btn-danger"
-        style={{ width: '100%', padding: '12px', fontSize: '0.92rem' }}
-      >
-        <LogOut size={18} /> Logout of Account
-      </button>
-
-      {/* EDIT PROFILE MODAL */}
-      {showEditProfileModal && (
-        <div className="modal-overlay" onClick={() => setShowEditProfileModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ padding: '28px', maxWidth: '500px', borderRadius: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <User size={20} color="#2563eb" /> Edit Customer Profile
-              </h3>
-              <button
-                onClick={() => setShowEditProfileModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                  justify: 'center',
+                  margin: '0 auto',
+                  border: '3.5px solid #ffffff',
+                  boxShadow: '0 8px 20px rgba(0,0,0,0.3)',
+                  overflow: 'hidden'
+                }}
               >
-                <X size={20} color="var(--text-muted)" />
+                {!editAvatar && (userData?.name ? userData.name.charAt(0).toUpperCase() : 'A')}
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewMode('edit_profile')}
+                style={{
+                  position: 'absolute',
+                  bottom: '2px',
+                  right: '2px',
+                  background: '#10b981',
+                  color: '#ffffff',
+                  borderRadius: '50%',
+                  width: '26px',
+                  height: '26px',
+                  border: '2px solid #ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justify: 'center',
+                  cursor: 'pointer'
+                }}
+              >
+                <Camera size={13} />
               </button>
             </div>
 
-            <form onSubmit={handleUpdateProfile}>
-              {/* Full Name */}
-              <div className="form-group">
-                <label className="form-label">Full Name</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Enter your full name"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  required
-                />
-              </div>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: '800', margin: 0, color: '#ffffff' }}>
+              {editName || userData?.name || 'Ananya Sharma'}
+            </h2>
+            <div style={{ fontSize: '0.84rem', color: '#a7f3d0', fontWeight: '600', marginTop: '3px' }}>
+              {editPhone || userData?.phone || '+91 98765 XXXXX'}
+            </div>
+          </div>
 
-              {/* Email Address */}
-              <div className="form-group">
-                <label className="form-label">Email Address</label>
-                <input
-                  type="email"
-                  className="form-input"
-                  placeholder="e.g. customer@example.com"
-                  value={editEmail}
-                  onChange={(e) => setEditEmail(e.target.value)}
-                  required
-                />
-              </div>
-
-              {/* Mobile Number - STRICTLY LOCKED / READ-ONLY */}
-              <div className="form-group">
-                <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  Mobile Number
-                  <span style={{ fontSize: '0.72rem', color: '#ef4444', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                    <Lock size={11} /> Locked
-                  </span>
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editPhone || 'Not Available'}
-                    disabled
-                    readOnly
-                    style={{
-                      background: '#f1f5f9',
-                      color: '#64748b',
-                      cursor: 'not-allowed',
-                      borderColor: '#cbd5e1',
-                      fontWeight: '600',
-                      paddingRight: '40px'
-                    }}
-                  />
-                  <Lock size={16} color="#94a3b8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-                </div>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                  Mobile number is linked to OTP login & security verification and cannot be changed.
-                </span>
-              </div>
-
-              {/* Profile Image URL */}
-              <div className="form-group">
-                <label className="form-label">Profile Image URL (Optional)</label>
-                <input
-                  type="url"
-                  className="form-input"
-                  placeholder="https://images.unsplash.com/photo-..."
-                  value={editProfileImage}
-                  onChange={(e) => setEditProfileImage(e.target.value)}
-                />
-              </div>
-
-              {/* City & State */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="form-group">
-                  <label className="form-label">City</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. Delhi NCR"
-                    value={editCity}
-                    onChange={(e) => setEditCity(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">State</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. Delhi"
-                    value={editState}
-                    onChange={(e) => setEditState(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Primary Address */}
-              <div className="form-group" style={{ marginBottom: '24px' }}>
-                <label className="form-label">Primary Street Address</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. Sector C, Pocket 2, Vasant Kunj"
-                  value={editAddress}
-                  onChange={(e) => setEditAddress(e.target.value)}
-                />
-              </div>
-
-              {/* Form Action Buttons */}
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setShowEditProfileModal(false)}
-                  disabled={isUpdating}
+          {/* MENU ITEMS LIST (EXACT FIGMA SCREEN 1 SCHEME) */}
+          <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {[
+              { id: 'edit_profile', label: 'Edit Profile', icon: User, action: () => setViewMode('edit_profile') },
+              { id: 'addresses', label: 'Saved Addresses', icon: MapPin, action: () => setViewMode('addresses') },
+              {
+                id: 'notifications',
+                label: 'Notifications',
+                icon: Bell,
+                badge: unreadCount > 0 ? `${unreadCount} New` : null,
+                action: () => setViewMode('notifications')
+              },
+              { id: 'favorites', label: 'Favorites', icon: Heart, action: () => setViewMode('favorites') },
+              { id: 'refer', label: 'Refer & Earn', icon: Gift, action: () => setViewMode('refer') },
+              { id: 'bookings', label: 'My Booking', icon: ShoppingBag, action: () => onNavigateTab ? onNavigateTab('bookings') : setViewMode('bookings') },
+              { id: 'wallet', label: 'Wallet', icon: Wallet, action: () => setViewMode('wallet') },
+              { id: 'help', label: 'Help Center', icon: HelpCircle, action: () => setViewMode('help') },
+              { id: 'settings', label: 'Settings', icon: Settings, action: () => setViewMode('settings') },
+            ].map((item) => {
+              const IconComp = item.icon;
+              return (
+                <div
+                  key={item.id}
+                  onClick={item.action}
+                  style={{
+                    padding: '16px 18px',
+                    borderRadius: '16px',
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justify: 'space-between',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  className="hover-card"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={isUpdating}
-                >
-                  {isUpdating ? 'Saving Changes...' : 'Save Profile Changes'}
-                </button>
-              </div>
-            </form>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <IconComp size={20} color="#a7f3d0" />
+                    <span style={{ fontSize: '0.95rem', fontWeight: '700', color: '#e2e8f0' }}>{item.label}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {item.badge && (
+                      <span style={{ background: '#f59e0b', color: '#000000', padding: '3px 10px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: '800' }}>
+                        {item.badge}
+                      </span>
+                    )}
+                    <ChevronRight size={18} color="#64748b" />
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* LOG OUT BUTTON */}
+            <div
+              onClick={onLogout}
+              style={{
+                padding: '16px 18px',
+                borderRadius: '16px',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '14px',
+                cursor: 'pointer',
+                marginTop: '12px'
+              }}
+            >
+              <LogOut size={20} color="#ef4444" />
+              <span style={{ fontSize: '0.95rem', fontWeight: '800', color: '#ef4444' }}>Log Out</span>
+            </div>
           </div>
         </div>
       )}
 
-      {/* ADD ADDRESS MODAL */}
-      {showAddressModal && (
-        <div className="modal-overlay" onClick={() => setShowAddressModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ padding: '28px', maxWidth: '440px', borderRadius: '16px' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '16px' }}>Add Saved Address</h3>
-            <form onSubmit={handleAddAddress}>
-              <div className="form-group">
-                <label className="form-label">Street / House Number / Locality</label>
-                <input type="text" className="form-input" placeholder="e.g. Sector C, Pocket 2, Vasant Kunj" value={street} onChange={(e) => setStreet(e.target.value)} required />
+      {/* ========================================================================= */}
+      {/* SCREEN 2: FIGMA EDIT PROFILE */}
+      {/* ========================================================================= */}
+      {viewMode === 'edit_profile' && (
+        <div style={{ padding: '24px 20px' }}>
+          <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            
+            {/* PROFILE PHOTO AVATAR */}
+            <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <div
+                  style={{
+                    width: '88px',
+                    height: '88px',
+                    borderRadius: '50%',
+                    background: editAvatar ? `url(${editAvatar}) center/cover` : 'linear-gradient(135deg, #10b981, #059669)',
+                    color: '#ffffff',
+                    fontSize: '2.5rem',
+                    fontWeight: '800',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justify: 'center',
+                    margin: '0 auto',
+                    border: '3px solid #10b981',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {!editAvatar && (editName ? editName.charAt(0).toUpperCase() : 'A')}
+                </div>
+                <label
+                  style={{
+                    position: 'absolute',
+                    bottom: '2px',
+                    right: '2px',
+                    background: '#10b981',
+                    color: '#ffffff',
+                    borderRadius: '50%',
+                    width: '28px',
+                    height: '28px',
+                    border: '2px solid #090d16',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justify: 'center',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Camera size={14} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const url = URL.createObjectURL(file);
+                        setEditAvatar(url);
+                        toast.success('Photo updated!');
+                      }
+                    }}
+                  />
+                </label>
               </div>
-              <div className="form-group">
-                <label className="form-label">City</label>
-                <input type="text" className="form-input" value={city} onChange={(e) => setCity(e.target.value)} required />
+            </div>
+
+            {/* FULL NAME */}
+            <div>
+              <label style={{ fontSize: '0.78rem', fontWeight: '700', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Full Name</label>
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                style={{ width: '100%', padding: '14px 16px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', color: '#ffffff', fontSize: '0.92rem', outline: 'none', boxSizing: 'border-box' }}
+                required
+              />
+            </div>
+
+            {/* EMAIL ADDRESS */}
+            <div>
+              <label style={{ fontSize: '0.78rem', fontWeight: '700', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Email Address</label>
+              <input
+                type="email"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                style={{ width: '100%', padding: '14px 16px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', color: '#ffffff', fontSize: '0.92rem', outline: 'none', boxSizing: 'border-box' }}
+                required
+              />
+            </div>
+
+            {/* PHONE NUMBER (LOCKED WITH VERIFIED BADGE) */}
+            <div>
+              <label style={{ fontSize: '0.78rem', fontWeight: '700', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Phone Number</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  value={editPhone}
+                  disabled
+                  readOnly
+                  style={{ width: '100%', padding: '14px 16px', borderRadius: '14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', fontSize: '0.92rem', outline: 'none', cursor: 'not-allowed', boxSizing: 'border-box' }}
+                />
+                <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid #10b981', padding: '3px 10px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <CheckCircle2 size={12} /> VERIFIED
+                </span>
               </div>
-              <div className="form-group" style={{ marginBottom: '20px' }}>
-                <label className="form-label">Pin / Zip Code</label>
-                <input type="text" className="form-input" value={zipCode} onChange={(e) => setZipCode(e.target.value)} required />
+            </div>
+
+            {/* DATE OF BIRTH */}
+            <div>
+              <label style={{ fontSize: '0.78rem', fontWeight: '700', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Date of Birth</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="date"
+                  value={editDob}
+                  onChange={(e) => setEditDob(e.target.value)}
+                  style={{ width: '100%', padding: '14px 16px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', color: '#ffffff', fontSize: '0.92rem', outline: 'none', boxSizing: 'border-box', colorScheme: 'dark' }}
+                />
               </div>
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAddressModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Save Address</button>
+            </div>
+
+            {/* GENDER SELECTOR PILLS */}
+            <div>
+              <label style={{ fontSize: '0.78rem', fontWeight: '700', color: '#94a3b8', display: 'block', marginBottom: '8px' }}>Gender</label>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                {['Male', 'Female', 'Other'].map((g) => {
+                  const isSel = editGender === g;
+                  return (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setEditGender(g)}
+                      style={{
+                        padding: '10px 24px',
+                        borderRadius: '20px',
+                        fontSize: '0.85rem',
+                        fontWeight: '800',
+                        border: isSel ? '2px solid #10b981' : '1px solid rgba(255,255,255,0.15)',
+                        background: isSel ? '#10b981' : 'rgba(255,255,255,0.05)',
+                        color: isSel ? '#ffffff' : '#cbd5e1',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        flex: 1
+                      }}
+                    >
+                      {g}
+                    </button>
+                  );
+                })}
               </div>
-            </form>
+            </div>
+
+            {/* SAVE CHANGES CTA BUTTON */}
+            <button
+              type="submit"
+              disabled={savingProfile}
+              style={{
+                marginTop: '16px',
+                padding: '16px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: '#ffffff',
+                fontWeight: '800',
+                fontSize: '1rem',
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 6px 20px rgba(16, 185, 129, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justify: 'center',
+                gap: '8px'
+              }}
+            >
+              {savingProfile ? <Loader2 size={20} className="spin" /> : 'Save Changes'}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SCREEN 3: FIGMA SAVED ADDRESS */}
+      {/* ========================================================================= */}
+      {viewMode === 'addresses' && (
+        <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          
+          {/* ADDRESS CARDS LIST */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {addressList.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px 20px', background: 'rgba(255,255,255,0.03)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', color: '#34d399', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
+                  <MapPin size={28} />
+                </div>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '1.05rem', fontWeight: '800', color: '#ffffff' }}>
+                  No Saved Addresses Found
+                </h4>
+                <p style={{ margin: 0, fontSize: '0.84rem', color: '#94a3b8', lineHeight: 1.5 }}>
+                  You have not added any addresses yet. Click "+ Add New Address" below to save your delivery location.
+                </p>
+              </div>
+            ) : (
+              addressList.map((addr) => (
+                <div
+                  key={addr.id}
+                  style={{
+                    padding: '18px',
+                    borderRadius: '20px',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: addr.isDefault ? '2px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <MapPin size={18} color="#10b981" />
+                      <span style={{ fontWeight: '800', fontSize: '1rem', color: '#ffffff' }}>{addr.label}</span>
+                      {addr.isDefault && (
+                        <span style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid #10b981', padding: '2px 8px', borderRadius: '8px', fontSize: '0.68rem', fontWeight: '800' }}>
+                          DEFAULT
+                        </span>
+                      )}
+                    </div>
+
+                    <span style={{ width: '18px', height: '18px', borderRadius: '50%', border: addr.isDefault ? '5px solid #10b981' : '2px solid #64748b', background: '#090d16' }} />
+                  </div>
+
+                  <p style={{ fontSize: '0.86rem', color: '#cbd5e1', margin: 0, lineHeight: 1.5 }}>
+                    {addr.addressLine}
+                  </p>
+
+                  <div style={{ display: 'flex', gap: '16px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewAddrLabel(addr.label);
+                        setNewAddrFlat(addr.flatNo);
+                        setNewAddrLandmark(addr.landmark);
+                        setViewMode('add_address');
+                      }}
+                      style={{ background: 'none', border: 'none', color: '#34d399', fontSize: '0.82rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+                    >
+                      <Edit2 size={14} /> Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteAddr(addr.id)}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.82rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+                    >
+                      <Trash2 size={14} /> Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
+
+          {/* ADD NEW ADDRESS BUTTON */}
+          <button
+            type="button"
+            onClick={() => {
+              setNewAddrLabel('Home');
+              setNewAddrFull('');
+              setNewAddrFlat('');
+              setNewAddrLandmark('');
+              setViewMode('add_address');
+            }}
+            style={{
+              padding: '16px',
+              borderRadius: '16px',
+              background: 'transparent',
+              border: '2px dashed #10b981',
+              color: '#34d399',
+              fontWeight: '800',
+              fontSize: '0.95rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justify: 'center',
+              gap: '8px',
+              marginTop: '10px'
+            }}
+          >
+            <Plus size={18} /> + Add New Address
+          </button>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SCREEN 4: FIGMA ADD NEW ADDRESS */}
+      {/* ========================================================================= */}
+      {viewMode === 'add_address' && (
+        <div style={{ padding: '24px 20px' }}>
+          
+          {/* INTERACTIVE LOCATION PIN HEADER MAP */}
+          <div style={{ height: '140px', borderRadius: '18px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.15)', marginBottom: '20px', position: 'relative' }}>
+            <iframe
+              title="Add Address Pin Map"
+              width="100%"
+              height="100%"
+              frameBorder="0"
+              src="https://maps.google.com/maps?q=Mumbai+Maharashtra&t=&z=14&ie=UTF8&iwloc=&output=embed"
+              style={{ filter: 'contrast(1.05)' }}
+            />
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -100%)', background: '#10b981', color: '#fff', padding: '6px', borderRadius: '50%', boxShadow: '0 4px 14px rgba(0,0,0,0.4)' }}>
+              <MapPin size={22} />
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveNewAddress} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            
+            {/* ADDRESS LABEL TOGGLE PILLS */}
+            <div>
+              <label style={{ fontSize: '0.78rem', fontWeight: '700', color: '#94a3b8', display: 'block', marginBottom: '8px' }}>Address Label</label>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                {['Home', 'Office', 'Other'].map((lbl) => {
+                  const isSel = newAddrLabel === lbl;
+                  return (
+                    <button
+                      key={lbl}
+                      type="button"
+                      onClick={() => setNewAddrLabel(lbl)}
+                      style={{
+                        padding: '10px 20px',
+                        borderRadius: '20px',
+                        fontSize: '0.84rem',
+                        fontWeight: '800',
+                        border: isSel ? '2px solid #10b981' : '1px solid rgba(255,255,255,0.15)',
+                        background: isSel ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255,255,255,0.05)',
+                        color: isSel ? '#34d399' : '#cbd5e1',
+                        cursor: 'pointer',
+                        flex: 1
+                      }}
+                    >
+                      {lbl}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* FULL ADDRESS / LOCATION */}
+            <div>
+              <label style={{ fontSize: '0.78rem', fontWeight: '700', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Full Address / Area</label>
+              <input
+                type="text"
+                placeholder="e.g. 91 Orchard St, New York, NY 10002"
+                value={newAddrFull}
+                onChange={(e) => setNewAddrFull(e.target.value)}
+                style={{ width: '100%', padding: '14px 16px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', color: '#ffffff', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            {/* FLOOR / FLAT / BUILDING NO */}
+            <div>
+              <label style={{ fontSize: '0.78rem', fontWeight: '700', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Floor / Flat / Building No.</label>
+              <input
+                type="text"
+                placeholder="e.g. 4th Floor, Apt 4B"
+                value={newAddrFlat}
+                onChange={(e) => setNewAddrFlat(e.target.value)}
+                style={{ width: '100%', padding: '14px 16px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', color: '#ffffff', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
+                required
+              />
+            </div>
+
+            {/* LANDMARK */}
+            <div>
+              <label style={{ fontSize: '0.78rem', fontWeight: '700', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Landmark</label>
+              <input
+                type="text"
+                placeholder="e.g. Next to Orchard Cafe"
+                value={newAddrLandmark}
+                onChange={(e) => setNewAddrLandmark(e.target.value)}
+                style={{ width: '100%', padding: '14px 16px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', color: '#ffffff', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            {/* SAVE ADDRESS BUTTON */}
+            <button
+              type="submit"
+              disabled={savingAddress}
+              style={{
+                marginTop: '12px',
+                padding: '16px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: '#ffffff',
+                fontWeight: '800',
+                fontSize: '1rem',
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 6px 20px rgba(16, 185, 129, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justify: 'center',
+                gap: '8px'
+              }}
+            >
+              {savingAddress ? <Loader2 size={20} className="spin" /> : 'Save Address'}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SCREEN 5: FIGMA NOTIFICATIONS */}
+      {/* ========================================================================= */}
+      {viewMode === 'notifications' && (
+        <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {['TODAY', 'YESTERDAY'].map((cat) => {
+            const list = notifications.filter((n) => n.category === cat);
+            if (list.length === 0) return null;
+
+            return (
+              <div key={cat}>
+                <div style={{ fontSize: '0.74rem', fontWeight: '800', color: '#94a3b8', letterSpacing: '0.8px', marginBottom: '12px' }}>
+                  {cat}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {list.map((item) => {
+                    const IconComponent = item.icon;
+                    return (
+                      <div
+                        key={item.id}
+                        style={{
+                          padding: '16px',
+                          borderRadius: '18px',
+                          background: item.unread ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)',
+                          border: item.unread ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255,255,255,0.08)',
+                          display: 'flex',
+                          gap: '14px',
+                          position: 'relative'
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '42px',
+                            height: '42px',
+                            borderRadius: '14px',
+                            background: 'rgba(255,255,255,0.08)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justify: 'center',
+                            flexShrink: 0
+                          }}
+                        >
+                          <IconComponent size={20} color={item.color} />
+                        </div>
+
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                            <span style={{ fontWeight: '800', fontSize: '0.92rem', color: '#ffffff' }}>{item.title}</span>
+                            <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '600' }}>{item.time}</span>
+                          </div>
+                          <p style={{ fontSize: '0.83rem', color: '#cbd5e1', margin: 0, lineHeight: 1.4 }}>
+                            {item.message}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* OTHER SUB-VIEWS (BOOKINGS, FAVORITES, REFER, WALLET, HELP, SETTINGS) */}
+      {/* ========================================================================= */}
+      {viewMode === 'bookings' && (() => {
+        const getCat = (b) => {
+          const st = (b.status || '').toLowerCase();
+          if (st.includes('completed') || st.includes('finished')) return 'completed';
+          if (st.includes('cancel') || st.includes('refund') || st.includes('reject')) return 'canceled';
+          if (st.includes('assign') || st.includes('way') || st.includes('start') || st.includes('work') || st.includes('progress') || st.includes('accept')) return 'working';
+          return 'pending';
+        };
+
+        const pendingList = bookingsList.filter((b) => getCat(b) === 'pending');
+        const workingList = bookingsList.filter((b) => getCat(b) === 'working');
+        const completedList = bookingsList.filter((b) => getCat(b) === 'completed');
+        const canceledList = bookingsList.filter((b) => getCat(b) === 'canceled');
+
+        const activeList =
+          bookingFilterTab === 'pending'
+            ? pendingList
+            : bookingFilterTab === 'working'
+            ? workingList
+            : bookingFilterTab === 'completed'
+            ? completedList
+            : canceledList;
+
+        return (
+          <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* 4 FILTER TABS BAR: PENDING | WORKING | COMPLETED | CANCELED */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+              {[
+                { id: 'pending', label: 'Pending', icon: '⏳', count: pendingList.length, activeBg: 'rgba(245, 158, 11, 0.15)', activeText: '#fbbf24', activeBorder: '#f59e0b' },
+                { id: 'working', label: 'Working', icon: '⚙️', count: workingList.length, activeBg: 'rgba(37, 99, 235, 0.15)', activeText: '#60a5fa', activeBorder: '#2563eb' },
+                { id: 'completed', label: 'Completed', icon: '✅', count: completedList.length, activeBg: 'rgba(16, 185, 129, 0.15)', activeText: '#34d399', activeBorder: '#10b981' },
+                { id: 'canceled', label: 'Canceled', icon: '❌', count: canceledList.length, activeBg: 'rgba(239, 68, 68, 0.15)', activeText: '#f87171', activeBorder: '#ef4444' },
+              ].map((tab) => {
+                const isSel = bookingFilterTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setBookingFilterTab(tab.id)}
+                    style={{
+                      padding: '10px 4px',
+                      borderRadius: '14px',
+                      border: isSel ? `2px solid ${tab.activeBorder}` : '1px solid rgba(255,255,255,0.08)',
+                      background: isSel ? tab.activeBg : 'rgba(255,255,255,0.03)',
+                      color: isSel ? tab.activeText : '#94a3b8',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontWeight: '800',
+                      fontSize: '0.78rem',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                      <span>{tab.icon}</span>
+                      <span>{tab.label}</span>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: '0.7rem',
+                        padding: '2px 7px',
+                        borderRadius: '8px',
+                        background: isSel ? tab.activeBorder : 'rgba(255,255,255,0.08)',
+                        color: isSel ? '#ffffff' : '#64748b',
+                        fontWeight: '800',
+                      }}
+                    >
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* LIST OR EMPTY STATE */}
+            {loadingBookings ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <Loader2 size={32} className="spin" color="#10b981" />
+                <div style={{ marginTop: '10px', fontSize: '0.85rem', color: '#94a3b8' }}>Loading your booking history...</div>
+              </div>
+            ) : activeList.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '36px 20px', background: 'rgba(255,255,255,0.03)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ fontSize: '2.2rem', marginBottom: '8px' }}>
+                  {bookingFilterTab === 'pending' && '⏳'}
+                  {bookingFilterTab === 'working' && '⚙️'}
+                  {bookingFilterTab === 'completed' && '✅'}
+                  {bookingFilterTab === 'canceled' && '❌'}
+                </div>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '1.05rem', fontWeight: '800', color: '#ffffff' }}>
+                  No {bookingFilterTab.charAt(0).toUpperCase() + bookingFilterTab.slice(1)} Bookings
+                </h4>
+                <p style={{ margin: '0 0 16px 0', fontSize: '0.84rem', color: '#94a3b8' }}>
+                  You currently have no {bookingFilterTab} service bookings in your account.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab ? onNavigateTab('services') : setViewMode('main')}
+                  style={{ background: '#10b981', color: '#ffffff', border: 'none', borderRadius: '12px', padding: '10px 20px', fontWeight: '800', fontSize: '0.85rem', cursor: 'pointer' }}
+                >
+                  Explore Home Services
+                </button>
+              </div>
+            ) : (
+              activeList.map((b) => {
+                const bRef = b.bookingId || b.bookingNumber || `UC-${b._id?.toString().slice(-6).toUpperCase()}`;
+                const sTitle = b.packageName || b.service?.name || b.serviceName || b.packageTitle || 'Home Service Package';
+                const sAmount = b.amount || b.totalAmount || b.service?.finalPrice || 599;
+                const sStatus = b.status || 'Pending';
+                const sDate = b.bookingDate ? new Date(b.bookingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Today';
+
+                return (
+                  <div
+                    key={b._id || b.id}
+                    style={{
+                      padding: '18px',
+                      borderRadius: '20px',
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.76rem', fontWeight: '800', color: '#3b82f6', letterSpacing: '0.5px' }}>
+                        BOOKING REF: {bRef}
+                      </span>
+                      <span
+                        style={{
+                          padding: '3px 10px',
+                          borderRadius: '10px',
+                          fontSize: '0.72rem',
+                          fontWeight: '800',
+                          background: sStatus === 'Completed' ? 'rgba(16, 185, 129, 0.2)' : sStatus === 'Cancelled' || sStatus === 'Canceled' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(37, 99, 235, 0.2)',
+                          color: sStatus === 'Completed' ? '#34d399' : sStatus === 'Cancelled' || sStatus === 'Canceled' ? '#f87171' : '#60a5fa',
+                          border: sStatus === 'Completed' ? '1px solid #10b981' : sStatus === 'Cancelled' || sStatus === 'Canceled' ? '1px solid #ef4444' : '1px solid #2563eb'
+                        }}
+                      >
+                        {sStatus.toUpperCase()}
+                      </span>
+                    </div>
+
+                    <div>
+                      <div style={{ fontWeight: '800', fontSize: '1.05rem', color: '#ffffff' }}>{sTitle}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>
+                        📅 {sDate} • ⌚ {b.timeSlot || '10:30 AM'}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                      <div style={{ fontSize: '1.15rem', fontWeight: '800', color: '#34d399' }}>₹{sAmount}</div>
+                      <button
+                        type="button"
+                        onClick={() => onNavigateTab ? onNavigateTab('bookings') : setViewMode('main')}
+                        style={{ background: 'rgba(255,255,255,0.08)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '8px 14px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer' }}
+                      >
+                        Track Service ➔
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        );
+      })()}
+
+      {viewMode === 'favorites' && (
+        <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {[
+            { name: 'AC Deep Clean & Foam Wash', category: 'AC Cleaning', price: 799, rating: 4.9 },
+            { name: 'Full Home Deep Cleaning', category: 'Cleaning', price: 1499, rating: 4.8 },
+            { name: 'Beard Trim & Hot Towel Shave', category: 'Men Salon', price: 276, rating: 4.9 },
+          ].map((fav, i) => (
+            <div key={i} style={{ padding: '16px', background: 'rgba(255,255,255,0.04)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontWeight: '800', fontSize: '0.95rem', color: '#ffffff' }}>{fav.name}</div>
+                <div style={{ fontSize: '0.78rem', color: '#34d399', fontWeight: '700', marginTop: '2px' }}>₹{fav.price} • ⭐ {fav.rating}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigateTab ? onNavigateTab('services') : null}
+                style={{ background: '#10b981', color: '#ffffff', border: 'none', borderRadius: '12px', padding: '8px 14px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer' }}
+              >
+                Book Now
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {viewMode === 'refer' && (
+        <div style={{ padding: '20px 20px 32px 20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* TOP GIFT BOX ILLUSTRATION BANNER */}
+          <div
+            style={{
+              padding: '28px 20px',
+              background: 'linear-gradient(180deg, #fef3c7 0%, #fde68a 100%)',
+              borderRadius: '24px',
+              textAlign: 'center',
+              boxShadow: '0 8px 24px rgba(245, 158, 11, 0.15)',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Sparkles Floating Background */}
+            <div style={{ width: '80px', height: '80px', borderRadius: '20px', background: '#ffffff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 25px rgba(217, 119, 6, 0.25)', marginBottom: '4px' }}>
+              <Gift size={44} color="#d97706" />
+            </div>
+            <div style={{ position: 'absolute', top: '12px', left: '16px', color: '#b45309', opacity: 0.6 }}>✨</div>
+            <div style={{ position: 'absolute', top: '24px', right: '20px', color: '#b45309', opacity: 0.6 }}>✦</div>
+            <div style={{ position: 'absolute', bottom: '12px', left: '30px', color: '#b45309', opacity: 0.5 }}>✦</div>
+          </div>
+
+          {/* TITLE & SUBTITLE */}
+          <div style={{ textAlign: 'center' }}>
+            <h3 style={{ fontSize: '1.45rem', fontWeight: '800', margin: 0, color: '#ffffff' }}>
+              Invite Friends, Earn Rewards
+            </h3>
+            <p style={{ fontSize: '0.88rem', color: '#94a3b8', margin: '6px 0 0 0', lineHeight: 1.5 }}>
+              Get <span style={{ color: '#34d399', fontWeight: '800' }}>₹{referralData.rewardPerReferral || 200}</span> for every friend who books their first service.
+            </p>
+          </div>
+
+          {/* YOUR REFERRAL CODE BOX */}
+          <div
+            style={{
+              padding: '18px 20px',
+              borderRadius: '20px',
+              background: 'rgba(16, 185, 129, 0.05)',
+              border: '2px dashed #10b981',
+              textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: '0.72rem', fontWeight: '800', color: '#94a3b8', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: '8px' }}>
+              YOUR REFERRAL CODE
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+              <span style={{ fontSize: '1.45rem', fontWeight: '800', letterSpacing: '1.5px', color: '#34d399' }}>
+                {referralData.referralCode || 'ANANYA200'}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(referralData.referralCode || 'ANANYA200');
+                  toast.success('📋 Referral code copied to clipboard!');
+                }}
+                style={{
+                  background: '#10b981',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '10px 18px',
+                  fontSize: '0.86rem',
+                  fontWeight: '800',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+                }}
+              >
+                <Copy size={16} /> Copy
+              </button>
+            </div>
+          </div>
+
+          {/* SHARE VIA SECTION */}
+          <div>
+            <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#94a3b8', marginBottom: '10px' }}>
+              Share via
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              {/* WhatsApp Share Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  const text = `Use my code *${referralData.referralCode || 'ANANYA200'}* to get ₹200 OFF on home service bookings on Norozz App! ${window.location.origin}`;
+                  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+                }}
+                style={{
+                  padding: '14px',
+                  borderRadius: '16px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: '#ffffff',
+                  fontWeight: '800',
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justify: 'center',
+                  gap: '8px',
+                }}
+              >
+                <span style={{ fontSize: '1.2rem', color: '#25d366' }}>💬</span> WhatsApp
+              </button>
+
+              {/* SMS Share Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  const body = `Use my code ${referralData.referralCode || 'ANANYA200'} to get ₹200 OFF on home services on Norozz App!`;
+                  window.open(`sms:?body=${encodeURIComponent(body)}`);
+                }}
+                style={{
+                  padding: '14px',
+                  borderRadius: '16px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: '#ffffff',
+                  fontWeight: '800',
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justify: 'center',
+                  gap: '8px',
+                }}
+              >
+                <span style={{ fontSize: '1.1rem', color: '#3b82f6' }}>✉️</span> SMS
+              </button>
+            </div>
+          </div>
+
+          {/* YOUR REFERRALS STATS SECTION */}
+          <div>
+            <div style={{ fontSize: '0.92rem', fontWeight: '800', color: '#ffffff', marginBottom: '12px' }}>
+              Your Referrals
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: '10px', marginBottom: '16px' }}>
+              <div style={{ padding: '14px 12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#ffffff' }}>
+                  {referralData.stats?.invitedCount ?? 0}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: '600', marginTop: '2px' }}>Invited</div>
+              </div>
+
+              <div style={{ padding: '14px 12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#34d399' }}>
+                  {referralData.stats?.joinedCount ?? 0}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: '600', marginTop: '2px' }}>Joined</div>
+              </div>
+
+              <div style={{ padding: '14px 12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#f59e0b' }}>
+                  ₹{referralData.stats?.earnedAmount ?? 0}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: '600', marginTop: '2px' }}>Earned</div>
+              </div>
+            </div>
+
+            {/* REFERRAL HISTORY LIST / EMPTY STATE */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {(!referralData.referralsList || referralData.referralsList.length === 0) ? (
+                <div style={{ textAlign: 'center', padding: '24px 16px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ fontSize: '0.84rem', color: '#94a3b8' }}>
+                    No referrals yet. Share your code via WhatsApp or SMS to start earning!
+                  </div>
+                </div>
+              ) : (
+                referralData.referralsList.map((refItem) => (
+                  <div
+                    key={refItem.id || refItem.name}
+                    style={{
+                      padding: '14px 16px',
+                      borderRadius: '16px',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justify: 'space-between',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: '800', fontSize: '0.92rem', color: '#ffffff' }}>{refItem.name}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>{refItem.date}</div>
+                    </div>
+
+                    <span
+                      style={{
+                        background: refItem.status === 'Joined' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.06)',
+                        color: refItem.status === 'Joined' ? '#34d399' : '#94a3b8',
+                        border: refItem.status === 'Joined' ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.15)',
+                        padding: '4px 12px',
+                        borderRadius: '12px',
+                        fontSize: '0.75rem',
+                        fontWeight: '800',
+                      }}
+                    >
+                      {refItem.status}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewMode === 'wallet' && (
+        <div style={{ padding: '24px 20px' }}>
+          <div style={{ padding: '20px', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', borderRadius: '20px', color: '#ffffff', marginBottom: '20px', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)' }}>
+            <div style={{ fontSize: '0.78rem', fontWeight: '800', opacity: 0.9 }}>AVAILABLE WALLET BALANCE</div>
+            <div style={{ fontSize: '2rem', fontWeight: '800', margin: '4px 0' }}>₹450.00</div>
+            <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>100% usable on any home service booking</div>
+          </div>
+
+          <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '12px' }}>RECENT TRANSACTIONS</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {[
+              { title: 'Referral Cashback Credit', amount: '+₹200', date: 'Yesterday', type: 'credit' },
+              { title: 'AC Cleaning Cashback', amount: '+₹250', date: '25 Aug 2026', type: 'credit' }
+            ].map((t, idx) => (
+              <div key={idx} style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.04)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: '700', fontSize: '0.88rem', color: '#ffffff' }}>{t.title}</div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{t.date}</div>
+                </div>
+                <span style={{ fontWeight: '800', color: '#34d399', fontSize: '0.95rem' }}>{t.amount}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {viewMode === 'help' && (
+        <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ padding: '18px', background: 'rgba(255,255,255,0.04)', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <h4 style={{ margin: '0 0 6px 0', fontSize: '0.95rem', fontWeight: '800', color: '#ffffff' }}>📞 24x7 Customer Helpline</h4>
+            <p style={{ margin: 0, fontSize: '0.82rem', color: '#cbd5e1' }}>Call us anytime toll-free at <strong>1800 200 9090</strong> for booking changes or emergency support.</p>
+          </div>
+
+          <div style={{ padding: '18px', background: 'rgba(255,255,255,0.04)', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <h4 style={{ margin: '0 0 6px 0', fontSize: '0.95rem', fontWeight: '800', color: '#ffffff' }}>💬 Live Chat Support</h4>
+            <p style={{ margin: '0 0 12px 0', fontSize: '0.82rem', color: '#cbd5e1' }}>Connect instantly with our support team for quick resolution.</p>
+            <button
+              type="button"
+              onClick={() => toast.info('Support agent connected! Type your query.')}
+              style={{ background: '#10b981', color: '#ffffff', border: 'none', borderRadius: '12px', padding: '10px 18px', fontSize: '0.82rem', fontWeight: '800', cursor: 'pointer' }}
+            >
+              Start Live Support Chat
+            </button>
+          </div>
+        </div>
+      )}
+
+      {viewMode === 'settings' && (
+        <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {[
+            { title: 'Push Notifications', desc: 'Receive booking updates & promo alerts', enabled: true },
+            { title: 'SMS / WhatsApp Alerts', desc: 'Get technician arrival status via WhatsApp', enabled: true },
+            { title: 'Dark Mode Theme', desc: 'Always use sleek dark mode interface', enabled: true }
+          ].map((s, idx) => (
+            <div key={idx} style={{ padding: '16px', background: 'rgba(255,255,255,0.04)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontWeight: '800', fontSize: '0.9rem', color: '#ffffff' }}>{s.title}</div>
+                <div style={{ fontSize: '0.76rem', color: '#64748b' }}>{s.desc}</div>
+              </div>
+              <span style={{ width: '42px', height: '24px', background: '#10b981', borderRadius: '12px', display: 'inline-block', position: 'relative' }}>
+                <span style={{ width: '18px', height: '18px', background: '#ffffff', borderRadius: '50%', position: 'absolute', top: '3px', right: '3px' }} />
+              </span>
+            </div>
+          ))}
         </div>
       )}
 

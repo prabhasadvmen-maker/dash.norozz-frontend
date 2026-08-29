@@ -17,7 +17,8 @@ const CityMetricCards = ({ selectedCity }) => {
   const completedOrders = dashboard?.completedBookings || bookings.filter((b) => b.status === 'Completed').length || 118;
   const revenueGmv = dashboard?.cityRevenueGmv || 124800;
   const commission = dashboard?.cityCommission || 24960;
-  const activePartnersCount = partners.filter((p) => p.kycStatus === 'approved').length || partners.length || 185;
+  const activePartnersCount = partners.filter((p) => p.kycStatus === 'approved').length;
+  const displayPartnersCount = partners.length === 0 ? 0 : (activePartnersCount > 0 ? activePartnersCount : partners.length);
 
   const cards = [
     {
@@ -58,7 +59,7 @@ const CityMetricCards = ({ selectedCity }) => {
     },
     {
       title: 'Active Partners',
-      value: Number(activePartnersCount).toLocaleString(),
+      value: Number(displayPartnersCount).toLocaleString(),
       icon: Briefcase,
       color: '#2563eb',
       bgColor: '#eff6ff',

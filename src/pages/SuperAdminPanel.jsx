@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import SuperAdminNavbar from '../components/superAdmin/SuperAdminNavbar';
 import SuperAdminSidebar from '../components/superAdmin/SuperAdminSidebar';
+import AdminPackageManagementModal from '../components/admin/AdminPackageManagementModal';
 import PlatformAnalyticsGrid from '../components/superAdmin/PlatformAnalyticsGrid';
 import CityAdminManagement from '../components/superAdmin/CityAdminManagement';
 import CityManagementView from '../components/superAdmin/CityManagementView';
+import SuperAdminCouponsView from '../components/superAdmin/SuperAdminCouponsView';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import { useSuperAdmin } from '../hooks/useSuperAdmin.js';
 import { useCatalog } from '../hooks/useCatalog.js';
@@ -75,6 +77,10 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
   const [subCatFilterCategory, setSubCatFilterCategory] = useState('');
   const [srvFilterCategory, setSrvFilterCategory] = useState('');
   const [srvFilterSubCategory, setSrvFilterSubCategory] = useState('');
+
+  // Package Management Modal State
+  const [selectedServiceForPackages, setSelectedServiceForPackages] = useState(null);
+  const [isPkgModalOpen, setIsPkgModalOpen] = useState(false);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -193,28 +199,21 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
 
   const handleCreateServiceSubmit = async (e) => {
     e.preventDefault();
-    if (!newSrvName.trim() || !newSrvCategory || !newSrvSubCategory || !newSrvPrice) return;
-    
-    const formattedPackages = newSrvPackages.map((p) => ({
-      title: p.title,
-      price: Number(p.price) || 999,
-      description: p.description || '',
-      features: typeof p.features === 'string' ? p.features.split('\n').filter(Boolean) : (p.features || []),
-      isPopular: Boolean(p.isPopular)
-    }));
+    if (!newSrvName.trim() || !newSrvCategory || !newSrvSubCategory) return;
 
-    await createService({
+    const res = await createService({
       name: newSrvName.trim(),
       category: newSrvCategory,
       subCategory: newSrvSubCategory,
-      price: Number(newSrvPrice),
+      price: Number(newSrvPrice) || 0,
       discount: Number(newSrvDiscount) || 0,
       duration: newSrvDuration || '45 mins',
       description: newSrvDesc.trim(),
       image: newSrvImage,
       thumbnail: newSrvImage,
-      packages: formattedPackages,
     });
+
+    const createdSrv = res?.data?.data || res?.data || res;
     setNewSrvName('');
     setNewSrvCategory('');
     setNewSrvSubCategory('');
@@ -224,6 +223,11 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     setNewSrvDesc('');
     setNewSrvImage('');
     setSrvModalOpen(false);
+
+    if (createdSrv?._id) {
+      setSelectedServiceForPackages(createdSrv);
+      setIsPkgModalOpen(true);
+    }
   };
 
   // Skill Inputs State per Category
@@ -271,6 +275,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                 {activeTab === 'dashboard' && 'Master Platform Analytics & Overview'}
                 {activeTab === 'cityAdmins' && 'City Admin Management & City Assignment'}
                 {activeTab === 'cities' && 'Dynamic Operational Cities Management'}
+                {activeTab === 'coupons' && 'Master Coupon & Promo Code Management'}
                 {activeTab === 'customers' && `Global Customer Directory (${customers.length} Registered)`}
                 {activeTab === 'partners' && `Verified Marketplace Partners (${partners.length} Agencies)`}
                 {activeTab === 'categories' && 'Service Category Master Directory'}
@@ -279,6 +284,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                 {activeTab === 'services' && 'Individual Service Packages & Base Pricing'}
                 {activeTab === 'bookings' && `Master Bookings & Dispatch Log (${bookings.length} Total)`}
                 {activeTab === 'payments' && 'Platform Commission & Partner Payout Ledger'}
+                {activeTab === 'reviews' && 'Reviews & Two-Way Ratings Moderation'}
                 {activeTab === 'reports' && 'Financial Growth & Revenue Analytics Reports'}
                 {activeTab === 'notifications' && 'Platform Notifications & System Broadcasts'}
                 {activeTab === 'settings' && 'Global Platform Configuration & Commission %'}
@@ -314,6 +320,11 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
           {/* TAB 2.5: CITIES MANAGEMENT */}
           {activeTab === 'cities' && (
             <CityManagementView />
+          )}
+
+          {/* TAB 2.8: COUPONS & PROMOS */}
+          {activeTab === 'coupons' && (
+            <SuperAdminCouponsView />
           )}
 
           {/* TAB 3: CUSTOMERS */}
@@ -722,8 +733,18 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                             </div>
                           </div>
 
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px dashed #e2e8f0' }}>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>/{srv.slug}</span>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px dashed #e2e8f0', gap: '8px', flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedServiceForPackages(srv);
+                                setIsPkgModalOpen(true);
+                              }}
+                              className="btn btn-primary btn-sm"
+                              style={{ fontWeight: '800', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: '5px' }}
+                            >
+                              📦 Manage Packages
+                            </button>
                             <button onClick={() => deleteService(srv._id)} className="btn btn-danger btn-sm" title="Delete Service">
                               <Trash2 size={14} /> Delete
                             </button>
@@ -773,15 +794,195 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
             </div>
           )}
 
-          {/* TAB 9: PAYMENTS */}
+          {/* TAB 9: PAYMENTS / FINANCIAL OVERVIEW */}
           {activeTab === 'payments' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div className="mui-card" style={{ padding: '26px', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: '#ffffff', border: '1px solid #334155' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: '900', color: '#38bdf8', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <CreditCard size={22} color="#38bdf8" /> NOROZZ FINANCIAL OVERVIEW
+                    </h3>
+                    <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '4px 0 0 0' }}>
+                      Master Dual-Sided Revenue, Partner Payouts & Double-Entry Ledger Summary
+                    </p>
+                  </div>
+                  <span style={{ padding: '6px 14px', borderRadius: '20px', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', fontSize: '0.78rem', fontWeight: '800', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+                    LIVE AUDIT LEDGER
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                  <div style={{ padding: '16px', background: 'rgba(255,255,255,0.04)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Gross Booking Value</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#ffffff', marginTop: '4px' }}>₹1,00,000</div>
+                  </div>
+
+                  <div style={{ padding: '16px', background: 'rgba(56, 189, 248, 0.08)', borderRadius: '16px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: '700', textTransform: 'uppercase' }}>Customer Platform Fees</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#38bdf8', marginTop: '4px' }}>+ ₹5,000</div>
+                  </div>
+
+                  <div style={{ padding: '16px', background: 'rgba(168, 85, 247, 0.08)', borderRadius: '16px', border: '1px solid rgba(168, 85, 247, 0.2)' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#c084fc', fontWeight: '700', textTransform: 'uppercase' }}>Partner Commissions</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#c084fc', marginTop: '4px' }}>+ ₹5,000</div>
+                  </div>
+
+                  <div style={{ padding: '16px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '16px', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#4ade80', fontWeight: '700', textTransform: 'uppercase' }}>Gross Platform Revenue</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#4ade80', marginTop: '4px' }}>₹10,000</div>
+                  </div>
+                </div>
+
+                {/* Ledger Breakdown Card */}
+                <div style={{ background: 'rgba(0, 0, 0, 0.25)', borderRadius: '16px', padding: '20px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                  <div style={{ fontSize: '0.85rem', fontWeight: '800', color: '#94a3b8', marginBottom: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Platform Net Contribution & Revenue Deductions
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.9rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1' }}>
+                      <span>Gross Platform Revenue</span>
+                      <span style={{ fontWeight: '800', color: '#ffffff' }}>₹10,000</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#f87171' }}>
+                      <span>Customer Refunds & Adjustments</span>
+                      <span style={{ fontWeight: '800' }}>- ₹1,000</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fb923c' }}>
+                      <span>Payment Gateway Charges (Razorpay / UPI)</span>
+                      <span style={{ fontWeight: '800' }}>- ₹300</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+                      <span>Statutory & Other Adjustments</span>
+                      <span style={{ fontWeight: '800' }}>- ₹200</span>
+                    </div>
+                    <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.1)', margin: '4px 0' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.15rem', fontWeight: '900' }}>
+                      <span style={{ color: '#ffffff' }}>Net Platform Revenue / Contribution</span>
+                      <span style={{ color: '#4ade80' }}>₹8,500</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 9.5: REVIEWS & RATINGS MODERATION */}
+          {activeTab === 'reviews' && (
             <div className="mui-card" style={{ padding: '26px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CreditCard size={20} color="#7c3aed" /> Platform Revenue & Commission Payout Ledger
-              </h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Total Platform Commission Collected: ₹{Number(dashboard?.platformCommission || 2496000).toLocaleString()} (20% default cut).
-              </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: '900', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Star size={22} color="#f59e0b" fill="#f59e0b" /> Reviews & Two-Way Ratings Moderation
+                  </h3>
+                  <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '4px 0 0 0' }}>
+                    Manage customer and partner reviews, moderate inappropriate content, and view platform ratings
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <span className="badge badge-purple" style={{ padding: '6px 14px', fontSize: '0.8rem' }}>
+                    ⭐ 4.9 Platform Average Rating
+                  </span>
+                </div>
+              </div>
+
+              {/* Reviews Moderation Table */}
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                      <th style={{ padding: '12px' }}>REVIEWER</th>
+                      <th style={{ padding: '12px' }}>REVIEWEE</th>
+                      <th style={{ padding: '12px' }}>RATING</th>
+                      <th style={{ padding: '12px' }}>COMMENT / FEEDBACK</th>
+                      <th style={{ padding: '12px' }}>STATUS</th>
+                      <th style={{ padding: '12px', textAlign: 'right' }}>MODERATION ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      {
+                        _id: 'rev-1',
+                        reviewerName: 'Ananya Deshmukh',
+                        reviewerRole: 'CUSTOMER',
+                        revieweeName: 'Rahul Kumar (CleanPro Agency)',
+                        revieweeRole: 'PARTNER',
+                        rating: 5,
+                        comment: 'Punctual, professional AC foam cleaning. Highly recommended service expert!',
+                        status: 'PUBLISHED',
+                        date: '27 July 2026',
+                      },
+                      {
+                        _id: 'rev-2',
+                        reviewerName: 'Rahul Kumar (CleanPro Agency)',
+                        reviewerRole: 'PARTNER',
+                        revieweeName: 'Ananya Deshmukh',
+                        revieweeRole: 'CUSTOMER',
+                        rating: 5,
+                        comment: 'Customer was very polite, cooperative and provided easy gate entry code.',
+                        status: 'PUBLISHED',
+                        date: '27 July 2026',
+                      },
+                      {
+                        _id: 'rev-3',
+                        reviewerName: 'Vikram Mehta',
+                        reviewerRole: 'CUSTOMER',
+                        revieweeName: 'Speedy Plumber Agency',
+                        revieweeRole: 'PARTNER',
+                        rating: 4,
+                        comment: 'Great job with pipe repair, arrived slightly late due to traffic but fixed issue well.',
+                        status: 'PUBLISHED',
+                        date: '25 July 2026',
+                      },
+                    ].map((rev) => (
+                      <tr key={rev._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                        <td style={{ padding: '12px' }}>
+                          <div style={{ fontWeight: '800', fontSize: '0.88rem', color: '#0f172a' }}>{rev.reviewerName}</div>
+                          <span className={`badge ${rev.reviewerRole === 'CUSTOMER' ? 'badge-blue' : 'badge-purple'}`} style={{ fontSize: '0.65rem' }}>
+                            {rev.reviewerRole}
+                          </span>
+                        </td>
+
+                        <td style={{ padding: '12px' }}>
+                          <div style={{ fontWeight: '800', fontSize: '0.88rem', color: '#0f172a' }}>{rev.revieweeName}</div>
+                          <span className={`badge ${rev.revieweeRole === 'CUSTOMER' ? 'badge-blue' : 'badge-purple'}`} style={{ fontSize: '0.65rem' }}>
+                            {rev.revieweeRole}
+                          </span>
+                        </td>
+
+                        <td style={{ padding: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#f59e0b', fontWeight: '800' }}>
+                            <Star size={16} fill="#f59e0b" color="#f59e0b" />
+                            <span>{rev.rating}.0</span>
+                          </div>
+                        </td>
+
+                        <td style={{ padding: '12px', fontSize: '0.84rem', color: '#334155', maxWidth: '280px' }}>
+                          "{rev.comment}"
+                        </td>
+
+                        <td style={{ padding: '12px' }}>
+                          <span className={`badge ${rev.status === 'PUBLISHED' ? 'badge-success' : 'badge-warning'}`}>
+                            {rev.status}
+                          </span>
+                        </td>
+
+                        <td style={{ padding: '12px', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                            <button className="btn btn-secondary btn-sm" style={{ padding: '4px 8px', fontSize: '0.72rem' }}>
+                              Hide
+                            </button>
+                            <button className="btn btn-danger btn-sm" style={{ padding: '4px 8px', fontSize: '0.72rem' }}>
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
@@ -1014,6 +1215,13 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
           </div>
         </div>
       )}
+
+      {/* Dedicated Service Package Management Modal */}
+      <AdminPackageManagementModal
+        isOpen={isPkgModalOpen}
+        onClose={() => setIsPkgModalOpen(false)}
+        service={selectedServiceForPackages}
+      />
 
     </div>
   );

@@ -1,16 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Building2, Plus, KeyRound, MapPin, Power, Search, Edit3 } from 'lucide-react';
+import { Building2, Plus, KeyRound, MapPin, Power, Search, Edit3, LogIn, Loader2 } from 'lucide-react';
 import CityAdminModal from './CityAdminModal';
 import { useSuperAdmin } from '../../hooks/useSuperAdmin.js';
 import { cityService } from '../../services/city.service.js';
+import { useAuthContext } from '../../contexts/AuthContext.jsx';
+import { toast } from '../../utils/toast.js';
 
 const CityAdminManagement = () => {
-  const { cityAdmins, createCityAdmin, updateCityAdminStatus } = useSuperAdmin();
+  const { cityAdmins, createCityAdmin, updateCityAdminStatus, impersonateCityAdmin } = useSuperAdmin();
+  const { login } = useAuthContext();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' | 'edit' | 'resetPassword'
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [citiesMap, setCitiesMap] = useState({});
+  const [loggingInId, setLoggingInId] = useState(null);
 
   useEffect(() => {
     cityService
@@ -68,6 +72,29 @@ const CityAdminManagement = () => {
   const handleToggleStatus = async (admin) => {
     const newStatus = admin.status === 'active' ? 'inactive' : 'active';
     await updateCityAdminStatus({ id: admin._id, status: newStatus });
+  };
+
+  const handleDirectLogin = async (admin) => {
+    if (admin.status !== 'active') {
+      toast.error('Cannot login into a disabled City Admin account.');
+      return;
+    }
+
+    setLoggingInId(admin._id);
+    try {
+      const res = await impersonateCityAdmin(admin._id);
+      const targetUser = res.data?.user || res.user;
+      const token = res.data?.accessToken || res.accessToken;
+
+      if (targetUser && token) {
+        toast.success(`🔐 Logged in directly as City Admin (${targetUser.name})!`);
+        login(targetUser, token);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to login as City Admin');
+    } finally {
+      setLoggingInId(null);
+    }
   };
 
   const handleModalSubmit = async (formData, adminId, mode) => {
@@ -151,6 +178,33 @@ const CityAdminManagement = () => {
                     </td>
                     <td style={{ padding: '14px' }}>
                       <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => handleDirectLogin(admin)}
+                          disabled={loggingInId === admin._id || !isActive}
+                          className="btn btn-sm"
+                          style={{
+                            background: isActive ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#cbd5e1',
+                            color: '#ffffff',
+                            fontWeight: '800',
+                            borderRadius: '8px',
+                            border: 'none',
+                            padding: '6px 12px',
+                            boxShadow: isActive ? '0 2px 8px rgba(16, 185, 129, 0.35)' : 'none',
+                            cursor: isActive ? 'pointer' : 'not-allowed',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                          title={isActive ? `Directly login into ${admin.name}'s City Admin portal` : 'Cannot login to disabled admin'}
+                        >
+                          {loggingInId === admin._id ? (
+                            <Loader2 size={14} className="spin" />
+                          ) : (
+                            <LogIn size={14} />
+                          )}
+                          Login
+                        </button>
+
                         <button
                           onClick={() => handleOpenEdit(admin)}
                           className="btn btn-secondary btn-sm"

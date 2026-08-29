@@ -34,5 +34,14 @@ export const catalogService = {
   createSkill: (data) => axiosInstance.post('/skills', data),
   updateSkill: (id, data) => axiosInstance.put(`/skills/${id}`, data),
   deleteSkill: (id) => axiosInstance.delete(`/skills/${id}`),
+
+  // Service Packages
+  getServicePackages: (serviceId) => axiosInstance.get(`/packages/service/${serviceId}`),
+  createPackage: (serviceId, data) => axiosInstance.post(`/packages/service/${serviceId}`, data),
+  updatePackage: (packageId, data) => axiosInstance.put(`/packages/${packageId}`, data),
+  deletePackage: (packageId) => axiosInstance.delete(`/packages/${packageId}`),
+  updatePackageStatus: (packageId, status) => axiosInstance.patch(`/packages/${packageId}/status`, { status }),
+  togglePackagePopular: (packageId) => axiosInstance.patch(`/packages/${packageId}/popular`),
+  togglePackageRecommended: (packageId) => axiosInstance.patch(`/packages/${packageId}/recommended`),
 };
 

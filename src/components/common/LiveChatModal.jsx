@@ -61,10 +61,15 @@ const LiveChatModal = ({ isOpen, booking, currentUser, userRole = 'customer', on
       const fetchHistory = async () => {
         setLoadingHistory(true);
         try {
-          const res = await axiosInstance.get(`/chat/${bookingId}`);
-          if (res.data?.data && Array.isArray(res.data.data)) {
-            setMessages(res.data.data);
-          }
+          const targetId = booking?._id || booking?.rawId || bookingId;
+          const res = await axiosInstance.get(`/chat/${targetId}`);
+          
+          // axiosInstance response interceptor unwraps response.data directly
+          const fetchedMsgs = Array.isArray(res)
+            ? res
+            : (Array.isArray(res?.data) ? res.data : (Array.isArray(res?.data?.data) ? res.data.data : []));
+
+          setMessages(fetchedMsgs);
         } catch (err) {
           console.warn('Failed to load chat history:', err);
         } finally {
@@ -77,21 +82,20 @@ const LiveChatModal = ({ isOpen, booking, currentUser, userRole = 'customer', on
 
       // Socket Listener for Incoming Messages
       const handleNewMessage = (msg) => {
-        if (String(msg.booking) === String(bookingId) || String(msg.booking) === String(bookingRef)) {
-          setMessages((prev) => {
-            if (msg._id && prev.some((m) => String(m._id) === String(msg._id))) {
-              return prev;
-            }
-            return [...prev, msg];
-          });
-
-          // Trigger Sound & Notification Toast for recipient
-          if (msg.senderRole !== userRole) {
-            playChatChimeSound();
-            toast.info(`💬 ${msg.senderName}: "${msg.message}"`);
+        if (!msg) return;
+        setMessages((prev) => {
+          if (msg._id && prev.some((m) => String(m._id) === String(msg._id))) {
+            return prev;
           }
-          scrollToBottom();
+          return [...prev, msg];
+        });
+
+        // Trigger Sound & Notification Toast for recipient
+        if (msg.senderRole !== userRole) {
+          playChatChimeSound();
+          toast.info(`💬 ${msg.senderName}: "${msg.message}"`);
         }
+        scrollToBottom();
       };
 
       socket.on('new_chat_message', handleNewMessage);
