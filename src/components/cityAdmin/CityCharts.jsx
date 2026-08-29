@@ -1,7 +1,20 @@
 import React from 'react';
 import { TrendingUp, BarChart2, Zap, Award, Star } from 'lucide-react';
+import { useCityAdmin } from '../../hooks/useCityAdmin.js';
 
 const CityCharts = ({ selectedCity }) => {
+  const { dashboard, bookings } = useCityAdmin();
+
+  const totalB = dashboard?.totalBookings || bookings?.length || 0;
+  const completedB = dashboard?.completedBookings || bookings?.filter((b) => ['completed', 'Completed', 'confirmed', 'Confirmed'].includes(b.status)).length || 0;
+  const pendingB = dashboard?.pendingBookings || bookings?.filter((b) => ['pending', 'Pending', 'assigned', 'Assigned'].includes(b.status)).length || 0;
+  const cancelledB = dashboard?.cancelledBookings || bookings?.filter((b) => ['cancelled', 'Cancelled', 'refunded', 'Refunded'].includes(b.status)).length || 0;
+
+  const baseTotal = Math.max(1, completedB + pendingB + cancelledB || totalB || 1);
+  const compPct = Math.round((completedB / baseTotal) * 100);
+  const pendPct = Math.round((pendingB / baseTotal) * 100);
+  const cancPct = Math.max(0, 100 - compPct - pendPct);
+
   const cityRevenueTrend = [
     { day: 'Mon', revenue: 18, bookings: 98 },
     { day: 'Tue', revenue: 22, bookings: 112 },
@@ -74,31 +87,31 @@ const CityCharts = ({ selectedCity }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: '700', marginBottom: '6px' }}>
-              <span>Completed Orders (83%)</span>
-              <span style={{ color: '#10b981' }}>118 Orders</span>
+              <span>Completed Orders ({compPct}%)</span>
+              <span style={{ color: '#10b981' }}>{completedB} Orders</span>
             </div>
             <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
-              <div style={{ width: '83%', height: '100%', background: '#10b981' }}></div>
+              <div style={{ width: `${compPct}%`, height: '100%', background: '#10b981' }}></div>
             </div>
           </div>
 
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: '700', marginBottom: '6px' }}>
-              <span>Pending Dispatch (13%)</span>
-              <span style={{ color: '#f59e0b' }}>18 Orders</span>
+              <span>Pending Dispatch ({pendPct}%)</span>
+              <span style={{ color: '#f59e0b' }}>{pendingB} Orders</span>
             </div>
             <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
-              <div style={{ width: '13%', height: '100%', background: '#f59e0b' }}></div>
+              <div style={{ width: `${pendPct}%`, height: '100%', background: '#f59e0b' }}></div>
             </div>
           </div>
 
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: '700', marginBottom: '6px' }}>
-              <span>Cancelled (4%)</span>
-              <span style={{ color: '#ef4444' }}>6 Orders</span>
+              <span>Cancelled ({cancPct}%)</span>
+              <span style={{ color: '#ef4444' }}>{cancelledB} Orders</span>
             </div>
             <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
-              <div style={{ width: '4%', height: '100%', background: '#ef4444' }}></div>
+              <div style={{ width: `${cancPct}%`, height: '100%', background: '#ef4444' }}></div>
             </div>
           </div>
         </div>

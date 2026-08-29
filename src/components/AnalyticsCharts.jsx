@@ -5,26 +5,61 @@ import {
   Award,
   Star,
   Sparkles,
-  ChevronRight,
   ShieldCheck,
-  Percent
 } from 'lucide-react';
+import { useSuperAdmin } from '../hooks/useSuperAdmin.js';
 
 const AnalyticsCharts = () => {
-  const topServices = [
-    { rank: 1, name: 'AC Deep Cleaning & Service', bookings: '3,420', revenue: '₹41,04,000', rating: '4.9 ⭐', color: '#2563eb' },
-    { rank: 2, name: 'Full Home Deep Cleaning', bookings: '2,890', revenue: '₹34,68,000', rating: '4.8 ⭐', color: '#7c3aed' },
-    { rank: 3, name: 'Salon for Women - Facial & Spa', bookings: '2,150', revenue: '₹25,80,000', rating: '4.9 ⭐', color: '#ec4899' },
-    { rank: 4, name: 'Plumbing Repair & Leak Fixing', bookings: '1,840', revenue: '₹14,72,000', rating: '4.7 ⭐', color: '#06b6d4' },
-    { rank: 5, name: 'Washing Machine Repair', bookings: '1,210', revenue: '₹9,68,000', rating: '4.8 ⭐', color: '#10b981' },
+  const { dashboard, bookings, partners } = useSuperAdmin();
+
+  const overview = dashboard?.overview || {};
+  const totalB = overview.totalBookings || bookings?.length || 0;
+  const completedB = overview.completedBookings || bookings?.filter((b) => ['completed', 'Completed', 'confirmed', 'Confirmed'].includes(b.status)).length || 0;
+  const pendingB = overview.pendingBookings || bookings?.filter((b) => ['pending', 'Pending', 'accepted', 'Accepted', 'In Progress'].includes(b.status)).length || 0;
+  const cancelledB = overview.cancelledBookings || bookings?.filter((b) => ['cancelled', 'Cancelled', 'refunded', 'Refunded'].includes(b.status)).length || 0;
+
+  const baseTotal = Math.max(1, completedB + pendingB + cancelledB || totalB || 1);
+  const compPct = Math.round((completedB / baseTotal) * 100);
+  const pendPct = Math.round((pendingB / baseTotal) * 100);
+  const cancPct = Math.max(0, 100 - compPct - pendPct);
+
+  // Dynamic Top Services derived from live bookings
+  const topServicesMap = {};
+  (bookings || []).forEach((b) => {
+    const sName = b.serviceName || b.packageName || 'Home Service';
+    if (!topServicesMap[sName]) {
+      topServicesMap[sName] = { name: sName, bookings: 0, revenue: 0 };
+    }
+    topServicesMap[sName].bookings += 1;
+    topServicesMap[sName].revenue += Number(b.totalAmount || b.amount || 0);
+  });
+
+  const dynamicServicesList = Object.values(topServicesMap)
+    .sort((a, b) => b.bookings - a.bookings)
+    .slice(0, 5)
+    .map((s, idx) => ({
+      rank: idx + 1,
+      name: s.name,
+      bookings: s.bookings.toLocaleString(),
+      revenue: `₹${s.revenue.toLocaleString()}`,
+      rating: '4.9 ⭐',
+      color: ['#2563eb', '#7c3aed', '#ec4899', '#06b6d4', '#10b981'][idx % 5],
+    }));
+
+  const topServices = dynamicServicesList.length > 0 ? dynamicServicesList : [
+    { rank: 1, name: 'AC Deep Cleaning & Service', bookings: '0', revenue: '₹0', rating: '4.9 ⭐', color: '#2563eb' },
+    { rank: 2, name: 'Full Home Deep Cleaning', bookings: '0', revenue: '₹0', rating: '4.8 ⭐', color: '#7c3aed' },
   ];
 
-  const topPartners = [
-    { name: 'Rajesh Kumar', profession: 'AC Technician Master', rating: 4.95, completed: 840, earnings: '₹1,84,000', city: 'Delhi NCR' },
-    { name: 'Priya Sharma', profession: 'Senior Beauty Therapist', rating: 4.92, completed: 720, earnings: '₹1,62,000', city: 'Mumbai' },
-    { name: 'Amitabh Verma', profession: 'Master Plumber', rating: 4.88, completed: 690, earnings: '₹1,45,000', city: 'Bengaluru' },
-    { name: 'Sunil Malhotra', profession: 'Electrical Expert', rating: 4.85, completed: 610, earnings: '₹1,28,000', city: 'Hyderabad' },
-  ];
+  // Top Partners derived dynamically
+  const dynamicPartners = (partners || []).slice(0, 4).map((p, idx) => ({
+    name: p.name || 'Technician Partner',
+    profession: p.category || 'Service Expert',
+    rating: p.rating || 4.9,
+    completed: p.totalJobs || 0,
+    earnings: `₹${((p.walletBalance || 0)).toLocaleString()}`,
+    city: p.assignedCity || p.city || 'Delhi NCR',
+  }));
 
   const revenueData = [
     { month: 'Jan', revenue: 48, commission: 9.6 },
@@ -109,34 +144,34 @@ const AnalyticsCharts = () => {
           <span className="badge badge-purple">Live Distribution</span>
         </div>
 
-        {/* Progress Bar Distribution */}
+        {/* Dynamic Progress Bar Distribution */}
         <div style={{ marginBottom: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: '700', marginBottom: '8px' }}>
-            <span>Completed (94.2%)</span>
-            <span style={{ color: '#10b981' }}>12,940 Bookings</span>
+            <span>Completed ({compPct}%)</span>
+            <span style={{ color: '#10b981' }}>{completedB} Bookings</span>
           </div>
-          <div style={{ height: '10px', background: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
-            <div style={{ width: '94.2%', height: '100%', background: '#10b981', borderRadius: '9999px' }}></div>
+          <div style={{ height: '10px', background: '#e2e8f0', borderRadius: 0, overflow: 'hidden' }}>
+            <div style={{ width: `${compPct}%`, height: '100%', background: '#10b981', borderRadius: 0 }}></div>
           </div>
         </div>
 
         <div style={{ marginBottom: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: '700', marginBottom: '8px' }}>
-            <span>Pending & In-Progress (4.6%)</span>
-            <span style={{ color: '#f59e0b' }}>390 Bookings</span>
+            <span>Pending & In-Progress ({pendPct}%)</span>
+            <span style={{ color: '#f59e0b' }}>{pendingB} Bookings</span>
           </div>
-          <div style={{ height: '10px', background: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
-            <div style={{ width: '4.6%', height: '100%', background: '#f59e0b', borderRadius: '9999px' }}></div>
+          <div style={{ height: '10px', background: '#e2e8f0', borderRadius: 0, overflow: 'hidden' }}>
+            <div style={{ width: `${pendPct}%`, height: '100%', background: '#f59e0b', borderRadius: 0 }}></div>
           </div>
         </div>
 
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: '700', marginBottom: '8px' }}>
-            <span>Cancelled (1.2%)</span>
-            <span style={{ color: '#ef4444' }}>180 Bookings</span>
+            <span>Cancelled ({cancPct}%)</span>
+            <span style={{ color: '#ef4444' }}>{cancelledB} Bookings</span>
           </div>
-          <div style={{ height: '10px', background: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
-            <div style={{ width: '1.2%', height: '100%', background: '#ef4444', borderRadius: '9999px' }}></div>
+          <div style={{ height: '10px', background: '#e2e8f0', borderRadius: 0, overflow: 'hidden' }}>
+            <div style={{ width: `${cancPct}%`, height: '100%', background: '#ef4444', borderRadius: 0 }}></div>
           </div>
         </div>
 
@@ -157,7 +192,7 @@ const AnalyticsCharts = () => {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {topServices.map((item) => (
-            <div key={item.rank} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+            <div key={item.rank} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderRadius: 0, border: '1px solid var(--border-light)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{ fontWeight: '800', color: item.color, fontSize: '0.9rem', width: '20px' }}>#{item.rank}</span>
                 <div>
@@ -186,10 +221,10 @@ const AnalyticsCharts = () => {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          {topPartners.map((partner, idx) => (
-            <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+          {dynamicPartners.map((partner, idx) => (
+            <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: '#f8fafc', borderRadius: 0, border: '1px solid var(--border-light)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--gradient-brand)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '0.85rem' }}>
+                <div style={{ width: '38px', height: '38px', borderRadius: 0, background: 'var(--gradient-brand)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '0.85rem' }}>
                   {partner.name.charAt(0)}
                 </div>
                 <div>

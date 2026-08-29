@@ -19,8 +19,24 @@ import {
   Briefcase
 } from 'lucide-react';
 
+import { useState, useEffect } from 'react';
+
 const DedicatedPartnerSidebar = ({ activeTab, setActiveTab, onLogout, kycStatus = 'pending', currentUser }) => {
   const isApproved = kycStatus === 'approved';
+  const [referralBonus, setReferralBonus] = useState(500);
+
+  useEffect(() => {
+    fetch('/api/partner/dashboard/referral', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data?.referralBonusAmount) {
+          setReferralBonus(data.data.referralBonusAmount);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // 1. Base Unlocked Items for Pending State
   const baseItems = [
@@ -42,7 +58,7 @@ const DedicatedPartnerSidebar = ({ activeTab, setActiveTab, onLogout, kycStatus 
     { id: 'editProfile', label: 'Edit Profile', icon: UserCheck },
     { id: 'documents', label: 'My Documents', icon: FileText },
     { id: 'bankDetails', label: 'Bank Details', icon: Landmark },
-    { id: 'referral', label: 'Referral Program', icon: Gift, badge: '₹500' },
+    { id: 'referral', label: 'Referral Program', icon: Gift, badge: `₹${referralBonus}` },
     { id: 'reviews', label: 'Reviews', icon: Star },
     { id: 'availability', label: 'Availability', icon: Clock },
     { id: 'settings', label: 'Settings', icon: Settings },
@@ -60,7 +76,10 @@ const DedicatedPartnerSidebar = ({ activeTab, setActiveTab, onLogout, kycStatus 
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'space-between',
-      minHeight: 'calc(100vh - 74px)',
+      position: 'sticky',
+      top: '74px',
+      height: 'calc(100vh - 74px)',
+      overflowY: 'auto',
       flexShrink: 0,
       boxShadow: 'var(--shadow-sm)'
     }}>

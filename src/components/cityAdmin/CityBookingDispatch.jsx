@@ -79,52 +79,94 @@ const CityBookingDispatch = ({ assignedCity = 'Delhi NCR' }) => {
               </tr>
             ) : (
               bookings.map((o) => {
-                const partnerName = o.partner?.name ? `${o.partner.name} (${o.partner.category || 'Specialist'})` : (o.partner?.agencyName || 'Unassigned');
+                const custName = typeof o.customer === 'object' && o.customer?.name
+                  ? o.customer.name
+                  : (o.customer?.email || 'Customer');
+                const custContact = typeof o.customer === 'object'
+                  ? (o.customer?.phone || o.customer?.email || '')
+                  : '';
+
+                const srvTitle = o.packageName || (typeof o.service === 'object' && o.service?.name ? o.service.name : o.serviceName) || 'Service Package';
+
+                let rawCat = typeof o.partner === 'object' ? (o.partner?.agencyName || o.partner?.category || '') : (o.partnerName || '');
+                if (rawCat && rawCat.match(/^[0-9a-fA-F]{24}$/)) {
+                  rawCat = 'Service Specialist';
+                }
+                const pName = typeof o.partner === 'object' && o.partner?.name ? o.partner.name : (o.partnerName || 'Unassigned');
+                const displayPartner = pName === 'Unassigned'
+                  ? 'Unassigned'
+                  : `${pName}${rawCat ? ` (${rawCat})` : ''}`;
+
+                const orderAmount = o.amount ?? o.totalAmount ?? o.financialSnapshot?.customerPayable ?? 0;
+                const payMethod = o.paymentMethod || 'UPI';
+                const refCode = o.bookingNumber || o.bookingId || (o._id ? o._id.substring(0, 8).toUpperCase() : 'NZ-BOOKING');
+
+                const isCompleted = ['completed', 'Completed', 'confirmed', 'Confirmed'].includes(o.status);
+                const isCancelled = ['cancelled', 'Cancelled', 'refunded', 'Refunded'].includes(o.status);
+                const isAssigned = ['assigned', 'Assigned', 'accepted', 'Accepted', 'In Progress', 'On The Way', 'Started'].includes(o.status);
+
                 return (
                   <tr key={o._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                     <td style={{ padding: '14px', fontWeight: '800', color: '#2563eb', fontSize: '0.85rem' }}>
-                      {o.bookingNumber || o._id.substring(0, 8).toUpperCase()}
+                      {refCode}
                     </td>
-                    <td style={{ padding: '14px', fontWeight: '700', fontSize: '0.88rem', color: 'var(--text-primary)' }}>
-                      {o.customer?.name || 'Ananya Deshmukh'}
+                    <td style={{ padding: '14px' }}>
+                      <div style={{ fontWeight: '800', fontSize: '0.88rem', color: 'var(--text-primary)' }}>{custName}</div>
+                      {custContact && (
+                        <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{custContact}</div>
+                      )}
                     </td>
-                    <td style={{ padding: '14px', fontWeight: '700', fontSize: '0.88rem', color: 'var(--text-primary)' }}>
-                      {o.packageName || o.packageSnapshot?.title || (typeof o.service === 'object' ? o.service?.name : o.serviceName || 'Service Package')}
+                    <td style={{ padding: '14px' }}>
+                      <div style={{ fontWeight: '800', fontSize: '0.88rem', color: 'var(--text-primary)' }}>{srvTitle}</div>
+                      {o.timeSlot && (
+                        <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Slot: {o.timeSlot}</div>
+                      )}
                     </td>
                     <td style={{ padding: '14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                       <MapPin size={12} color="#2563eb" style={{ display: 'inline', marginRight: '4px' }} />
-                      {o.address?.city || assignedCity}
+                      {o.address?.city || o.city || assignedCity}
                     </td>
-                    <td style={{ padding: '14px', fontSize: '0.82rem', fontWeight: '700', color: partnerName === 'Unassigned' ? '#ef4444' : 'var(--text-primary)' }}>
-                      {partnerName}
-                    </td>
-                    <td style={{ padding: '14px', fontWeight: '800', color: '#10b981', fontSize: '0.9rem' }}>
-                      ₹{o.totalAmount || o.financialSnapshot?.customerPayable || o.amount || 599}
+                    <td style={{ padding: '14px', fontSize: '0.82rem', fontWeight: '800', color: displayPartner === 'Unassigned' ? '#ef4444' : '#2563eb' }}>
+                      {displayPartner}
                     </td>
                     <td style={{ padding: '14px' }}>
-                      <span className={`badge ${o.status === 'Pending' ? 'badge-warning' : o.status === 'Assigned' ? 'badge-purple' : 'badge-blue'}`}>
-                        {o.status.toUpperCase()}
+                      <div style={{ fontWeight: '800', color: '#10b981', fontSize: '0.92rem' }}>
+                        ₹{Number(orderAmount).toLocaleString()}
+                      </div>
+                      <span className="badge badge-success" style={{ fontSize: '0.6rem', padding: '1px 5px', marginTop: '2px' }}>
+                        PAID ({payMethod})
                       </span>
                     </td>
                     <td style={{ padding: '14px' }}>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button
-                          onClick={() => handleOpenAssign(o)}
-                          className="btn btn-primary btn-sm"
-                          style={{ padding: '6px 10px', fontSize: '0.78rem' }}
-                        >
-                          <UserCheck size={14} /> Assign
-                        </button>
+                      <span className={`badge ${isCompleted ? 'badge-success' : isCancelled ? 'badge-danger' : isAssigned ? 'badge-purple' : 'badge-warning'}`}>
+                        {(o.status || 'Pending').toUpperCase()}
+                      </span>
+                    </td>
+                    <td style={{ padding: '14px' }}>
+                      {isCompleted || isCancelled ? (
+                        <span className={`badge ${isCompleted ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.72rem', padding: '4px 8px' }}>
+                          {isCompleted ? '✓ FULFILLED' : 'CANCELLED'}
+                        </span>
+                      ) : (
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            onClick={() => handleOpenAssign(o)}
+                            className="btn btn-primary btn-sm"
+                            style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+                          >
+                            <UserCheck size={14} /> Assign
+                          </button>
 
-                        <button
-                          onClick={() => handleOpenCancel(o)}
-                          className="btn btn-danger btn-sm"
-                          style={{ padding: '6px 8px', fontSize: '0.75rem' }}
-                          title="Cancel Booking"
-                        >
-                          <XCircle size={12} />
-                        </button>
-                      </div>
+                          <button
+                            onClick={() => handleOpenCancel(o)}
+                            className="btn btn-danger btn-sm"
+                            style={{ padding: '6px 8px', fontSize: '0.75rem' }}
+                            title="Cancel Booking"
+                          >
+                            <XCircle size={12} />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );

@@ -90,7 +90,7 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
       setIsEmailVerified(initialEmailVerified);
       setIsPhoneVerified(initialPhoneVerified);
 
-      if (isNewUser) {
+      if (isNewUser && !user?.isProfileCompleted) {
         setPendingSession({ user, token });
         // Pre-fill profile state intelligently
         const initialName = user?.name && !user.name.startsWith('Customer') && !user.name.startsWith('user_') ? user.name : '';
@@ -104,8 +104,12 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
         setProfileGender(user?.gender || '');
         setProfileImage(user?.profileImage || '');
         
-        setSuccessMessage('OTP Verified! Please complete your profile details and verify both Email & Mobile Phone.');
+        setSuccessMessage('OTP Verified! Please complete your profile details.');
         setStep('profile');
+      } else {
+        toast.success(`Welcome back, ${user?.name || 'Customer'}!`);
+        login(user, token);
+        if (onLoginSuccess) onLoginSuccess(user);
       }
     } catch (err) {
       setError(err.message || 'Invalid or expired OTP code.');

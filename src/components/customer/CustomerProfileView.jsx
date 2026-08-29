@@ -33,8 +33,11 @@ import { useCustomer } from '../../hooks/useCustomer.js';
 import { customerService } from '../../services/customer.service.js';
 import { toast } from '../../utils/toast.js';
 import { axiosInstance } from '../../api/axiosInstance.js';
+import CustomerWalletView from './CustomerWalletView.jsx';
+import CustomerHelpCenterView from './CustomerHelpCenterView.jsx';
+import NorozzAIChatView from './NorozzAIChatView.jsx';
 
-const CustomerProfileView = ({ currentUser, onLogout, onNavigateTab }) => {
+const CustomerProfileView = ({ currentUser, onLogout, onNavigateTab, onBookService }) => {
   const { profile, addresses: fetchedAddresses, deleteAddress, updateProfile, refetch } = useCustomer('profile');
 
   // Navigation View State: 'main' | 'edit_profile' | 'addresses' | 'add_address' | 'notifications' | 'favorites' | 'refer' | 'wallet' | 'help' | 'settings'
@@ -451,7 +454,7 @@ const CustomerProfileView = ({ currentUser, onLogout, onNavigateTab }) => {
               { id: 'favorites', label: 'Favorites', icon: Heart, action: () => setViewMode('favorites') },
               { id: 'refer', label: 'Refer & Earn', icon: Gift, action: () => setViewMode('refer') },
               { id: 'bookings', label: 'My Booking', icon: ShoppingBag, action: () => onNavigateTab ? onNavigateTab('bookings') : setViewMode('bookings') },
-              { id: 'wallet', label: 'Wallet', icon: Wallet, action: () => setViewMode('wallet') },
+              { id: 'wallet', label: 'Wallet', icon: Wallet, action: () => onNavigateTab ? onNavigateTab('wallet') : setViewMode('wallet') },
               { id: 'help', label: 'Help Center', icon: HelpCircle, action: () => setViewMode('help') },
               { id: 'settings', label: 'Settings', icon: Settings, action: () => setViewMode('settings') },
             ].map((item) => {
@@ -1391,57 +1394,26 @@ const CustomerProfileView = ({ currentUser, onLogout, onNavigateTab }) => {
       )}
 
       {viewMode === 'wallet' && (
-        <div style={{ padding: '24px 20px' }}>
-          <div style={{ padding: '20px', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', borderRadius: '20px', color: '#ffffff', marginBottom: '20px', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)' }}>
-            <div style={{ fontSize: '0.78rem', fontWeight: '800', opacity: 0.9 }}>AVAILABLE WALLET BALANCE</div>
-            <div style={{ fontSize: '2rem', fontWeight: '800', margin: '4px 0' }}>
-              ₹{(walletData?.balance ?? userData?.walletBalance ?? currentUser?.walletBalance ?? 0).toFixed(2)}
-            </div>
-            <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>100% usable on any home service booking</div>
-          </div>
-
-          <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '12px' }}>RECENT TRANSACTIONS</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {(walletData?.transactions && walletData.transactions.length > 0) ? (
-              walletData.transactions.map((t, idx) => (
-                <div key={idx} style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.04)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontWeight: '700', fontSize: '0.88rem', color: '#ffffff' }}>{t.title || t.desc || 'Wallet Activity'}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>{t.date || 'Recent'}</div>
-                  </div>
-                  <span style={{ fontWeight: '800', color: t.type === 'Debit' ? '#ef4444' : '#34d399', fontSize: '0.95rem' }}>
-                    {t.type === 'Debit' ? '-' : '+'}₹{t.amount}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '0.84rem' }}>
-                No wallet transactions yet.
-              </div>
-            )}
-          </div>
+        <div style={{ padding: '20px' }}>
+          <CustomerWalletView currentUser={userData || currentUser} />
         </div>
       )}
 
       {viewMode === 'help' && (
-        <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div style={{ padding: '18px', background: 'rgba(255,255,255,0.04)', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <h4 style={{ margin: '0 0 6px 0', fontSize: '0.95rem', fontWeight: '800', color: '#ffffff' }}>📞 24x7 Customer Helpline</h4>
-            <p style={{ margin: 0, fontSize: '0.82rem', color: '#cbd5e1' }}>Call us anytime toll-free at <strong>1800 200 9090</strong> for booking changes or emergency support.</p>
-          </div>
+        <CustomerHelpCenterView
+          onBack={() => setViewMode('main')}
+          onOpenAIChat={() => setViewMode('ai_chat')}
+        />
+      )}
 
-          <div style={{ padding: '18px', background: 'rgba(255,255,255,0.04)', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <h4 style={{ margin: '0 0 6px 0', fontSize: '0.95rem', fontWeight: '800', color: '#ffffff' }}>💬 Live Chat Support</h4>
-            <p style={{ margin: '0 0 12px 0', fontSize: '0.82rem', color: '#cbd5e1' }}>Connect instantly with our support team for quick resolution.</p>
-            <button
-              type="button"
-              onClick={() => toast.info('Support agent connected! Type your query.')}
-              style={{ background: '#10b981', color: '#ffffff', border: 'none', borderRadius: '12px', padding: '10px 18px', fontSize: '0.82rem', fontWeight: '800', cursor: 'pointer' }}
-            >
-              Start Live Support Chat
-            </button>
-          </div>
-        </div>
+      {viewMode === 'ai_chat' && (
+        <NorozzAIChatView
+          onBack={() => setViewMode('help')}
+          onBookService={(srv) => {
+            if (onBookService) onBookService(srv);
+          }}
+          currentUser={userData || currentUser}
+        />
       )}
 
       {viewMode === 'settings' && (

@@ -12,13 +12,14 @@ import { useCityAdmin } from '../../hooks/useCityAdmin.js';
 const CityMetricCards = ({ selectedCity }) => {
   const { dashboard, partners, bookings, isLoading } = useCityAdmin();
 
-  const totalBookings = dashboard?.totalBookings || bookings.length || 142;
-  const pendingOrders = dashboard?.pendingBookings || bookings.filter((b) => b.status === 'Pending' || b.status === 'Assigned').length || 18;
-  const completedOrders = dashboard?.completedBookings || bookings.filter((b) => b.status === 'Completed').length || 118;
-  const revenueGmv = dashboard?.cityRevenueGmv || 124800;
-  const commission = dashboard?.cityCommission || 24960;
+  const totalBookings = dashboard?.totalBookings ?? bookings.length ?? 0;
+  const pendingOrders = dashboard?.pendingBookings ?? bookings.filter((b) => ['pending', 'Pending', 'assigned', 'Assigned'].includes(b.status)).length ?? 0;
+  const completedOrders = dashboard?.completedBookings ?? bookings.filter((b) => ['completed', 'Completed', 'confirmed', 'Confirmed'].includes(b.status)).length ?? 0;
+  const revenueGmv = dashboard?.cityRevenueGmv ?? 0;
+  const commission = dashboard?.cityCommission ?? 0;
   const activePartnersCount = partners.filter((p) => p.kycStatus === 'approved').length;
   const displayPartnersCount = partners.length === 0 ? 0 : (activePartnersCount > 0 ? activePartnersCount : partners.length);
+  const cityCustomersCount = dashboard?.cityCustomersCount ?? 0;
 
   const cards = [
     {
@@ -68,7 +69,7 @@ const CityMetricCards = ({ selectedCity }) => {
     },
     {
       title: 'City Customers',
-      value: '4,210',
+      value: Number(cityCustomersCount).toLocaleString(),
       icon: Users,
       color: '#06b6d4',
       bgColor: '#ecfeff',

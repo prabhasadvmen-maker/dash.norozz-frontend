@@ -50,8 +50,8 @@ const CityAdminPanel = ({ currentUser, onLogout }) => {
     setTimeout(() => setRefreshing(false), 600);
   };
 
-  const cityGmv = revenue?.cityRevenueGmv || 124800;
-  const cityCommission = revenue?.cityCommission || 24960;
+  const cityGmv = revenue?.cityRevenueGmv ?? 0;
+  const cityCommission = revenue?.cityCommission ?? 0;
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>

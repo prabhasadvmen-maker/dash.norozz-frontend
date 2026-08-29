@@ -5,6 +5,7 @@ import PopularCategories from '../components/customer/PopularCategories';
 import FeaturedServices from '../components/customer/FeaturedServices';
 import CustomerHomeSections from '../components/customer/CustomerHomeSections';
 import CustomerProfileView from '../components/customer/CustomerProfileView';
+import CustomerWalletView from '../components/customer/CustomerWalletView';
 import { useAuth } from '../hooks/useAuth.js';
 import { authService } from '../services/auth.service.js';
 import { toast } from '../utils/toast.js';
@@ -223,14 +224,7 @@ const CustomerDashboard = ({ currentUser, onLogout, selectedCity }) => {
 
         {/* SCREEN 3: WALLET */}
         {activeTab === 'wallet' && (
-          <div>
-            <h2 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '16px' }}>NOROZZ Wallet</h2>
-            <div className="mui-card" style={{ padding: '28px', background: 'var(--gradient-brand)', color: '#fff', borderRadius: 'var(--radius-xl)', marginBottom: '24px' }}>
-              <div style={{ fontSize: '0.85rem', opacity: 0.9, marginBottom: '6px' }}>Total Wallet Balance</div>
-              <div style={{ fontSize: '2.4rem', fontWeight: '800' }}>₹{(dashboard?.walletBalance ?? currentUser?.walletBalance ?? 0).toFixed(2)}</div>
-              <div style={{ fontSize: '0.78rem', opacity: 0.85, marginTop: '8px' }}>Use wallet credits automatically on your next booking checkout.</div>
-            </div>
-          </div>
+          <CustomerWalletView currentUser={currentUser} />
         )}
 
         {/* SCREEN 4: NOTIFICATIONS */}
@@ -258,7 +252,12 @@ const CustomerDashboard = ({ currentUser, onLogout, selectedCity }) => {
 
         {/* SCREEN 5: PROFILE */}
         {activeTab === 'profile' && (
-          <CustomerProfileView currentUser={currentUser} onLogout={onLogout} onNavigateTab={(tab) => setActiveTab(tab)} />
+          <CustomerProfileView
+            currentUser={currentUser}
+            onLogout={onLogout}
+            onNavigateTab={(tab) => setActiveTab(tab)}
+            onBookService={(serviceToBook) => setActiveTab('bookings')}
+          />
         )}
 
       </main>

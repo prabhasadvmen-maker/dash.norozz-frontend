@@ -5,6 +5,7 @@ import HomeBannerSlider from '../components/customer/HomeBannerSlider';
 import PopularCategories from '../components/customer/PopularCategories';
 import CustomerHomeSections from '../components/customer/CustomerHomeSections';
 import CustomerProfileView from '../components/customer/CustomerProfileView';
+import CustomerWalletView from '../components/customer/CustomerWalletView';
 import ServiceDetailsModal from '../components/customer/ServiceDetailsModal';
 import CustomerBookingTrackingPage from './customer/CustomerBookingTrackingPage';
 import BookingFlowPage from './customer/BookingFlowPage';
@@ -732,19 +733,17 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
 
         {/* TAB 3: WALLET */}
         {activeTab === 'wallet' && (
-          <div>
-            <h2 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '16px' }}>NOROZZ Wallet</h2>
-            <div className="mui-card" style={{ padding: '28px', background: 'var(--gradient-brand)', color: '#fff', borderRadius: 'var(--radius-xl)', marginBottom: '24px' }}>
-              <div style={{ fontSize: '0.85rem', opacity: 0.9, marginBottom: '6px' }}>Total Wallet Balance</div>
-              <div style={{ fontSize: '2.4rem', fontWeight: '800' }}>₹{walletBalance}.00</div>
-              <div style={{ fontSize: '0.78rem', opacity: 0.85, marginTop: '8px' }}>Automatically applied during checkout for extra discounts.</div>
-            </div>
-          </div>
+          <CustomerWalletView currentUser={currentUser} onBalanceUpdate={() => refetchCustomer()} />
         )}
 
         {/* TAB 4: PROFILE */}
         {activeTab === 'profile' && (
-          <CustomerProfileView currentUser={currentUser} onLogout={onLogout} onNavigateTab={(tab) => setActiveTab(tab)} />
+          <CustomerProfileView
+            currentUser={currentUser}
+            onLogout={onLogout}
+            onNavigateTab={(tab) => setActiveTab(tab)}
+            onBookService={(serviceToBook) => handleOpenBookingWizard(serviceToBook)}
+          />
         )}
 
       </main>

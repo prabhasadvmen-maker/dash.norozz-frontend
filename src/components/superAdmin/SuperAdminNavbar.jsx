@@ -1,11 +1,12 @@
 import React from 'react';
-import { Crown, Search, Bell, RefreshCw, LogOut, UserCheck } from 'lucide-react';
+import { Crown, Search, RefreshCw, LogOut, ShieldAlert } from 'lucide-react';
 
 const SuperAdminNavbar = ({ currentUser, onLogout, onRefresh, refreshing }) => {
   return (
     <header style={{
-      background: '#ffffff',
-      borderBottom: '1px solid var(--border-light)',
+      background: '#0f172a',
+      color: '#ffffff',
+      borderBottom: '2px solid #1e293b',
       padding: '14px 28px',
       display: 'flex',
       alignItems: 'center',
@@ -13,35 +14,38 @@ const SuperAdminNavbar = ({ currentUser, onLogout, onRefresh, refreshing }) => {
       position: 'sticky',
       top: 0,
       zIndex: 100,
-      boxShadow: 'var(--shadow-sm)'
+      boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
     }}>
       {/* Brand Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <img
-          src="/logo.png"
-          alt="NOROZZ Logo"
-          style={{
-            width: '42px',
-            height: '42px',
-            borderRadius: '12px',
-            objectFit: 'cover',
-            boxShadow: '0 4px 14px rgba(0, 180, 216, 0.35)',
-            border: '1px solid rgba(118, 215, 41, 0.3)'
-          }}
-        />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <div style={{
+          width: '42px',
+          height: '42px',
+          background: 'linear-gradient(135deg, #76d729 0%, #00b4d8 100%)',
+          color: '#ffffff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontWeight: '900',
+          fontSize: '1.3rem',
+          border: '1px solid #76d729'
+        }}>
+          N
+        </div>
         <div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            NOROZZ <span className="gradient-text">SUPER ADMIN PANEL</span>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, letterSpacing: '0.5px', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            NOROZZ <span style={{ background: 'linear-gradient(135deg, #76d729, #00b4d8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: '900' }}>MASTER CONTROL</span>
           </h2>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span className="dot-pulse dot-pulse-active"></span> Isolated Master Control • Full System Rights
+          <span style={{ fontSize: '0.74rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+            <span className="dot-pulse dot-pulse-active" style={{ width: '8px', height: '8px' }}></span>
+            Super Admin Jurisdiction • High Security Operational Center
           </span>
         </div>
       </div>
 
       {/* Global Search Bar */}
       <div style={{ position: 'relative', width: '380px' }}>
-        <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+        <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
         <input
           type="text"
           className="form-input"
@@ -49,9 +53,11 @@ const SuperAdminNavbar = ({ currentUser, onLogout, onRefresh, refreshing }) => {
           style={{
             paddingLeft: '40px',
             paddingRight: '50px',
-            background: '#f8fafc',
-            borderRadius: '9999px',
-            fontSize: '0.88rem'
+            background: '#1e293b',
+            border: '1px solid #334155',
+            color: '#ffffff',
+            fontSize: '0.85rem',
+            outline: 'none'
           }}
         />
         <span style={{
@@ -60,11 +66,10 @@ const SuperAdminNavbar = ({ currentUser, onLogout, onRefresh, refreshing }) => {
           top: '50%',
           transform: 'translateY(-50%)',
           fontSize: '0.7rem',
-          background: '#e2e8f0',
+          background: '#334155',
           padding: '2px 6px',
-          borderRadius: '4px',
-          color: 'var(--text-secondary)',
-          fontWeight: '600'
+          color: '#cbd5e1',
+          fontWeight: '700'
         }}>
           ⌘K
         </span>
@@ -76,12 +81,18 @@ const SuperAdminNavbar = ({ currentUser, onLogout, onRefresh, refreshing }) => {
         {/* Refresh Data */}
         <button
           onClick={onRefresh}
-          className="btn btn-secondary btn-sm"
+          className="btn btn-sm"
           disabled={refreshing}
+          style={{
+            background: '#1e293b',
+            color: '#00b4d8',
+            border: '1px solid #334155',
+            fontWeight: '700'
+          }}
           title="Refresh Data"
         >
-          <RefreshCw size={14} style={{ animation: refreshing ? 'spin 0.8s linear infinite' : 'none', color: '#7c3aed' }} />
-          <span>Refresh</span>
+          <RefreshCw size={14} style={{ animation: refreshing ? 'spin 0.8s linear infinite' : 'none', color: '#00b4d8' }} />
+          <span>Sync Data</span>
         </button>
 
         {/* Super Admin Profile Pill */}
@@ -89,31 +100,29 @@ const SuperAdminNavbar = ({ currentUser, onLogout, onRefresh, refreshing }) => {
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
-          padding: '4px 12px 4px 6px',
-          background: '#f8fafc',
-          borderRadius: '9999px',
-          border: '1px solid var(--border-light)'
+          padding: '6px 14px',
+          background: '#1e293b',
+          border: '1px solid #334155'
         }}>
           <div style={{
-            width: '34px',
-            height: '34px',
-            borderRadius: '50%',
-            background: 'var(--gradient-brand)',
+            width: '32px',
+            height: '32px',
+            background: 'linear-gradient(135deg, #76d729 0%, #0052d4 100%)',
             color: '#ffffff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontWeight: '800',
+            fontWeight: '900',
             fontSize: '0.85rem'
           }}>
             {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'S'}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#ffffff' }}>
               {currentUser?.name || 'Super Admin'}
             </span>
-            <span style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: '700' }}>
-              MASTER CONTROL
+            <span style={{ fontSize: '0.65rem', color: '#76d729', fontWeight: '800', letterSpacing: '0.5px' }}>
+              ROOT ACCESS
             </span>
           </div>
         </div>
@@ -122,9 +131,10 @@ const SuperAdminNavbar = ({ currentUser, onLogout, onRefresh, refreshing }) => {
         <button
           onClick={onLogout}
           className="btn btn-danger btn-sm"
+          style={{ background: '#ef4444', color: '#ffffff', border: 'none', fontWeight: '700' }}
           title="Logout"
         >
-          <LogOut size={16} /> Logout
+          <LogOut size={15} /> Exit
         </button>
 
       </div>

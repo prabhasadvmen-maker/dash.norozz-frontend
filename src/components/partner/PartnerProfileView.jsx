@@ -110,6 +110,24 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
     }
   }, [initialSubTab]);
 
+  const [referralData, setReferralData] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/partner/dashboard/referral', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setReferralData(data.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const referralBonusAmount = referralData?.referralBonusAmount ?? 500;
+  const referralCode = referralData?.referralCode || user.referralCode || `NRZ-REF-${(user.phone || '600653').slice(-6)}`;
+
   // Form State for Edit Profile
   const [editForm, setEditForm] = useState({
     name: user.name || '',
@@ -464,7 +482,6 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
     }
   };
 
-  const referralCode = user.referralCode || `NRZ-REF-${(user.phone || '600653').slice(-6)}`;
   const handleCopyReferralCode = () => {
     navigator.clipboard.writeText(referralCode);
     setCopiedRef(true);
@@ -473,7 +490,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
   };
 
   const handleShareWhatsApp = () => {
-    const text = `Join NOROZZ Partner Portal as a Service Technician and earn up to ₹50,000/month! Use my referral code: ${referralCode} to get ₹500 joining bonus. Sign up here: https://norozz.in/partner-register`;
+    const text = `Join NOROZZ Partner Portal as a Service Technician and earn up to ₹50,000/month! Use my referral code: ${referralCode} to get ₹${referralBonusAmount} joining bonus. Sign up here: https://norozz.in/partner-register`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -953,7 +970,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
             >
               <div>
                 <div style={{ fontWeight: '800', fontSize: '0.95rem', color: '#701a75' }}>Refer & Earn Program</div>
-                <div style={{ fontSize: '0.8rem', color: '#86198f' }}>Code: {referralCode} • Earn ₹500/partner</div>
+                <div style={{ fontSize: '0.8rem', color: '#86198f' }}>Code: {referralCode} • Earn ₹{referralBonusAmount}/partner</div>
               </div>
               <Gift size={24} color="#c026d3" />
             </div>
@@ -1433,10 +1450,10 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                 🎁 NOROZZ PARTNER REFERRAL PROGRAM
               </span>
               <h2 style={{ fontSize: '1.8rem', fontWeight: '900', margin: '12px 0 8px 0', letterSpacing: '-0.5px' }}>
-                Refer Service Technicians & Earn ₹500 Per Signup!
+                Refer Service Technicians & Earn ₹{referralBonusAmount} Per Signup!
               </h2>
               <p style={{ fontSize: '0.9rem', opacity: 0.9, lineHeight: 1.5 }}>
-                Invite your technician friends to join the NOROZZ Partner Network. You get ₹500 directly in your wallet as soon as they complete their 1st customer booking!
+                Invite your technician friends to join the NOROZZ Partner Network. You get ₹{referralBonusAmount} directly in your wallet as soon as they complete their 1st customer booking!
               </p>
             </div>
 
@@ -1467,22 +1484,22 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
             <div style={{ background: '#ffffff', borderRadius: '18px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
               <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '700' }}>Total Invites Sent</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#0f172a', marginTop: '4px' }}>12</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#0f172a', marginTop: '4px' }}>{referralData?.totalInvitesSent ?? 0}</div>
             </div>
 
             <div style={{ background: '#ffffff', borderRadius: '18px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
               <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '700' }}>Joined Technicians</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#16a34a', marginTop: '4px' }}>5</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#16a34a', marginTop: '4px' }}>{referralData?.joinedTechnicians ?? 0}</div>
             </div>
 
             <div style={{ background: '#ffffff', borderRadius: '18px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
               <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '700' }}>Total Referral Bonus Earned</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#c026d3', marginTop: '4px' }}>₹2,500</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#c026d3', marginTop: '4px' }}>₹{(referralData?.totalReferralBonusEarned ?? 0).toLocaleString('en-IN')}</div>
             </div>
 
             <div style={{ background: '#ffffff', borderRadius: '18px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
               <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '700' }}>Pending Earnings</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#d97706', marginTop: '4px' }}>₹500</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#d97706', marginTop: '4px' }}>₹{(referralData?.pendingEarnings ?? 0).toLocaleString('en-IN')}</div>
             </div>
           </div>
 
@@ -1503,8 +1520,8 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>Friend gets KYC approved and finishes 1st job.</div>
               </div>
               <div style={{ padding: '14px', background: '#f0fdf4', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
-                <div style={{ fontWeight: '800', color: '#16a34a', fontSize: '0.9rem' }}>4. Get ₹500 Cash!</div>
-                <div style={{ fontSize: '0.8rem', color: '#15803d', marginTop: '4px' }}>Instant ₹500 credited directly to your Wallet.</div>
+                <div style={{ fontWeight: '800', color: '#16a34a', fontSize: '0.9rem' }}>4. Get ₹{referralBonusAmount} Cash!</div>
+                <div style={{ fontSize: '0.8rem', color: '#15803d', marginTop: '4px' }}>Instant ₹{referralBonusAmount} credited directly to your Wallet.</div>
               </div>
             </div>
           </div>
@@ -1538,7 +1555,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                   ₹{(walletData?.walletBalance ?? user.walletBalance ?? 0).toLocaleString('en-IN')}.00
                 </div>
                 <div style={{ fontSize: '0.84rem', opacity: 0.9, marginTop: '4px' }}>
-                  Auto-settlement linked to {walletData?.bankDetails?.bankName || 'HDFC Bank'} (•••• {walletData?.bankDetails?.accountNumber ? walletData.bankDetails.accountNumber.slice(-4) : '4920'})
+                  Auto-settlement linked to {walletData?.bankDetails?.bankName || bankForm?.bankName || 'Verified Bank Account'} (•••• {walletData?.bankDetails?.accountNumber ? walletData.bankDetails.accountNumber.slice(-4) : (bankForm?.accountNumber ? bankForm.accountNumber.slice(-4) : '••••')})
                 </div>
               </div>
 
@@ -1586,15 +1603,15 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
             <div style={{ marginTop: '24px', borderTop: '1px solid rgba(255,255,255,0.25)', paddingTop: '18px', display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
               <div>
                 <div style={{ fontSize: '0.74rem', opacity: 0.8, fontWeight: '700', textTransform: 'uppercase' }}>Security Deposit</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: '900' }}>₹{(walletData?.securityDeposit ?? 2000).toLocaleString('en-IN')}</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: '900' }}>₹{(walletData?.securityDeposit ?? 0).toLocaleString('en-IN')}</div>
               </div>
               <div style={{ borderLeft: '1px solid rgba(255,255,255,0.25)', paddingLeft: '24px' }}>
                 <div style={{ fontSize: '0.74rem', opacity: 0.8, fontWeight: '700', textTransform: 'uppercase' }}>Pending Clearance</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: '900', color: '#fef08a' }}>₹{(walletData?.pendingClearance ?? 1200).toLocaleString('en-IN')}</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: '900', color: '#fef08a' }}>₹{(walletData?.pendingClearance ?? 0).toLocaleString('en-IN')}</div>
               </div>
               <div style={{ borderLeft: '1px solid rgba(255,255,255,0.25)', paddingLeft: '24px' }}>
                 <div style={{ fontSize: '0.74rem', opacity: 0.8, fontWeight: '700', textTransform: 'uppercase' }}>Total Lifetime Earned</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: '900' }}>₹{(walletData?.totalEarned ?? 85200).toLocaleString('en-IN')}</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: '900' }}>₹{(walletData?.totalEarned ?? 0).toLocaleString('en-IN')}</div>
               </div>
             </div>
           </div>
@@ -1672,15 +1689,15 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '20px' }}>
                   <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '14px', border: '1px solid #f1f5f9', textAlign: 'center' }}>
                     <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '700' }}>TOTAL JOBS</div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#0f172a', marginTop: '2px' }}>{earningsData?.overview?.totalJobs || 42}</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#0f172a', marginTop: '2px' }}>{earningsData?.overview?.totalJobs ?? 0}</div>
                   </div>
                   <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '14px', border: '1px solid #f1f5f9', textAlign: 'center' }}>
                     <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '700' }}>AVG / JOB</div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>₹{earningsData?.overview?.avgPerJob || 1035}</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>₹{earningsData?.overview?.avgPerJob ?? 0}</div>
                   </div>
                   <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '14px', border: '1px solid #f1f5f9', textAlign: 'center' }}>
                     <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '700' }}>TOTAL EARNED</div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#2563eb', marginTop: '2px' }}>₹{(earningsData?.overview?.totalEarned || 85200).toLocaleString('en-IN')}</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#2563eb', marginTop: '2px' }}>₹{(earningsData?.overview?.totalEarned ?? 0).toLocaleString('en-IN')}</div>
                   </div>
                 </div>
               </div>
@@ -1693,7 +1710,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
               {/* Header Navigator */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', padding: '14px 20px', borderRadius: '18px', border: '1px solid #e2e8f0' }}>
                 <button type="button" style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer' }}>‹ Prev</button>
-                <div style={{ fontWeight: '900', fontSize: '0.96rem', color: '#0f172a' }}>{earningsData?.daily?.dateLabel || 'Today, Jul 29 2026'}</div>
+                <div style={{ fontWeight: '900', fontSize: '0.96rem', color: '#0f172a' }}>{earningsData?.daily?.dateLabel || 'Today'}</div>
                 <button type="button" style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer' }}>Next ›</button>
               </div>
 
@@ -1702,11 +1719,11 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                 <div>
                   <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '700' }}>Total Earned Today</div>
                   <div style={{ fontSize: '2.2rem', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>
-                    ₹{(earningsData?.daily?.totalEarnedToday || 2450).toLocaleString('en-IN')}
+                    ₹{(earningsData?.daily?.totalEarnedToday ?? 0).toLocaleString('en-IN')}
                   </div>
                 </div>
                 <span style={{ background: '#dcfce7', color: '#15803d', padding: '6px 14px', borderRadius: '20px', fontWeight: '800', fontSize: '0.84rem' }}>
-                  {earningsData?.daily?.percentageChange || '+12%'} vs Yesterday
+                  {earningsData?.daily?.percentageChange || '0%'} vs Yesterday
                 </span>
               </div>
 
@@ -1716,14 +1733,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                   HOURLY ACTIVITY
                 </h4>
                 <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: '140px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
-                  {(earningsData?.daily?.hourlyActivity || [
-                    { hour: '9 AM', val: 400 },
-                    { hour: '11 AM', val: 850 },
-                    { hour: '1 PM', val: 600 },
-                    { hour: '3 PM', val: 0 },
-                    { hour: '5 PM', val: 1200 },
-                    { hour: '7 PM', val: 400 },
-                  ]).map((item, idx) => (
+                  {(earningsData?.daily?.hourlyActivity || []).map((item, idx) => (
                     <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', width: '40px' }}>
                       {item.val > 0 && <span style={{ fontSize: '0.68rem', fontWeight: '800', color: '#16a34a' }}>₹{item.val}</span>}
                       <div style={{
@@ -1744,19 +1754,21 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                   COMPLETED JOBS TODAY
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {(earningsData?.daily?.completedJobs || [
-                    { id: 'JOB-901', serviceName: 'AC Repair & Gas Fill', customerName: 'Priya Mehta', time: '10:30 AM', amount: 850 },
-                    { id: 'JOB-902', serviceName: 'Kitchen Water Plumbing', customerName: 'Rohan Sharma', time: '01:15 PM', amount: 1200 },
-                    { id: 'JOB-903', serviceName: 'Electrical Wiring Check', customerName: 'Amit Kumar', time: '04:45 PM', amount: 400 },
-                  ]).map((j, idx) => (
-                    <div key={idx} style={{ padding: '14px 18px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <div style={{ fontWeight: '800', fontSize: '0.92rem', color: '#0f172a' }}>{j.serviceName}</div>
-                        <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>Customer: {j.customerName} • {j.time}</div>
-                      </div>
-                      <div style={{ fontWeight: '900', fontSize: '1.05rem', color: '#16a34a' }}>+ ₹{j.amount}</div>
+                  {(!earningsData?.daily?.completedJobs || earningsData.daily.completedJobs.length === 0) ? (
+                    <div style={{ padding: '16px', textAlign: 'center', color: '#64748b', fontSize: '0.84rem' }}>
+                      No service jobs completed today yet.
                     </div>
-                  ))}
+                  ) : (
+                    earningsData.daily.completedJobs.map((j, idx) => (
+                      <div key={idx} style={{ padding: '14px 18px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontWeight: '800', fontSize: '0.92rem', color: '#0f172a' }}>{j.serviceName}</div>
+                          <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>Customer: {j.customerName} • {j.time}</div>
+                        </div>
+                        <div style={{ fontWeight: '900', fontSize: '1.05rem', color: '#16a34a' }}>+ ₹{j.amount}</div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -1768,7 +1780,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
               {/* Week Navigator Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', padding: '14px 20px', borderRadius: '18px', border: '1px solid #e2e8f0' }}>
                 <button type="button" style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer' }}>‹ Prev Week</button>
-                <div style={{ fontWeight: '900', fontSize: '0.96rem', color: '#0f172a' }}>{earningsData?.weekly?.weekLabel || 'Jul 28 - Aug 3'}</div>
+                <div style={{ fontWeight: '900', fontSize: '0.96rem', color: '#0f172a' }}>{earningsData?.weekly?.weekLabel || 'Current Week'}</div>
                 <button type="button" style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer' }}>Next Week ›</button>
               </div>
 
@@ -1777,11 +1789,11 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                 <div>
                   <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '700' }}>Total Earned This Week</div>
                   <div style={{ fontSize: '2.2rem', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>
-                    ₹{(earningsData?.weekly?.totalEarnedWeek || 16800).toLocaleString('en-IN')}
+                    ₹{(earningsData?.weekly?.totalEarnedWeek ?? 0).toLocaleString('en-IN')}
                   </div>
                 </div>
                 <span style={{ background: '#dcfce7', color: '#15803d', padding: '6px 14px', borderRadius: '20px', fontWeight: '800', fontSize: '0.84rem' }}>
-                  {earningsData?.weekly?.percentageChange || '+18%'} vs Last Week
+                  {earningsData?.weekly?.percentageChange || '0%'} vs Last Week
                 </span>
               </div>
 
@@ -1791,21 +1803,13 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                   DAILY BREAKDOWN
                 </h4>
                 <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: '150px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
-                  {(earningsData?.weekly?.dailyBreakdown || [
-                    { day: 'Mon', val: 2100 },
-                    { day: 'Tue', val: 2400 },
-                    { day: 'Wed', val: 4200 },
-                    { day: 'Thu', val: 1900 },
-                    { day: 'Fri', val: 2800 },
-                    { day: 'Sat', val: 3400 },
-                    { day: 'Sun', val: 0 },
-                  ]).map((item, idx) => (
+                  {(earningsData?.weekly?.dailyBreakdown || []).map((item, idx) => (
                     <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', width: '36px' }}>
                       {item.val > 0 && <span style={{ fontSize: '0.68rem', fontWeight: '800', color: '#16a34a' }}>₹{(item.val/1000).toFixed(1)}k</span>}
                       <div style={{
                         width: '24px',
                         height: item.val > 0 ? `${(item.val / 4200) * 110}px` : '4px',
-                        background: item.day === 'Wed' ? 'linear-gradient(180deg, #16a34a, #15803d)' : '#cbd5e1',
+                        background: item.val > 0 ? 'linear-gradient(180deg, #16a34a, #15803d)' : '#cbd5e1',
                         borderRadius: '6px 6px 0 0'
                       }} />
                       <span style={{ fontSize: '0.74rem', fontWeight: '700', color: '#64748b' }}>{item.day}</span>
@@ -1821,10 +1825,10 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                 </div>
                 <div>
                   <div style={{ fontWeight: '800', fontSize: '0.96rem', color: '#14532d' }}>
-                    Busiest Day: {earningsData?.weekly?.busiestDay || 'Wednesday'}
+                    Busiest Day: {earningsData?.weekly?.busiestDay || 'None'}
                   </div>
                   <div style={{ fontSize: '0.82rem', color: '#166534', marginTop: '2px' }}>
-                    {earningsData?.weekly?.busiestDayDetails || 'You earned ₹4,200 across 4 jobs on Wednesday'}
+                    {earningsData?.weekly?.busiestDayDetails || 'No completed jobs recorded this week yet'}
                   </div>
                 </div>
               </div>
@@ -1837,7 +1841,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
               {/* Month Navigator Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', padding: '14px 20px', borderRadius: '18px', border: '1px solid #e2e8f0' }}>
                 <button type="button" style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer' }}>‹ Prev Month</button>
-                <div style={{ fontWeight: '900', fontSize: '0.96rem', color: '#0f172a' }}>{earningsData?.monthly?.monthLabel || 'July 2026'}</div>
+                <div style={{ fontWeight: '900', fontSize: '0.96rem', color: '#0f172a' }}>{earningsData?.monthly?.monthLabel || 'Current Month'}</div>
                 <button type="button" style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer' }}>Next Month ›</button>
               </div>
 
@@ -1846,11 +1850,11 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                 <div>
                   <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '700' }}>Total Earned This Month</div>
                   <div style={{ fontSize: '2.2rem', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>
-                    ₹{(earningsData?.monthly?.totalEarnedMonth || 46800).toLocaleString('en-IN')}
+                    ₹{(earningsData?.monthly?.totalEarnedMonth ?? 0).toLocaleString('en-IN')}
                   </div>
                 </div>
                 <span style={{ background: '#dcfce7', color: '#15803d', padding: '6px 14px', borderRadius: '20px', fontWeight: '800', fontSize: '0.84rem' }}>
-                  {earningsData?.monthly?.percentageChange || '+15%'} vs Last Month
+                  {earningsData?.monthly?.percentageChange || '0%'} vs Last Month
                 </span>
               </div>
 
@@ -1860,18 +1864,13 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                   WEEKLY BREAKDOWN
                 </h4>
                 <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: '140px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
-                  {(earningsData?.monthly?.weeklyBreakdown || [
-                    { week: 'W1', val: 10200 },
-                    { week: 'W2', val: 11500 },
-                    { week: 'W3', val: 12700 },
-                    { week: 'W4', val: 12400 },
-                  ]).map((item, idx) => (
+                  {(earningsData?.monthly?.weeklyBreakdown || []).map((item, idx) => (
                     <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', width: '50px' }}>
-                      <span style={{ fontSize: '0.7rem', fontWeight: '800', color: '#16a34a' }}>₹{(item.val/1000).toFixed(1)}k</span>
+                      {item.val > 0 && <span style={{ fontSize: '0.7rem', fontWeight: '800', color: '#16a34a' }}>₹{(item.val/1000).toFixed(1)}k</span>}
                       <div style={{
                         width: '32px',
-                        height: `${(item.val / 13000) * 100}px`,
-                        background: 'linear-gradient(180deg, #16a34a, #15803d)',
+                        height: item.val > 0 ? `${(item.val / 13000) * 100}px` : '4px',
+                        background: item.val > 0 ? 'linear-gradient(180deg, #16a34a, #15803d)' : '#cbd5e1',
                         borderRadius: '6px 6px 0 0'
                       }} />
                       <span style={{ fontSize: '0.76rem', fontWeight: '700', color: '#64748b' }}>{item.week}</span>
@@ -1885,21 +1884,21 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                 <div style={{ background: '#ffffff', borderRadius: '18px', padding: '18px', border: '1px solid #e2e8f0' }}>
                   <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '700' }}>Average Weekly Earned</div>
                   <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#0f172a', marginTop: '2px' }}>
-                    ₹{(earningsData?.monthly?.avgWeeklyEarned || 11700).toLocaleString('en-IN')}
+                    ₹{(earningsData?.monthly?.avgWeeklyEarned ?? 0).toLocaleString('en-IN')}
                   </div>
                 </div>
 
                 <div style={{ background: '#ffffff', borderRadius: '18px', padding: '18px', border: '1px solid #e2e8f0' }}>
                   <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '700' }}>Active Working Days</div>
                   <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>
-                    {earningsData?.monthly?.activeDays || 24} Days
+                    {earningsData?.monthly?.activeDays ?? 0} Days
                   </div>
                 </div>
 
                 <div style={{ background: '#ffffff', borderRadius: '18px', padding: '18px', border: '1px solid #e2e8f0' }}>
                   <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '700' }}>Payout Destination</div>
                   <div style={{ fontSize: '1.05rem', fontWeight: '800', color: '#2563eb', marginTop: '4px' }}>
-                    {earningsData?.monthly?.payoutDestination || 'HDFC Bank •••• 4920'}
+                    {bankForm?.bankName ? `${bankForm.bankName} (•••• ${bankForm.accountNumber ? bankForm.accountNumber.slice(-4) : '••••'})` : 'Bank Account Not Linked'}
                   </div>
                 </div>
               </div>
@@ -1910,24 +1909,25 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
           <div style={{ background: '#ffffff', borderRadius: '22px', padding: '24px', border: '1px solid #e2e8f0' }}>
             <h3 style={{ fontSize: '1.05rem', fontWeight: '900', color: '#0f172a', margin: '0 0 16px 0' }}>Recent Wallet Transactions Ledger</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {(walletData?.transactions || [
-                { transactionId: 'TXN-9081', title: 'AC Foam & Jet Cleaning Commission', amount: 1499, type: 'Credit', createdAt: new Date() },
-                { transactionId: 'TXN-9080', title: 'Referral Bonus (Amitabh Verma)', amount: 500, type: 'Credit', createdAt: new Date() },
-                { transactionId: 'TXN-9079', title: 'Direct Bank Withdrawal to HDFC', amount: 5000, type: 'Debit', createdAt: new Date() },
-                { transactionId: 'TXN-9078', title: 'Full Home Deep Cleaning Job Payout', amount: 4999, type: 'Credit', createdAt: new Date() },
-              ]).map((t, idx) => (
-                <div key={t.transactionId || idx} style={{ padding: '14px 18px', background: '#f8fafc', borderRadius: '14px', border: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontWeight: '800', fontSize: '0.9rem', color: '#0f172a' }}>{t.title || t.desc}</div>
-                    <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px' }}>
-                      {t.transactionId} • {t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '28 Aug 2026'}
-                    </div>
-                  </div>
-                  <span style={{ fontWeight: '900', fontSize: '1rem', color: t.type === 'Credit' ? '#16a34a' : '#dc2626' }}>
-                    {t.type === 'Credit' ? '+' : '-'} ₹{t.amount?.toLocaleString('en-IN')}
-                  </span>
+              {(!walletData?.transactions || walletData.transactions.length === 0) ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '0.86rem' }}>
+                  No wallet transactions recorded yet. Completed service job payouts will be credited here automatically.
                 </div>
-              ))}
+              ) : (
+                walletData.transactions.map((t, idx) => (
+                  <div key={t.transactionId || idx} style={{ padding: '14px 18px', background: '#f8fafc', borderRadius: '14px', border: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: '800', fontSize: '0.9rem', color: '#0f172a' }}>{t.title || t.desc || 'Service Job Payout'}</div>
+                      <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px' }}>
+                        {t.transactionId || `TXN-${idx + 100}`} • {t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent'}
+                      </div>
+                    </div>
+                    <span style={{ fontWeight: '900', fontSize: '1rem', color: t.type === 'Credit' ? '#16a34a' : '#dc2626' }}>
+                      {t.type === 'Credit' ? '+' : '-'} ₹{Number(t.amount || 0).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

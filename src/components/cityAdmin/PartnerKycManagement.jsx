@@ -139,7 +139,7 @@ const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
                       {getDisplayCategory(p)}
                     </td>
                     <td style={{ padding: '14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                      <div>{p.phone || '+91 98765 43210'}</div>
+                      <div>{p.phone || 'N/A'}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.email}</div>
                     </td>
                     <td style={{ padding: '14px' }}>

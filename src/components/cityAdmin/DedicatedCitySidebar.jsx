@@ -40,7 +40,10 @@ const DedicatedCitySidebar = ({
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'space-between',
-      minHeight: 'calc(100vh - 74px)',
+      position: 'sticky',
+      top: '74px',
+      height: 'calc(100vh - 74px)',
+      overflowY: 'auto',
       flexShrink: 0,
       boxShadow: 'var(--shadow-sm)'
     }}>
