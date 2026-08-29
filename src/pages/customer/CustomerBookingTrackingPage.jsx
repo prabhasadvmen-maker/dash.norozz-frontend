@@ -50,6 +50,11 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
 
   const sStatus = isAssigned ? rawStatus : 'Pending';
 
+  // OTP Verification & Cancellation Rules
+  const isOtpVerified = Boolean(booking.otpVerified || booking.serviceStarted || sStatus === 'Started' || sStatus === 'In Progress');
+  const isFinishedOrCancelled = isCompleted || sStatus === 'Cancelled' || sStatus === 'cancelled' || sStatus === 'Refunded';
+  const canCancel = !isOtpVerified && !isFinishedOrCancelled;
+
   // 4-Digit OTP Code
   const otpCode = String(booking.completionOtp || '2847');
   const otpDigits = otpCode.length === 4 ? otpCode.split('') : ['2', '8', '4', '7'];
