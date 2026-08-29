@@ -3,6 +3,7 @@ import DedicatedCustomerNavbar from '../components/customer/DedicatedCustomerNav
 import FourItemBottomNav from '../components/customer/FourItemBottomNav';
 import HomeBannerSlider from '../components/customer/HomeBannerSlider';
 import PopularCategories from '../components/customer/PopularCategories';
+import FeaturedServices from '../components/customer/FeaturedServices';
 import CustomerHomeSections from '../components/customer/CustomerHomeSections';
 import CustomerProfileView from '../components/customer/CustomerProfileView';
 import CustomerWalletView from '../components/customer/CustomerWalletView';
@@ -30,8 +31,15 @@ import {
 } from 'lucide-react';
 
 const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
-  // Bottom Nav Tabs: 'home' | 'services' | 'bookings' | 'wallet' | 'profile'
   const [activeTab, setActiveTab] = useState('home');
+  const [profileSubTab, setProfileSubTab] = useState('overview');
+
+  const handleNavigateTab = (tab, subTab) => {
+    setActiveTab(tab);
+    if (subTab) {
+      setProfileSubTab(subTab);
+    }
+  };
 
   const { dashboard, popularServices, refetchCustomer } = useCustomer(activeTab);
   const { myBookings } = useBookings(activeTab === 'bookings');
@@ -281,92 +289,33 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
   const walletBalance = dashboard?.walletBalance ?? dashboard?.wallet?.balance ?? currentUser?.walletBalance ?? 0;
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 60px)', background: 'var(--bg-primary)', paddingBottom: '90px' }}>
+    <div style={{ minHeight: 'calc(100vh - 60px)', background: 'var(--bg-primary)', paddingBottom: '0px' }}>
       
       {/* Mobile-First Header */}
-      <DedicatedCustomerNavbar currentUser={currentUser} onLogout={onLogout} />
-
-      {/* Location & Search Header for Home tab */}
-      {activeTab === 'home' && (
-        <div style={{
-          background: '#ffffff',
-          borderBottom: '1px solid var(--border-light)',
-          padding: '16px 24px',
-          boxShadow: 'var(--shadow-sm)'
-        }}>
-          <div style={{ maxWidth: '960px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                <MapPin size={18} color="#2563eb" style={{ flexShrink: 0 }} />
-                <div style={{ overflow: 'hidden' }}>
-                  <span style={{ fontSize: '0.88rem', fontWeight: '800', color: 'var(--text-primary)', display: 'block' }}>
-                    {currentUser?.city || (detectingLocation ? 'Detecting Location...' : 'Current Location')}
-                  </span>
-                  <span style={{
-                    fontSize: '0.75rem',
-                    color: 'var(--text-muted)',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    display: 'block',
-                    maxWidth: '450px'
-                  }}>
-                    {currentUser?.address || 'Click DETECT LOCATION to fetch live address'}
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleDetectLocation(true)}
-                disabled={detectingLocation}
-                className="badge badge-purple"
-                style={{
-                  fontSize: '0.68rem',
-                  cursor: 'pointer',
-                  border: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '5px 10px',
-                  flexShrink: 0
-                }}
-              >
-                {detectingLocation ? <Loader2 size={12} className="spin" /> : 'DETECT LOCATION'}
-              </button>
-            </div>
-
-            <div style={{ position: 'relative' }}>
-              <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Search for AC Service, House Cleaning, Women Salon..."
-                style={{
-                  paddingLeft: '48px',
-                  paddingRight: '48px',
-                  paddingTop: '12px',
-                  paddingBottom: '12px',
-                  borderRadius: '9999px',
-                  fontSize: '0.92rem',
-                  boxShadow: 'var(--shadow-sm)'
-                }}
-              />
-              <SlidersHorizontal size={18} color="#2563eb" style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer' }} />
-            </div>
-          </div>
-        </div>
-      )}
+      <DedicatedCustomerNavbar
+        currentUser={currentUser}
+        onLogout={onLogout}
+        activeTab={activeTab}
+        onNavigateTab={handleNavigateTab}
+      />
 
       {/* Main Content Area */}
-      <main style={{ maxWidth: '960px', margin: '0 auto', padding: '24px 20px' }}>
+
+      {/* Main Content Area */}
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 20px' }}>
         
         {/* TAB 1: HOME */}
         {activeTab === 'home' && (
           <>
-            {/* Banner Slider */}
-            <HomeBannerSlider />
+            {/* Dark Navy Hero Section */}
+            <HomeBannerSlider
+              onSelectCategory={(cat) => {
+                setSelectedCategoryFilter(cat);
+                setActiveTab('services');
+              }}
+            />
 
-            {/* Popular Services Section (Renamed Heading) */}
+            {/* What are you looking for today? 6-Card Category Grid */}
             <PopularCategories
               selectedCategory={selectedCategoryFilter}
               onSelectCategory={(cat) => {
@@ -375,61 +324,14 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
               }}
             />
 
-            {/* Recommended for You Section (Renamed Heading & Dynamic Real Data) */}
-            <div style={{ marginBottom: '32px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)' }}>
-                  Recommended for You
-                </h3>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-                {(popularServices && popularServices.length > 0 ? popularServices : [
-                  { title: 'AC Foam Jet Deep Cleaning', rating: '4.85 (14.2k)', price: '₹599', originalPrice: '₹799', duration: '45 mins', category: 'AC & Appliance Repair' },
-                  { title: 'Full Home Deep Cleaning 3BHK', rating: '4.80 (6.1k)', price: '₹4,499', originalPrice: '₹4,999', duration: '4 hrs', category: 'Home Deep Cleaning' },
-                  { title: 'Elegance Facial & Spa Salon', rating: '4.92 (8.4k)', price: '₹1,299', originalPrice: '₹1,499', duration: '60 mins', category: 'Salon for Women & Spa' },
-                  { title: 'Tap & Plumbing Leak Repair', rating: '4.78 (12k)', price: '₹299', originalPrice: '₹399', duration: '30 mins', category: 'Plumbing & Leakage' }
-                ]).map((service, idx) => {
-                  const title = service.name || service.title;
-                  const price = service.finalPrice ? `₹${service.finalPrice}` : (service.price ? (typeof service.price === 'number' ? `₹${service.price}` : service.price) : '₹599');
-                  const duration = service.duration || '45 mins';
-                  const rating = service.rating ? `${service.rating} (${service.reviews || '10k+'})` : '4.85 (14.2k)';
-                  const categoryName = typeof service.category === 'object' ? service.category?.name : (service.category || 'Popular Service');
-
-                  return (
-                    <div key={service._id || idx} className="mui-card" style={{ padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <span className="badge badge-purple" style={{ fontSize: '0.62rem', padding: '2px 6px' }}>RECOMMENDED</span>
-                          <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                            <Star size={12} fill="#f59e0b" /> {rating}
-                          </span>
-                        </div>
-                        <h4 style={{ fontSize: '0.95rem', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px' }}>
-                          {title}
-                        </h4>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
-                          {duration} • 30-Day Guarantee
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid var(--border-light)' }}>
-                        <span style={{ fontSize: '1.05rem', fontWeight: '800', color: 'var(--text-primary)' }}>{price}</span>
-                        <button
-                          onClick={() => handleOpenBookingWizard({ ...service, title, price })}
-                          className="btn btn-primary btn-sm"
-                        >
-                          <Plus size={14} /> Book Now
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Offers, Recently Booked & Membership */}
+            {/* Deals and Offers & Why people trust Norozz */}
             <CustomerHomeSections />
+
+            {/* Top Rated Services */}
+            <FeaturedServices
+              popularServices={popularServices}
+              onBookService={(service) => handleOpenBookingWizard(service)}
+            />
           </>
         )}
 
@@ -782,6 +684,8 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
         {/* TAB 4: PROFILE */}
         {activeTab === 'profile' && (
           <CustomerProfileView
+            key={profileSubTab}
+            initialSubTab={profileSubTab}
             currentUser={currentUser}
             onLogout={onLogout}
             onNavigateTab={(tab) => setActiveTab(tab)}
@@ -790,9 +694,6 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
         )}
 
       </main>
-
-      {/* 4-Item Bottom Nav */}
-      <FourItemBottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
     </div>
   );

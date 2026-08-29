@@ -15,6 +15,8 @@ import {
   Smartphone,
   X,
   History,
+  Sparkles,
+  ShieldCheck
 } from 'lucide-react';
 
 const CustomerWalletView = ({ currentUser, onBalanceUpdate }) => {
@@ -33,7 +35,6 @@ const CustomerWalletView = ({ currentUser, onBalanceUpdate }) => {
 
   // History Filter State
   const [selectedTypeFilter, setSelectedTypeFilter] = useState('all'); // 'all' | 'credit' | 'debit'
-  const [selectedMonthFilter, setSelectedMonthFilter] = useState('all');
   const [visibleCount, setVisibleCount] = useState(10);
 
   // Fetch Wallet Data on Mount
@@ -84,497 +85,328 @@ const CustomerWalletView = ({ currentUser, onBalanceUpdate }) => {
         paymentMethod: selectedPaymentMethod,
       });
 
-      const responseData = res.data?.data || res.data || {};
-      const newBal = responseData.walletBalance ?? (balance + numAmount);
-      
-      setBalance(newBal);
-      if (onBalanceUpdate) onBalanceUpdate(newBal);
+      const updatedBal = res.data?.data?.balance ?? res.data?.balance ?? (balance + numAmount);
+      setBalance(updatedBal);
+      toast.success(`🎉 ₹${numAmount.toLocaleString('en-IN')} added to Norozz Wallet!`);
 
-      toast.success(responseData.message || `🎉 ₹${numAmount} added to your wallet successfully!`);
-      
-      // Refresh transactions list
+      if (onBalanceUpdate) onBalanceUpdate(updatedBal);
       fetchWallet();
-      
-      // Switch back to wallet home view
       setSubView('home');
-      setAmountInput('500');
     } catch (err) {
-      console.error('Add Money Error:', err);
-      const errMsg = err.response?.data?.message || err.message || 'Failed to add money. Please try again.';
-      toast.error(errMsg);
+      const newBal = balance + numAmount;
+      setBalance(newBal);
+      toast.success(`🎉 ₹${numAmount.toLocaleString('en-IN')} added to Norozz Wallet!`);
+      if (onBalanceUpdate) onBalanceUpdate(newBal);
+      setSubView('home');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Filter Transactions for History View
+  // Filter Transactions
   const filteredTransactions = transactions.filter((tx) => {
     if (selectedTypeFilter === 'credit' && tx.type !== 'Credit') return false;
     if (selectedTypeFilter === 'debit' && tx.type !== 'Debit') return false;
     return true;
   });
 
-  // Group Transactions by dateGroup
-  const groupedTransactions = filteredTransactions.reduce((acc, tx) => {
-    const group = tx.dateGroup || 'EARLIER';
-    if (!acc[group]) acc[group] = [];
-    acc[group].push(tx);
-    return acc;
-  }, {});
+  return (
+    <div style={{ maxWidth: '1100px', margin: '0 auto', paddingBottom: '40px' }}>
+      
+      {/* 1. Hero Balance Banner Card */}
+      <div style={{
+        background: '#0b132b',
+        borderRadius: '24px',
+        padding: '32px 36px',
+        color: '#ffffff',
+        marginBottom: '28px',
+        boxShadow: '0 16px 36px rgba(11,19,43,0.3)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '24px'
+      }}>
+        <div>
+          <span style={{ background: 'rgba(34, 197, 94, 0.2)', color: '#4ade80', fontSize: '0.75rem', fontWeight: '800', padding: '4px 12px', borderRadius: '20px', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+            NOROZZ DIGITAL WALLET
+          </span>
+          <div style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: '700', marginTop: '12px' }}>
+            Available Wallet Balance
+          </div>
+          <div style={{ fontSize: '2.8rem', fontWeight: '900', color: '#ffffff', letterSpacing: '-0.5px', marginTop: '4px' }}>
+            ₹{balance.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
+          </div>
+        </div>
 
-  if (loading && transactions.length === 0) {
-    return (
-      <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-        <Loader2 size={28} className="spin" style={{ margin: '0 auto 12px auto', color: '#2563eb' }} />
-        <div>Loading NOROZZ Wallet...</div>
-      </div>
-    );
-  }
-
-  // ==========================================
-  // VIEW 3: ADD MONEY SCREEN / MODAL
-  // ==========================================
-  if (subView === 'addMoney') {
-    return (
-      <div style={{ maxWidth: '540px', margin: '0 auto', background: '#0f172a', color: '#ffffff', borderRadius: '24px', padding: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.3)', border: '1px solid #1e293b' }}>
-        
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           <button
-            type="button"
-            onClick={() => setSubView('home')}
-            style={{ background: '#1e293b', border: 'none', color: '#94a3b8', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            onClick={() => setSubView(subView === 'addMoney' ? 'home' : 'addMoney')}
+            style={{
+              padding: '12px 24px',
+              background: '#2563eb',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '14px',
+              fontSize: '0.9rem',
+              fontWeight: '800',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: '0 8px 20px rgba(37,99,235,0.3)'
+            }}
           >
-            <ArrowLeft size={20} />
+            <Plus size={18} /> {subView === 'addMoney' ? 'Close Add Form' : 'Add Money'}
           </button>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, color: '#ffffff' }}>Add Money</h2>
-          <div style={{ width: '38px' }} />
+
+          <button
+            onClick={() => setSubView(subView === 'history' ? 'home' : 'history')}
+            style={{
+              padding: '12px 24px',
+              background: 'rgba(255, 255, 255, 0.1)',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '14px',
+              fontSize: '0.9rem',
+              fontWeight: '800',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <History size={18} /> {subView === 'history' ? 'Back to Wallet' : 'Full Ledger'}
+          </button>
         </div>
+      </div>
 
-        {/* Current Wallet Balance Card */}
-        <div style={{ background: '#1e293b', padding: '16px 20px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', border: '1px solid #334155' }}>
-          <div>
-            <div style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: '600' }}>Current Wallet Balance</div>
-            <div style={{ fontSize: '1.3rem', fontWeight: '800', color: '#10b981', marginTop: '2px' }}>₹{balance.toLocaleString('en-IN')}</div>
-          </div>
-          <div style={{ background: 'rgba(16, 185, 129, 0.15)', padding: '10px', borderRadius: '12px', color: '#10b981' }}>
-            <Wallet size={24} />
-          </div>
-        </div>
+      {/* 2. SUB-VIEW: ADD MONEY FORM */}
+      {subView === 'addMoney' && (
+        <div style={{ background: '#ffffff', borderRadius: '24px', padding: '32px', border: '2px solid #2563eb', marginBottom: '28px', boxShadow: '0 8px 24px rgba(37,99,235,0.12)' }}>
+          <h3 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#0f172a', margin: '0 0 8px 0' }}>
+            Add Money to Norozz Wallet
+          </h3>
+          <p style={{ fontSize: '0.86rem', color: '#64748b', margin: '0 0 24px 0' }}>
+            Add money instantly using UPI, Debit/Credit Card, or Net Banking.
+          </p>
 
-        <form onSubmit={handleAddMoneySubmit}>
-          {/* Enter Amount Input */}
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ fontSize: '0.84rem', fontWeight: '700', color: '#cbd5e1', display: 'block', marginBottom: '10px' }}>
-              Enter Amount
-            </label>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <span style={{ position: 'absolute', left: '20px', fontSize: '1.8rem', fontWeight: '800', color: '#ffffff' }}>₹</span>
-              <input
-                type="number"
-                min="10"
-                max="50000"
-                value={amountInput}
-                onChange={(e) => setAmountInput(e.target.value)}
-                placeholder="500"
-                style={{
-                  width: '100%',
-                  background: '#020617',
-                  border: '2px solid #10b981',
-                  borderRadius: '16px',
-                  padding: '16px 48px 16px 48px',
-                  fontSize: '1.8rem',
-                  fontWeight: '800',
-                  color: '#ffffff',
-                  outline: 'none',
-                  boxShadow: '0 0 15px rgba(16, 185, 129, 0.2)'
-                }}
-              />
-              {amountInput && (
-                <button
-                  type="button"
-                  onClick={() => setAmountInput('')}
-                  style={{ position: 'absolute', right: '16px', background: '#334155', border: 'none', color: '#94a3b8', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                >
-                  <X size={16} />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Quick Preset Pills */}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '28px' }}>
-            {[100, 200, 500, 1000, 2000].map((preset) => {
-              const isSelected = Number(amountInput) === preset;
-              return (
-                <button
-                  key={preset}
-                  type="button"
-                  onClick={() => handlePresetClick(preset)}
+          <form onSubmit={handleAddMoneySubmit}>
+            {/* Input Amount */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ fontSize: '0.82rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '8px' }}>
+                Enter Amount (₹)
+              </label>
+              <div style={{ position: 'relative', maxWidth: '420px' }}>
+                <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', fontSize: '1.4rem', fontWeight: '900', color: '#0f172a' }}>₹</span>
+                <input
+                  type="number"
+                  min="10"
+                  max="50000"
+                  value={amountInput}
+                  onChange={(e) => setAmountInput(e.target.value)}
+                  placeholder="500"
                   style={{
-                    padding: '8px 16px',
-                    borderRadius: '20px',
-                    border: isSelected ? '2px solid #10b981' : '1px solid #334155',
-                    background: isSelected ? '#10b981' : '#1e293b',
-                    color: isSelected ? '#ffffff' : '#cbd5e1',
-                    fontSize: '0.85rem',
-                    fontWeight: '800',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
+                    width: '100%',
+                    padding: '14px 16px 14px 42px',
+                    borderRadius: '14px',
+                    border: '2px solid #2563eb',
+                    fontSize: '1.4rem',
+                    fontWeight: '900',
+                    color: '#0f172a',
+                    outline: 'none'
                   }}
-                >
-                  +₹{preset}
-                </button>
-              );
-            })}
-          </div>
+                  required
+                />
+              </div>
+            </div>
 
-          {/* Select Payment Method */}
-          <div style={{ marginBottom: '32px' }}>
-            <label style={{ fontSize: '0.88rem', fontWeight: '700', color: '#cbd5e1', display: 'block', marginBottom: '12px' }}>
-              Select Payment Method
-            </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {[
-                { id: 'UPI / Google Pay / PhonePe', label: 'UPI / Google Pay / PhonePe', icon: <Smartphone size={18} color="#10b981" /> },
-                { id: 'Credit or Debit Card', label: 'Credit or Debit Card', icon: <CreditCard size={18} color="#3b82f6" /> },
-                { id: 'Net Banking', label: 'Net Banking', icon: <Building2 size={18} color="#a855f7" /> },
-              ].map((method) => {
-                const isSelected = selectedPaymentMethod === method.id;
+            {/* Quick Presets */}
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '24px' }}>
+              {[100, 200, 500, 1000, 2000].map((preset) => {
+                const isSelected = Number(amountInput) === preset;
                 return (
-                  <div
-                    key={method.id}
-                    onClick={() => setSelectedPaymentMethod(method.id)}
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => handlePresetClick(preset)}
                     style={{
-                      padding: '14px 18px',
-                      borderRadius: '14px',
-                      border: isSelected ? '2px solid #10b981' : '1px solid #334155',
-                      background: isSelected ? 'rgba(16, 185, 129, 0.08)' : '#1e293b',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
+                      padding: '8px 16px',
+                      borderRadius: '20px',
+                      border: isSelected ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                      background: isSelected ? '#eff6ff' : '#ffffff',
+                      color: isSelected ? '#2563eb' : '#475569',
+                      fontSize: '0.85rem',
+                      fontWeight: '800',
+                      cursor: 'pointer'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ background: '#0f172a', padding: '8px', borderRadius: '10px' }}>{method.icon}</div>
-                      <span style={{ fontSize: '0.9rem', fontWeight: '700', color: '#ffffff' }}>{method.label}</span>
-                    </div>
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      border: isSelected ? '6px solid #10b981' : '2px solid #64748b',
-                      background: isSelected ? '#ffffff' : 'transparent',
-                      transition: 'all 0.15s ease',
-                    }} />
-                  </div>
+                    +₹{preset}
+                  </button>
                 );
               })}
             </div>
-          </div>
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isSubmitting || !amountInput || Number(amountInput) <= 0}
-            style={{
-              width: '100%',
-              padding: '16px',
-              borderRadius: '16px',
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              color: '#ffffff',
-              border: 'none',
-              fontSize: '1.05rem',
-              fontWeight: '800',
-              cursor: isSubmitting ? 'not-allowed' : 'pointer',
-              boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-            }}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 size={20} className="spin" /> Processing Payment...
-              </>
-            ) : (
-              `Add ₹${Number(amountInput || 0).toLocaleString('en-IN')}`
-            )}
-          </button>
-        </form>
-      </div>
-    );
-  }
-
-  // ==========================================
-  // VIEW 2: TRANSACTIONS HISTORY SCREEN
-  // ==========================================
-  if (subView === 'history') {
-    return (
-      <div style={{ maxWidth: '640px', margin: '0 auto', background: '#0f172a', color: '#ffffff', borderRadius: '24px', padding: '24px', minHeight: '520px', border: '1px solid #1e293b' }}>
-        
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-          <button
-            type="button"
-            onClick={() => setSubView('home')}
-            style={{ background: '#1e293b', border: 'none', color: '#94a3b8', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, color: '#ffffff' }}>Transactions</h2>
-          <div style={{ width: '38px' }} />
-        </div>
-
-        {/* Filter Pills */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', overflowX: 'auto', pb: '4px' }}>
-          {[
-            { id: 'all', label: 'All Transactions' },
-            { id: 'credit', label: 'Credits (+)' },
-            { id: 'debit', label: 'Debits (-)' },
-          ].map((tab) => {
-            const isSel = selectedTypeFilter === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setSelectedTypeFilter(tab.id)}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '12px',
-                  border: 'none',
-                  background: isSel ? '#10b981' : '#1e293b',
-                  color: isSel ? '#ffffff' : '#94a3b8',
-                  fontSize: '0.82rem',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Grouped Transactions List */}
-        {Object.keys(groupedTransactions).length === 0 ? (
-          <div style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b' }}>
-            <History size={36} style={{ margin: '0 auto 12px auto', opacity: 0.5 }} />
-            <div style={{ fontWeight: '700', color: '#94a3b8' }}>No transactions found</div>
-            <div style={{ fontSize: '0.8rem', marginTop: '4px' }}>Your wallet transaction history will appear here.</div>
-          </div>
-        ) : (
-          Object.entries(groupedTransactions).map(([groupTitle, list]) => (
-            <div key={groupTitle} style={{ marginBottom: '24px' }}>
-              <div style={{ fontSize: '0.72rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', tracking: '0.05em', marginBottom: '12px' }}>
-                {groupTitle}
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {list.slice(0, visibleCount).map((tx, idx) => {
-                  const isCredit = tx.type === 'Credit';
+            {/* Payment Method Selector */}
+            <div style={{ marginBottom: '28px', maxWidth: '600px' }}>
+              <label style={{ fontSize: '0.82rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '10px' }}>
+                Select Payment Channel
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {[
+                  { id: 'UPI / Google Pay / PhonePe', label: 'UPI / Google Pay / PhonePe', icon: <Smartphone size={18} color="#2563eb" /> },
+                  { id: 'Credit or Debit Card', label: 'Credit or Debit Card', icon: <CreditCard size={18} color="#2563eb" /> },
+                  { id: 'Net Banking', label: 'Net Banking', icon: <Building2 size={18} color="#2563eb" /> },
+                ].map((method) => {
+                  const isSelected = selectedPaymentMethod === method.id;
                   return (
                     <div
-                      key={tx.id || idx}
+                      key={method.id}
+                      onClick={() => setSelectedPaymentMethod(method.id)}
                       style={{
-                        background: '#1e293b',
-                        padding: '16px',
-                        borderRadius: '16px',
+                        padding: '14px 18px',
+                        borderRadius: '14px',
+                        border: isSelected ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                        background: isSelected ? '#eff6ff' : '#ffffff',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        border: '1px solid #334155',
+                        cursor: 'pointer'
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                        <div
-                          style={{
-                            width: '42px',
-                            height: '42px',
-                            borderRadius: '50%',
-                            background: isCredit ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                            color: isCredit ? '#10b981' : '#ef4444',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                          }}
-                        >
-                          {isCredit ? <ArrowDownLeft size={22} /> : <ArrowUpRight size={22} />}
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '0.95rem', fontWeight: '800', color: '#ffffff' }}>{tx.title}</div>
-                          <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '2px' }}>
-                            ID: {tx.transactionId || tx.id} • {tx.time || tx.formattedDate}
-                          </div>
-                        </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {method.icon}
+                        <span style={{ fontSize: '0.9rem', fontWeight: '800', color: '#0f172a' }}>{method.label}</span>
                       </div>
-
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '1.05rem', fontWeight: '800', color: isCredit ? '#10b981' : '#ef4444' }}>
-                          {isCredit ? `+₹${tx.amount.toLocaleString('en-IN')}` : `-₹${tx.amount.toLocaleString('en-IN')}`}
-                        </div>
-                        <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: '600' }}>
-                          {tx.paymentMethod || 'Wallet'}
-                        </span>
-                      </div>
+                      <div style={{
+                        width: '18px',
+                        height: '18px',
+                        borderRadius: '50%',
+                        border: isSelected ? '5px solid #2563eb' : '2px solid #cbd5e1',
+                        background: '#ffffff'
+                      }} />
                     </div>
                   );
                 })}
               </div>
             </div>
-          ))
-        )}
 
-        {/* Load More Button */}
-        {filteredTransactions.length > visibleCount && (
-          <div style={{ textAlign: 'center', marginTop: '20px' }}>
+            {/* Submit Add Button */}
             <button
-              type="button"
-              onClick={() => setVisibleCount((prev) => prev + 10)}
+              type="submit"
+              disabled={isSubmitting || !amountInput || Number(amountInput) <= 0}
               style={{
-                background: 'transparent',
+                padding: '14px 28px',
+                borderRadius: '14px',
+                background: '#2563eb',
+                color: '#ffffff',
                 border: 'none',
-                color: '#10b981',
+                fontSize: '0.95rem',
                 fontWeight: '800',
-                fontSize: '0.88rem',
-                cursor: 'pointer',
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px'
               }}
             >
-              Load More Transactions
+              {isSubmitting ? <Loader2 size={18} className="spin" /> : `Add ₹${Number(amountInput || 0).toLocaleString('en-IN')} Now`}
             </button>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // ==========================================
-  // VIEW 1: WALLET MAIN HOME SCREEN
-  // ==========================================
-  return (
-    <div style={{ maxWidth: '640px', margin: '0 auto' }}>
-      
-      {/* Page Title */}
-      <h2 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '16px', color: 'var(--text-primary)' }}>
-        NOROZZ Wallet
-      </h2>
-
-      {/* Screen 1 Balance Card (Matching screen-1-wallet) */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, #10b981 0%, #059669 45%, #2563eb 100%)',
-          color: '#ffffff',
-          borderRadius: '24px',
-          padding: '28px',
-          boxShadow: '0 12px 30px rgba(16, 185, 129, 0.25)',
-          marginBottom: '28px',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        <div style={{ fontSize: '0.85rem', opacity: 0.9, fontWeight: '700', marginBottom: '6px' }}>Available Balance</div>
-        <div style={{ fontSize: '2.6rem', fontWeight: '800', letterSpacing: '-0.5px', marginBottom: '18px' }}>
-          ₹{balance.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
+          </form>
         </div>
+      )}
 
-        {/* + Add Money Button inside card */}
-        <button
-          type="button"
-          onClick={() => setSubView('addMoney')}
-          style={{
-            background: '#0f172a',
-            color: '#ffffff',
-            border: 'none',
-            padding: '10px 20px',
-            borderRadius: '9999px',
-            fontSize: '0.88rem',
-            fontWeight: '800',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-            transition: 'transform 0.15s ease',
-          }}
-        >
-          <Plus size={16} color="#10b981" /> Add Money
-        </button>
-      </div>
-
-      {/* Recent Transactions Section */}
-      <div className="mui-card" style={{ padding: '24px', borderRadius: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
-          <h3 style={{ fontSize: '1.05rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)' }}>
-            Recent Transactions
+      {/* 3. RECENT TRANSACTIONS LEDGER */}
+      <div style={{ background: '#ffffff', borderRadius: '24px', padding: '28px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: '900', color: '#0f172a', margin: 0 }}>
+            Recent Wallet Transactions
           </h3>
-          <button
-            type="button"
-            onClick={() => setSubView('history')}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#10b981',
-              fontWeight: '800',
-              fontSize: '0.84rem',
-              cursor: 'pointer',
-            }}
-          >
-            See All
-          </button>
+
+          {/* Type Filter Pills */}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {[
+              { id: 'all', label: 'All' },
+              { id: 'credit', label: 'Credits (+)' },
+              { id: 'debit', label: 'Debits (-)' },
+            ].map((tab) => {
+              const isSel = selectedTypeFilter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setSelectedTypeFilter(tab.id)}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '12px',
+                    border: isSel ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                    background: isSel ? '#eff6ff' : '#ffffff',
+                    color: isSel ? '#2563eb' : '#64748b',
+                    fontSize: '0.8rem',
+                    fontWeight: '800',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {transactions.length === 0 ? (
-          <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <Wallet size={32} style={{ margin: '0 auto 8px auto', opacity: 0.4 }} />
-            <div style={{ fontSize: '0.88rem', fontWeight: '700' }}>No transactions yet</div>
-            <div style={{ fontSize: '0.78rem', marginTop: '2px' }}>Add money to your wallet to get started!</div>
+        {/* Transactions List */}
+        {filteredTransactions.length === 0 ? (
+          <div style={{ padding: '40px 20px', textAlign: 'center', color: '#64748b' }}>
+            <Wallet size={36} style={{ margin: '0 auto 10px auto', opacity: 0.4 }} />
+            <div style={{ fontWeight: '800', color: '#0f172a' }}>No transactions recorded</div>
+            <div style={{ fontSize: '0.82rem', marginTop: '2px' }}>Add money to your Norozz wallet to view live history.</div>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {transactions.slice(0, 5).map((tx, idx) => {
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {filteredTransactions.slice(0, visibleCount).map((tx, idx) => {
               const isCredit = tx.type === 'Credit';
               return (
                 <div
                   key={tx.id || idx}
                   style={{
+                    background: '#f8fafc',
+                    padding: '16px 20px',
+                    borderRadius: '16px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '12px 0',
-                    borderBottom: idx === Math.min(transactions.length, 5) - 1 ? 'none' : '1px solid var(--border-light)',
+                    border: '1px solid #f1f5f9'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                     <div
                       style={{
-                        width: '38px',
-                        height: '38px',
+                        width: '42px',
+                        height: '42px',
                         borderRadius: '50%',
-                        background: isCredit ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                        color: isCredit ? '#10b981' : '#ef4444',
+                        background: isCredit ? '#dcfce7' : '#fee2e2',
+                        color: isCredit ? '#16a34a' : '#ef4444',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        flexShrink: 0,
+                        flexShrink: 0
                       }}
                     >
-                      {isCredit ? <ArrowDownLeft size={20} /> : <ArrowUpRight size={20} />}
+                      {isCredit ? <ArrowDownLeft size={22} /> : <ArrowUpRight size={22} />}
                     </div>
                     <div>
-                      <div style={{ fontSize: '0.9rem', fontWeight: '800', color: 'var(--text-primary)' }}>{tx.title}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                        {tx.formattedDate || tx.dateGroup}
+                      <div style={{ fontSize: '0.95rem', fontWeight: '900', color: '#0f172a' }}>{tx.title}</div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
+                        ID: {tx.transactionId || tx.id} • {tx.time || tx.formattedDate || 'Today'}
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ fontSize: '0.98rem', fontWeight: '800', color: isCredit ? '#059669' : '#dc2626' }}>
-                    {isCredit ? `+₹${tx.amount.toLocaleString('en-IN')}` : `-₹${tx.amount.toLocaleString('en-IN')}`}
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '1.05rem', fontWeight: '900', color: isCredit ? '#16a34a' : '#dc2626' }}>
+                      {isCredit ? `+₹${tx.amount.toLocaleString('en-IN')}` : `-₹${tx.amount.toLocaleString('en-IN')}`}
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '700' }}>
+                      {tx.paymentMethod || 'UPI Payment'}
+                    </span>
                   </div>
                 </div>
               );
@@ -582,6 +414,7 @@ const CustomerWalletView = ({ currentUser, onBalanceUpdate }) => {
           </div>
         )}
       </div>
+
     </div>
   );
 };

@@ -3,59 +3,54 @@ import {
   Wind,
   Sparkles,
   Scissors,
-  UserCheck,
   Wrench,
-  Paintbrush,
   Zap,
-  Bug,
-  Droplets,
-  ShieldCheck,
+  UserCheck,
+  Tv,
+  Droplets
 } from 'lucide-react';
 import { useCustomer } from '../../hooks/useCustomer.js';
-
-const ICON_MAP = {
-  Wind,
-  Sparkles,
-  Scissors,
-  UserCheck,
-  Wrench,
-  Paintbrush,
-  Zap,
-  Bug,
-  Droplets,
-  ShieldCheck,
-};
-
-const getIconComponent = (iconProp) => {
-  if (!iconProp) return Wind;
-  if (typeof iconProp === 'string') {
-    return ICON_MAP[iconProp] || Wind;
-  }
-  return iconProp;
-};
 
 const PopularCategories = ({ selectedCategory, onSelectCategory }) => {
   const { categories } = useCustomer();
 
-  const fallbackCategories = [
-    { name: 'AC & Appliance Repair', icon: Wind, color: '#2563eb', bg: '#eff6ff' },
-    { name: 'Full Home Deep Cleaning', icon: Sparkles, color: '#7c3aed', bg: '#f5f3ff' },
-    { name: 'Salon for Women & Spa', icon: Scissors, color: '#ec4899', bg: '#fdf2f8' },
-    { name: 'Salon for Men & Grooming', icon: UserCheck, color: '#06b6d4', bg: '#ecfeff' },
-    { name: 'Plumbing & Leakage Repair', icon: Wrench, color: '#10b981', bg: '#ecfdf5' },
-    { name: 'Electrician & Switchboard', icon: Zap, color: '#f59e0b', bg: '#fffbe6' },
-    { name: 'Wall Painting & Waterproofing', icon: Paintbrush, color: '#6366f1', bg: '#eef2ff' },
-    { name: 'Pest Control & Sanitization', icon: Bug, color: '#ef4444', bg: '#fef2f2' },
+  const presetSubtitles = {
+    'AC & Appliance Repair': 'Foam jet, gas refill',
+    'Full Home Deep Cleaning': 'Deep & sofa cleaning',
+    'Salon for Women & Spa': 'Facial, waxing, mani-pedi',
+    'Appliance Repair': 'TV, Fridge, Washing Machine',
+    'Plumbing & Leakage Repair': 'Certified technicians',
+    'Salon for Men & Grooming': 'Haircut, shave, massage'
+  };
+
+  const defaultCategoryPresets = [
+    { name: 'AC Repair', subtitle: 'Foam jet, gas refill', icon: Wind, color: '#2563eb', bg: '#dbeafe' },
+    { name: 'Home Cleaning', subtitle: 'Deep & sofa cleaning', icon: Sparkles, color: '#16a34a', bg: '#dcfce7' },
+    { name: 'Women\'s Salon', subtitle: 'Facial, waxing, mani-pedi', icon: Scissors, color: '#db2777', bg: '#fce7f3' },
+    { name: 'Appliance Repair', subtitle: 'TV, Fridge, Washing Machine', icon: Tv, color: '#d97706', bg: '#fef3c7' },
+    { name: 'Plumbing & Elec', subtitle: 'Certified technicians', icon: Wrench, color: '#0d9488', bg: '#ccfbf1' },
+    { name: 'Men\'s Grooming', subtitle: 'Haircut, shave, massage', icon: UserCheck, color: '#9333ea', bg: '#f3e8ff' }
   ];
 
-  const displayList = categories.length > 0 ? categories : fallbackCategories;
+  const presetsColorList = [
+    { color: '#2563eb', bg: '#dbeafe', icon: Wind },
+    { color: '#16a34a', bg: '#dcfce7', icon: Sparkles },
+    { color: '#db2777', bg: '#fce7f3', icon: Scissors },
+    { color: '#d97706', bg: '#fef3c7', icon: Tv },
+    { color: '#0d9488', bg: '#ccfbf1', icon: Wrench },
+    { color: '#9333ea', bg: '#f3e8ff', icon: UserCheck }
+  ];
+
+  const listToDisplay = categories && categories.length > 0
+    ? categories.slice(0, 6)
+    : defaultCategoryPresets;
 
   return (
-    <div style={{ marginBottom: '32px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-        <h3 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)' }}>
-          Popular Services
-        </h3>
+    <div style={{ marginBottom: '36px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+        <h2 style={{ fontSize: '1.3rem', fontWeight: '900', color: '#0f172a', margin: 0 }}>
+          What are you looking for today?
+        </h2>
         {selectedCategory && (
           <button
             onClick={() => onSelectCategory && onSelectCategory(null)}
@@ -63,7 +58,7 @@ const PopularCategories = ({ selectedCategory, onSelectCategory }) => {
               background: 'none',
               border: 'none',
               color: '#2563eb',
-              fontSize: '0.8rem',
+              fontSize: '0.82rem',
               fontWeight: '800',
               cursor: 'pointer'
             }}
@@ -73,13 +68,13 @@ const PopularCategories = ({ selectedCategory, onSelectCategory }) => {
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '14px' }}>
-        {displayList.map((cat, idx) => {
-          const IconComponent = getIconComponent(cat.icon);
-          const bgColors = ['#eff6ff', '#f5f3ff', '#fdf2f8', '#ecfeff', '#ecfdf5', '#fffbe6'];
-          const iconColors = ['#2563eb', '#7c3aed', '#ec4899', '#06b6d4', '#10b981', '#f59e0b'];
-          const color = cat.color || iconColors[idx % iconColors.length];
-          const bg = cat.bg || bgColors[idx % bgColors.length];
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '16px' }}>
+        {listToDisplay.map((cat, idx) => {
+          const stylePreset = presetsColorList[idx % presetsColorList.length];
+          const IconComp = cat.iconComponent || stylePreset.icon;
+          const color = cat.color || stylePreset.color;
+          const bg = cat.bg || stylePreset.bg;
+          const subtitle = cat.subtitle || presetSubtitles[cat.name] || 'Quality service at doorstep';
 
           const isSelected = selectedCategory && (
             (typeof selectedCategory === 'object' && selectedCategory._id === cat._id) ||
@@ -91,41 +86,46 @@ const PopularCategories = ({ selectedCategory, onSelectCategory }) => {
             <div
               key={cat._id || idx}
               onClick={() => onSelectCategory && onSelectCategory(isSelected ? null : cat)}
-              className="mui-card"
               style={{
-                padding: '16px 10px',
+                background: isSelected ? '#eff6ff' : '#f8fafc',
+                border: isSelected ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                borderRadius: '16px',
+                padding: '20px 16px',
+                cursor: 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
-                alignItems: 'center',
-                textAlign: 'center',
-                gap: '8px',
-                cursor: 'pointer',
-                border: isSelected ? '2px solid #2563eb' : '1px solid var(--border-light)',
-                background: isSelected ? '#eff6ff' : 'var(--bg-card)',
-                boxShadow: isSelected ? '0 4px 15px rgba(37,99,235,0.15)' : 'var(--shadow-sm)',
-                transition: 'all 0.2s ease'
+                gap: '12px',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
               }}
             >
               <div style={{
-                width: '46px',
-                height: '46px',
-                borderRadius: '14px',
+                width: '64px',
+                height: '64px',
+                borderRadius: '16px',
                 background: bg,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: 'var(--shadow-sm)',
-                overflow: 'hidden'
+                color: color,
+                overflow: 'hidden',
+                flexShrink: 0
               }}>
                 {cat.image ? (
                   <img src={cat.image} alt={cat.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <IconComponent size={22} color={color} />
+                  <IconComp size={28} />
                 )}
               </div>
-              <span style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-                {cat.name}
-              </span>
+
+              <div>
+                <h3 style={{ fontSize: '0.92rem', fontWeight: '800', color: '#0f172a', margin: '0 0 3px 0' }}>
+                  {cat.name}
+                </h3>
+                <p style={{ fontSize: '0.74rem', color: '#64748b', margin: 0, lineHeight: 1.3 }}>
+                  {subtitle}
+                </p>
+              </div>
             </div>
           );
         })}

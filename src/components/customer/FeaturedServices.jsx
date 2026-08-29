@@ -1,89 +1,135 @@
 import React from 'react';
-import { Star, Plus, Clock, ShieldCheck } from 'lucide-react';
+import { Star, Plus } from 'lucide-react';
 
-const FeaturedServices = () => {
-  const services = [
+const FeaturedServices = ({ popularServices = [], onBookService }) => {
+  const fallbackServices = [
     {
-      id: 1,
-      title: 'AC Foam Jet Deep Cleaning',
-      rating: '4.85 (14.2k)',
-      price: '₹599',
-      originalPrice: '₹899',
-      duration: '45 mins',
-      tag: 'BESTSELLER'
+      _id: 's1',
+      title: 'Sofa Deep Cleaning',
+      rating: '4.87',
+      reviews: '22k reviews',
+      price: '₹699',
+      image: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=600&auto=format&fit=crop'
     },
     {
-      id: 2,
-      title: 'Elegance Facial & Spa Salon',
-      rating: '4.92 (8.4k)',
-      price: '₹1,299',
-      originalPrice: '₹1,699',
-      duration: '60 mins',
-      tag: 'TRENDING'
+      _id: 's2',
+      title: 'Foam Jet AC Service',
+      rating: '4.89',
+      reviews: '35k reviews',
+      price: '₹799',
+      image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=600&auto=format&fit=crop'
     },
     {
-      id: 3,
-      title: 'Full Home Deep Cleaning 3BHK',
-      rating: '4.80 (6.1k)',
-      price: '₹4,499',
-      originalPrice: '₹5,999',
-      duration: '4 hrs',
-      tag: 'MOST POPULAR'
+      _id: 's3',
+      title: 'Classic Haircut (Men)',
+      rating: '4.84',
+      reviews: '18k reviews',
+      price: '₹249',
+      image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=600&auto=format&fit=crop'
     },
     {
-      id: 4,
-      title: 'Tap & Plumbing Leak Repair',
-      rating: '4.78 (12k)',
-      price: '₹299',
-      originalPrice: '₹499',
-      duration: '30 mins',
-      tag: 'EXPRESS'
-    },
+      _id: 's4',
+      title: 'Deep Bath & Toilet Cleaning',
+      rating: '4.85',
+      reviews: '30k reviews',
+      price: '₹399',
+      image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=600&auto=format&fit=crop'
+    }
   ];
 
+  const listToDisplay = popularServices && popularServices.length > 0
+    ? popularServices.slice(0, 4)
+    : fallbackServices;
+
   return (
-    <div style={{ marginBottom: '32px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-        <h3 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)' }}>
-          Recommended for You
-        </h3>
-        <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--accent-blue)', cursor: 'pointer' }}>
-          See All
-        </span>
+    <div style={{ marginBottom: '36px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+        <h2 style={{ fontSize: '1.3rem', fontWeight: '900', color: '#0f172a', margin: 0 }}>
+          Top Rated Services
+        </h2>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-        {services.map((service) => (
-          <div key={service.id} className="mui-card" style={{ padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span className="badge badge-purple" style={{ fontSize: '0.62rem', padding: '2px 6px' }}>
-                  {service.tag}
-                </span>
-                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                  <Star size={12} fill="#f59e0b" /> {service.rating}
-                </span>
-              </div>
+        {listToDisplay.map((service, idx) => {
+          const fallback = fallbackServices[idx % fallbackServices.length];
+          const title = service.name || service.title || fallback.title;
+          const priceVal = service.finalPrice ? `₹${service.finalPrice}` : (service.price ? (typeof service.price === 'number' ? `₹${service.price}` : service.price) : fallback.price);
+          const rating = service.rating || fallback.rating;
+          const reviews = service.reviews ? `${service.reviews}` : fallback.reviews;
+          const image = service.thumbnail || service.image || fallback.image;
 
-              <h4 style={{ fontSize: '0.95rem', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px' }}>
-                {service.title}
-              </h4>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '14px' }}>
-                <Clock size={12} /> {service.duration} • 30-Day Guarantee
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid var(--border-light)' }}>
+          return (
+            <div
+              key={service._id || idx}
+              style={{
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+                transition: 'all 0.2s ease'
+              }}
+            >
               <div>
-                <span style={{ fontSize: '1.05rem', fontWeight: '800', color: 'var(--text-primary)' }}>{service.price}</span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'line-through', marginLeft: '6px' }}>{service.originalPrice}</span>
+                <div style={{ height: '140px', width: '100%', overflow: 'hidden', background: '#f1f5f9' }}>
+                  <img
+                    src={image}
+                    alt={title}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                </div>
+
+                <div style={{ padding: '16px' }}>
+                  <h3 style={{ fontSize: '0.95rem', fontWeight: '800', color: '#0f172a', margin: '0 0 6px 0' }}>
+                    {title}
+                  </h3>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.76rem', color: '#64748b' }}>
+                    <Star size={13} fill="#f59e0b" color="#f59e0b" />
+                    <span style={{ fontWeight: '800', color: '#0f172a' }}>{rating}</span>
+                    <span>({reviews})</span>
+                  </div>
+                </div>
               </div>
-              <button className="btn btn-secondary btn-sm" style={{ borderColor: 'var(--accent-blue)', color: 'var(--accent-blue)', fontWeight: '800' }}>
-                <Plus size={14} /> Add
-              </button>
+
+              <div style={{
+                padding: '12px 16px',
+                borderTop: '1px solid #f1f5f9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block' }}>Starts at</span>
+                  <span style={{ fontSize: '1rem', fontWeight: '900', color: '#0f172a' }}>{priceVal}</span>
+                </div>
+
+                <button
+                  onClick={() => onBookService && onBookService({ ...service, title, price: priceVal })}
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    padding: '6px 16px',
+                    fontSize: '0.82rem',
+                    fontWeight: '800',
+                    color: '#0f172a',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Plus size={14} /> Add
+                </button>
+              </div>
+
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
