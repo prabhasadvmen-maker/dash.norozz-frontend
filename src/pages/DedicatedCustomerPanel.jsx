@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import DedicatedCustomerNavbar from '../components/customer/DedicatedCustomerNavbar';
 import FourItemBottomNav from '../components/customer/FourItemBottomNav';
 import HomeBannerSlider from '../components/customer/HomeBannerSlider';
@@ -90,19 +90,80 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
   const [isBookingFlowActive, setIsBookingFlowActive] = useState(false);
   const [selectedBookingService, setSelectedBookingService] = useState(null);
   const [detectingLocation, setDetectingLocation] = useState(false);
+  const hasAttemptedAutoDetectRef = useRef(false);
 
   const handleOpenServiceDetails = (service) => {
     setSelectedDetailService(service);
     setIsDetailModalOpen(true);
   };
 
-  const handleDetectLocation = async () => {
+  const handleDetectLocation = async (isManual = false) => {
+    if (detectingLocation) return;
+    setDetectingLocation(true);
+
+    const updateProfileWithDetails = async (formattedAddress, city, state, country, sourceMessage) => {
+      try {
+        const tokenToUse = localStorage.getItem('norozz_token');
+        await authService.updateCustomerProfile(
+          {
+            address: formattedAddress,
+            city: city,
+            state: state,
+            country: country,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${tokenToUse}`,
+            },
+          }
+        );
+
+        updateUser({
+          address: formattedAddress,
+          city: city,
+          state: state,
+          country: country,
+        });
+
+        if (isManual) {
+          toast.success(`📍 ${sourceMessage}: ${city}`);
+        }
+      } catch (err) {
+        console.error('Location Profile Update Error:', err);
+        if (isManual) {
+          toast.error('Failed to update address details.');
+        }
+      }
+    };
+
+    const tryIpFallback = async () => {
+      try {
+        const ipRes = await fetch('https://ipapi.co/json/').then((r) => r.json());
+        if (ipRes && (ipRes.city || ipRes.region || ipRes.latitude)) {
+          const city = ipRes.city || ipRes.region || 'Delhi NCR';
+          const state = ipRes.region || '';
+          const country = ipRes.country_name || 'India';
+          const formattedAddress = `${city}${state ? `, ${state}` : ''}, ${country}`;
+
+          await updateProfileWithDetails(formattedAddress, city, state, country, 'Location estimated via IP');
+          return true;
+        }
+      } catch (ipErr) {
+        console.warn('IP Geolocation fallback failed:', ipErr);
+      }
+      return false;
+    };
+
     if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser.');
+      if (isManual) {
+        toast.error('Geolocation is not supported by your browser.');
+      } else {
+        await tryIpFallback();
+      }
+      setDetectingLocation(false);
       return;
     }
 
-    setDetectingLocation(true);
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
@@ -118,51 +179,33 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
           const state = data?.address?.state || '';
           const country = data?.address?.country || 'India';
 
-          const tokenToUse = localStorage.getItem('norozz_token');
-
-          // Update backend profile
-          await authService.updateCustomerProfile(
-            {
-              address: formattedAddress,
-              city: city,
-              state: state,
-              country: country,
-            },
-            {
-              headers: {
-                Authorization: `Bearer ${tokenToUse}`,
-              },
-            }
-          );
-
-          // Update React AuthContext state
-          updateUser({
-            address: formattedAddress,
-            city: city,
-            state: state,
-            country: country,
-          });
-
-          toast.success(`📍 Location saved to profile: ${city}`);
+          await updateProfileWithDetails(formattedAddress, city, state, country, 'Location saved to profile');
         } catch (err) {
           console.error('Location Reverse Geocoding Error:', err);
-          toast.error('Failed to resolve address details.');
+          const ipSuccess = await tryIpFallback();
+          if (!ipSuccess && isManual) {
+            toast.error('Failed to resolve address details.');
+          }
         } finally {
           setDetectingLocation(false);
         }
       },
-      (err) => {
+      async (err) => {
         console.warn('Geolocation Permission Error/Denied:', err);
-        toast.error('Please allow location access to auto-detect your address.');
+        const ipSuccess = await tryIpFallback();
+        if (!ipSuccess && isManual) {
+          toast.error('Please allow location access to auto-detect your address.');
+        }
         setDetectingLocation(false);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 8000 }
     );
   };
 
   useEffect(() => {
-    if (activeTab === 'home' && (!currentUser?.address || currentUser.address.includes('Vasant Kunj'))) {
-      handleDetectLocation();
+    if (activeTab === 'home' && !hasAttemptedAutoDetectRef.current && (!currentUser?.address || currentUser.address.includes('Vasant Kunj'))) {
+      hasAttemptedAutoDetectRef.current = true;
+      handleDetectLocation(false);
     }
   }, [activeTab]);
 
@@ -273,7 +316,7 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
               </div>
               <button
                 type="button"
-                onClick={handleDetectLocation}
+                onClick={() => handleDetectLocation(true)}
                 disabled={detectingLocation}
                 className="badge badge-purple"
                 style={{
