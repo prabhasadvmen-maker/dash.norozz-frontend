@@ -87,6 +87,25 @@ const CustomerProfileView = ({ currentUser, onLogout, onNavigateTab }) => {
     }
   }, [viewMode]);
 
+  // Live Wallet Data State
+  const [walletData, setWalletData] = useState(null);
+
+  useEffect(() => {
+    if (viewMode === 'wallet') {
+      const fetchWalletInfo = async () => {
+        try {
+          const res = await customerService.getWallet();
+          if (res.data?.data) {
+            setWalletData(res.data.data);
+          }
+        } catch (err) {
+          console.warn('Wallet data load error:', err);
+        }
+      };
+      fetchWalletInfo();
+    }
+  }, [viewMode]);
+
   // Bookings State for embedded My Booking view
   const [bookingsList, setBookingsList] = useState([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
@@ -1375,24 +1394,31 @@ const CustomerProfileView = ({ currentUser, onLogout, onNavigateTab }) => {
         <div style={{ padding: '24px 20px' }}>
           <div style={{ padding: '20px', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', borderRadius: '20px', color: '#ffffff', marginBottom: '20px', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)' }}>
             <div style={{ fontSize: '0.78rem', fontWeight: '800', opacity: 0.9 }}>AVAILABLE WALLET BALANCE</div>
-            <div style={{ fontSize: '2rem', fontWeight: '800', margin: '4px 0' }}>₹450.00</div>
+            <div style={{ fontSize: '2rem', fontWeight: '800', margin: '4px 0' }}>
+              ₹{(walletData?.balance ?? userData?.walletBalance ?? currentUser?.walletBalance ?? 0).toFixed(2)}
+            </div>
             <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>100% usable on any home service booking</div>
           </div>
 
           <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '12px' }}>RECENT TRANSACTIONS</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {[
-              { title: 'Referral Cashback Credit', amount: '+₹200', date: 'Yesterday', type: 'credit' },
-              { title: 'AC Cleaning Cashback', amount: '+₹250', date: '25 Aug 2026', type: 'credit' }
-            ].map((t, idx) => (
-              <div key={idx} style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.04)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: '700', fontSize: '0.88rem', color: '#ffffff' }}>{t.title}</div>
-                  <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{t.date}</div>
+            {(walletData?.transactions && walletData.transactions.length > 0) ? (
+              walletData.transactions.map((t, idx) => (
+                <div key={idx} style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.04)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontWeight: '700', fontSize: '0.88rem', color: '#ffffff' }}>{t.title || t.desc || 'Wallet Activity'}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>{t.date || 'Recent'}</div>
+                  </div>
+                  <span style={{ fontWeight: '800', color: t.type === 'Debit' ? '#ef4444' : '#34d399', fontSize: '0.95rem' }}>
+                    {t.type === 'Debit' ? '-' : '+'}₹{t.amount}
+                  </span>
                 </div>
-                <span style={{ fontWeight: '800', color: '#34d399', fontSize: '0.95rem' }}>{t.amount}</span>
+              ))
+            ) : (
+              <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '0.84rem' }}>
+                No wallet transactions yet.
               </div>
-            ))}
+            )}
           </div>
         </div>
       )}

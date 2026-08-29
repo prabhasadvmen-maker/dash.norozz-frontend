@@ -5,11 +5,8 @@ import { usePartner } from '../../hooks/usePartner.js';
 const PartnerWalletCard = () => {
   const { wallet } = usePartner('wallet');
 
-  const balance = wallet?.balance || 18450;
-  const transactions = wallet?.recentTransactions || [
-    { id: 'TXN-9021', type: 'Credit', desc: 'Job Settlement', date: 'Today, 02:30 PM', amount: '+₹3,999' },
-    { id: 'TXN-9020', type: 'Debit', desc: 'Bank Payout to HDFC Bank', date: 'Yesterday, 06:00 PM', amount: '-₹12,500' },
-  ];
+  const balance = wallet?.walletBalance ?? wallet?.balance ?? wallet?.availableBalance ?? 0;
+  const transactions = wallet?.transactions || wallet?.recentTransactions || [];
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px', marginBottom: '28px' }}>

@@ -234,7 +234,7 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
     );
   }
 
-  const walletBalance = dashboard?.wallet?.balance || 450;
+  const walletBalance = dashboard?.walletBalance ?? dashboard?.wallet?.balance ?? currentUser?.walletBalance ?? 0;
 
   return (
     <div style={{ minHeight: 'calc(100vh - 60px)', background: 'var(--bg-primary)', paddingBottom: '90px' }}>

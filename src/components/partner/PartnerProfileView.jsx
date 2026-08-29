@@ -381,7 +381,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
     if (!amt || amt <= 0) {
       return toast.error('Please enter a valid withdrawal amount');
     }
-    const currentBal = walletData?.walletBalance ?? user.walletBalance ?? 12450;
+    const currentBal = walletData?.walletBalance ?? user.walletBalance ?? 0;
     if (amt > currentBal) {
       return toast.error(`Insufficient balance. Available: ₹${currentBal.toLocaleString('en-IN')}`);
     }
@@ -1535,7 +1535,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                   <span style={{ background: 'rgba(255,255,255,0.25)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.72rem' }}>+15.4%</span>
                 </div>
                 <div style={{ fontSize: '2.8rem', fontWeight: '900', marginTop: '8px', letterSpacing: '-1px' }}>
-                  ₹{(walletData?.walletBalance ?? user.walletBalance ?? 12450).toLocaleString('en-IN')}.00
+                  ₹{(walletData?.walletBalance ?? user.walletBalance ?? 0).toLocaleString('en-IN')}.00
                 </div>
                 <div style={{ fontSize: '0.84rem', opacity: 0.9, marginTop: '4px' }}>
                   Auto-settlement linked to {walletData?.bankDetails?.bankName || 'HDFC Bank'} (•••• {walletData?.bankDetails?.accountNumber ? walletData.bankDetails.accountNumber.slice(-4) : '4920'})
@@ -3015,7 +3015,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
               <div style={{ background: '#f0fdf4', padding: '16px', borderRadius: '16px', border: '1px solid #bbf7d0' }}>
                 <div style={{ fontSize: '0.76rem', color: '#166534', fontWeight: '700', textTransform: 'uppercase' }}>Available Wallet Balance</div>
                 <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>
-                  ₹{(walletData?.walletBalance ?? user.walletBalance ?? 12450).toLocaleString('en-IN')}.00
+                  ₹{(walletData?.walletBalance ?? user.walletBalance ?? 0).toLocaleString('en-IN')}.00
                 </div>
               </div>
 
@@ -3029,7 +3029,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                   min="1"
-                  max={walletData?.walletBalance ?? user.walletBalance ?? 12450}
+                  max={walletData?.walletBalance ?? user.walletBalance ?? 0}
                   required
                   style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '1rem', fontWeight: '800', outline: 'none' }}
                 />

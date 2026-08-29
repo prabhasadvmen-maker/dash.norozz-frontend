@@ -13,9 +13,9 @@ import { usePartner } from '../../hooks/usePartner.js';
 const PartnerMetricCards = () => {
   const { dashboard, todayBookings, wallet, isLoading } = usePartner('dashboard');
 
-  const todayEarnings = dashboard?.metrics?.todayEarnings || wallet?.todayEarnings || 2450;
-  const bookingsCount = dashboard?.todayBookingsCount || todayBookings.length || 5;
-  const rating = dashboard?.metrics?.rating || dashboard?.rating || 4.8;
+  const todayEarnings = dashboard?.metrics?.todayEarnings ?? wallet?.todayEarnings ?? 0;
+  const bookingsCount = dashboard?.todayBookingsCount ?? todayBookings?.length ?? 0;
+  const rating = dashboard?.metrics?.rating ?? dashboard?.rating ?? 5.0;
 
   const cards = [
     {
