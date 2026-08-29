@@ -1,15 +1,29 @@
-import React, { useState } from 'react';
-import SuperAdminLoginPage from './pages/SuperAdminLoginPage';
-import CityAdminLoginPage from './pages/CityAdminLoginPage';
-import PartnerAuthPage from './pages/PartnerAuthPage';
-import PartnerOnboardingPage from './pages/PartnerOnboardingPage';
-import CustomerAuthPage from './pages/CustomerAuthPage';
-import SuperAdminPanel from './pages/SuperAdminPanel';
-import CityAdminPanel from './pages/CityAdminPanel';
-import DedicatedPartnerPanel from './pages/DedicatedPartnerPanel';
-import DedicatedCustomerPanel from './pages/DedicatedCustomerPanel';
+import React, { useState, lazy, Suspense } from 'react';
 import { useAuthContext } from './contexts/AuthContext.jsx';
 import { ProtectedRoute } from './components/ProtectedRoutes.jsx';
+
+const SuperAdminLoginPage = lazy(() => import('./pages/SuperAdminLoginPage'));
+const CityAdminLoginPage = lazy(() => import('./pages/CityAdminLoginPage'));
+const PartnerAuthPage = lazy(() => import('./pages/PartnerAuthPage'));
+const PartnerOnboardingPage = lazy(() => import('./pages/PartnerOnboardingPage'));
+const CustomerAuthPage = lazy(() => import('./pages/CustomerAuthPage'));
+const SuperAdminPanel = lazy(() => import('./pages/SuperAdminPanel'));
+const CityAdminPanel = lazy(() => import('./pages/CityAdminPanel'));
+const DedicatedPartnerPanel = lazy(() => import('./pages/DedicatedPartnerPanel'));
+const DedicatedCustomerPanel = lazy(() => import('./pages/DedicatedCustomerPanel'));
+
+const PageFallback = () => (
+  <div style={{
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'var(--text-secondary)',
+    fontWeight: 600
+  }}>
+    Loading NOROZZ...
+  </div>
+);
 
 function App() {
   const { currentUser, logout, loading, role } = useAuthContext();
@@ -17,17 +31,7 @@ function App() {
   const [skipOnboarding, setSkipOnboarding] = useState(false);
 
   if (loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: 'var(--text-secondary)'
-      }}>
-        Connecting NOROZZ Platform...
-      </div>
-    );
+    return <PageFallback />;
   }
 
   // If user is authenticated, route into Protected Role View
@@ -37,14 +41,18 @@ function App() {
     if (userRole === 'superadmin') {
       return (
         <ProtectedRoute allowedRoles={['superadmin']}>
-          <SuperAdminPanel currentUser={currentUser} onLogout={logout} />
+          <Suspense fallback={<PageFallback />}>
+            <SuperAdminPanel currentUser={currentUser} onLogout={logout} />
+          </Suspense>
         </ProtectedRoute>
       );
     }
     if (userRole === 'admin' || userRole === 'cityAdmin') {
       return (
         <ProtectedRoute allowedRoles={['admin', 'cityAdmin']}>
-          <CityAdminPanel currentUser={currentUser} onLogout={logout} />
+          <Suspense fallback={<PageFallback />}>
+            <CityAdminPanel currentUser={currentUser} onLogout={logout} />
+          </Suspense>
         </ProtectedRoute>
       );
     }
@@ -54,31 +62,37 @@ function App() {
       if (!isKycDone && !skipOnboarding) {
         return (
           <ProtectedRoute allowedRoles={['partner']}>
-            <PartnerOnboardingPage
-              currentUser={currentUser}
-              onLogout={logout}
-              onFinishOnboarding={() => setSkipOnboarding(true)}
-            />
+            <Suspense fallback={<PageFallback />}>
+              <PartnerOnboardingPage
+                currentUser={currentUser}
+                onLogout={logout}
+                onFinishOnboarding={() => setSkipOnboarding(true)}
+              />
+            </Suspense>
           </ProtectedRoute>
         );
       }
 
       return (
         <ProtectedRoute allowedRoles={['partner']}>
-          <DedicatedPartnerPanel currentUser={currentUser} onLogout={logout} />
+          <Suspense fallback={<PageFallback />}>
+            <DedicatedPartnerPanel currentUser={currentUser} onLogout={logout} />
+          </Suspense>
         </ProtectedRoute>
       );
     }
     return (
       <ProtectedRoute allowedRoles={['customer']}>
-        <DedicatedCustomerPanel currentUser={currentUser} onLogout={logout} />
+        <Suspense fallback={<PageFallback />}>
+          <DedicatedCustomerPanel currentUser={currentUser} onLogout={logout} />
+        </Suspense>
       </ProtectedRoute>
     );
   }
 
   // If not authenticated, render Login Page with portal switcher header
   return (
-    <>
+    <Suspense fallback={<PageFallback />}>
       <div className="bg-glow-1"></div>
       <div className="bg-glow-2"></div>
 
@@ -118,7 +132,7 @@ function App() {
       ) : (
         <SuperAdminLoginPage />
       )}
-    </>
+    </Suspense>
   );
 }
 
