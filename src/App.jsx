@@ -57,7 +57,27 @@ function App() {
       );
     }
     if (userRole === 'partner') {
-      const isKycDone = (currentUser.isKycSubmitted === true && (currentUser.isWorkingHoursSet === true || currentUser.workingHours?.length > 0)) || currentUser.kycStatus === 'approved';
+      const hasCompletedProfile = Boolean(
+        currentUser.name &&
+        currentUser.name.trim() !== '' &&
+        !currentUser.name.startsWith('Partner ') &&
+        currentUser.email &&
+        currentUser.email.trim() !== '' &&
+        !currentUser.email.endsWith('@norozz.com')
+      );
+
+      if (!hasCompletedProfile) {
+        return (
+          <Suspense fallback={<PageFallback />}>
+            <PartnerAuthPage initialStep="create-profile" />
+          </Suspense>
+        );
+      }
+
+      const isKycDone = Boolean(
+        (currentUser.isKycSubmitted === true || currentUser.kycStatus === 'approved') &&
+        (currentUser.isDocumentsUploaded === true || (currentUser.documents?.aadhaarFront && currentUser.documents?.aadhaarBack))
+      );
 
       if (!isKycDone && !skipOnboarding) {
         return (

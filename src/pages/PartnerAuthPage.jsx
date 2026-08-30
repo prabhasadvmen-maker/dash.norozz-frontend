@@ -62,7 +62,7 @@ const LOCALITIES_BY_CITY = {
   'Jaipur': ['Malviya Nagar', 'C Scheme', 'Vaishali Nagar', 'Mansarovar', 'Raja Park'],
 };
 
-const PartnerAuthPage = () => {
+const PartnerAuthPage = ({ initialStep = 'phone' }) => {
   const {
     requestPartnerOtp,
     verifyPartnerOtp,
@@ -76,7 +76,7 @@ const PartnerAuthPage = () => {
   // Active Flow Step:
   // 'phone' | 'otp' | 'create-profile' | 'location-perm' | 'location-popup'
   // 'kyc-docs-list' | 'kyc-doc-upload' | 'kyc-categories' | 'kyc-skills' | 'kyc-service-area' | 'kyc-working-hours' | 'approval-pending' | 'email-login'
-  const [step, setStep] = useState('phone');
+  const [step, setStep] = useState(initialStep);
 
   // Step 1: Phone input
   const [phone, setPhone] = useState('');

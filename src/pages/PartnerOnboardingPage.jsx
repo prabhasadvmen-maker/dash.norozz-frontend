@@ -185,8 +185,15 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
 
     return () => {
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
+        try {
+          mapInstanceRef.current.off();
+          mapInstanceRef.current.remove();
+        } catch (e) {
+          console.warn('Map cleanup error:', e);
+        }
         mapInstanceRef.current = null;
+        circleInstanceRef.current = null;
+        markerInstanceRef.current = null;
       }
     };
   }, [city]);
@@ -197,14 +204,17 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
       const cLat = Number(coords.lat);
       const cLng = Number(coords.lng);
       try {
-        mapInstanceRef.current.invalidateSize();
-        mapInstanceRef.current.setView([cLat, cLng], 13);
-        if (markerInstanceRef.current) {
-          markerInstanceRef.current.setLatLng([cLat, cLng]);
-          markerInstanceRef.current.bindPopup(`<b>Selected Position</b><br>Lat: ${cLat.toFixed(4)}, Lng: ${cLng.toFixed(4)}`);
-        }
-        if (circleInstanceRef.current) {
-          circleInstanceRef.current.setLatLng([cLat, cLng]);
+        const map = mapInstanceRef.current;
+        if (map && map._container) {
+          map.invalidateSize();
+          map.setView([cLat, cLng], 13);
+          if (markerInstanceRef.current) {
+            markerInstanceRef.current.setLatLng([cLat, cLng]);
+            markerInstanceRef.current.bindPopup(`<b>Selected Position</b><br>Lat: ${cLat.toFixed(4)}, Lng: ${cLng.toFixed(4)}`);
+          }
+          if (circleInstanceRef.current) {
+            circleInstanceRef.current.setLatLng([cLat, cLng]);
+          }
         }
       } catch (err) {
         console.warn('Map update warning:', err);
@@ -215,13 +225,13 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
   // Update dynamic circle radius in real-time when slider moves
   useEffect(() => {
     if (circleInstanceRef.current) {
-      circleInstanceRef.current.setRadius(radiusKm * 1000);
-      if (mapInstanceRef.current) {
-        try {
+      try {
+        circleInstanceRef.current.setRadius(radiusKm * 1000);
+        if (mapInstanceRef.current && mapInstanceRef.current._container) {
           mapInstanceRef.current.fitBounds(circleInstanceRef.current.getBounds(), { padding: [20, 20] });
-        } catch {
-          // ignore map fitBounds exception if unmounted
         }
+      } catch {
+        // ignore map fitBounds exception if unmounted
       }
     }
   }, [radiusKm]);
@@ -785,6 +795,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
         const ipRes = await fetch('https://ipapi.co/json/').then((r) => r.json());
         if (ipRes && ipRes.latitude && ipRes.longitude) {
           await handleLocationSuccess(Number(ipRes.latitude), Number(ipRes.longitude), 'IP Geolocation');
+          setSuccessMsg('📍 Location estimated via IP. Tap map to pin your exact location manually, or allow GPS in browser.');
           return;
         }
       } catch (ipErr) {
@@ -794,6 +805,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
       // Fallback Tier 2: Use Selected Work City Default Coordinates
       const defaultCoords = CITY_COORDINATES[workCity] || CITY_COORDINATES['Delhi NCR'] || { lat: 28.6139, lng: 77.2090 };
       await handleLocationSuccess(defaultCoords.lat, defaultCoords.lng, 'City Center');
+      setSuccessMsg('📍 Default city center set. Tap map to pin your exact location manually.');
     };
 
     // Safety Timeout: 8 seconds for watchPosition to lock on

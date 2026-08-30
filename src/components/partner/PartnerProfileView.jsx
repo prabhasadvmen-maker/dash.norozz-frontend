@@ -855,19 +855,19 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
                   <span style={{ color: '#64748b', fontSize: '0.86rem', fontWeight: '600' }}>Full Name</span>
-                  <span style={{ color: '#0f172a', fontSize: '0.88rem', fontWeight: '700' }}>{user.name || 'monu'}</span>
+                  <span style={{ color: '#0f172a', fontSize: '0.88rem', fontWeight: '700' }}>{user.name || 'Technician Partner'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
                   <span style={{ color: '#64748b', fontSize: '0.86rem', fontWeight: '600' }}>Mobile Phone</span>
-                  <span style={{ color: '#0f172a', fontSize: '0.88rem', fontWeight: '700' }}>{user.phone || '8726600653'}</span>
+                  <span style={{ color: '#0f172a', fontSize: '0.88rem', fontWeight: '700' }}>{user.phone || 'N/A'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
                   <span style={{ color: '#64748b', fontSize: '0.86rem', fontWeight: '600' }}>Email Address</span>
-                  <span style={{ color: '#0f172a', fontSize: '0.88rem', fontWeight: '700' }}>{user.email || 'monu4@gmail.com'}</span>
+                  <span style={{ color: '#0f172a', fontSize: '0.88rem', fontWeight: '700' }}>{user.email || 'N/A'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
                   <span style={{ color: '#64748b', fontSize: '0.86rem', fontWeight: '600' }}>Date of Birth</span>
-                  <span style={{ color: '#0f172a', fontSize: '0.88rem', fontWeight: '700' }}>{user.dob || '1995-08-15'}</span>
+                  <span style={{ color: '#0f172a', fontSize: '0.88rem', fontWeight: '700' }}>{user.dob || 'N/A'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
                   <span style={{ color: '#64748b', fontSize: '0.86rem', fontWeight: '600' }}>Gender</span>
