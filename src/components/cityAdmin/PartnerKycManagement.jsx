@@ -79,42 +79,49 @@ const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
   }
 
   return (
-    <div className="mui-card" style={{ padding: '26px' }}>
+    <div style={{
+      background: '#ffffff',
+      border: '1px solid #e2e8f0',
+      borderRadius: '20px',
+      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
+      padding: '26px'
+    }}>
       
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
         <div>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <ShieldCheck size={22} color="#2563eb" /> Partner KYC & Onboarding Approvals ({assignedCity})
           </h3>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+          <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '2px' }}>
             Click any partner row to open full-page compliance inspection, view profile details, approve or reject applications.
           </p>
         </div>
       </div>
 
       {/* Table */}
-      <div style={{ overflowX: 'auto' }}>
+      <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-              <th style={{ padding: '12px 14px' }}>TECHNICIAN & NAME</th>
-              <th style={{ padding: '12px 14px' }}>SKILL CATEGORY</th>
-              <th style={{ padding: '12px 14px' }}>CONTACT</th>
-              <th style={{ padding: '12px 14px' }}>SUBMITTED DOCUMENTS</th>
-              <th style={{ padding: '12px 14px' }}>KYC STATUS</th>
-              <th style={{ padding: '12px 14px' }}>ACTIONS</th>
+            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+              <th style={{ padding: '14px 16px', fontWeight: '800', textAlign: 'center', width: '50px' }}>SR NO.</th>
+              <th style={{ padding: '14px 16px', fontWeight: '800' }}>TECHNICIAN & NAME</th>
+              <th style={{ padding: '14px 16px', fontWeight: '800' }}>SKILL CATEGORY</th>
+              <th style={{ padding: '14px 16px', fontWeight: '800' }}>CONTACT</th>
+              <th style={{ padding: '14px 16px', fontWeight: '800' }}>SUBMITTED DOCUMENTS</th>
+              <th style={{ padding: '14px 16px', fontWeight: '800' }}>KYC STATUS</th>
+              <th style={{ padding: '14px 16px', fontWeight: '800' }}>ACTIONS</th>
             </tr>
           </thead>
           <tbody>
             {partners.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>
                   No service partners registered in {assignedCity} yet.
                 </td>
               </tr>
             ) : (
-              partners.map((p) => {
+              partners.map((p, idx) => {
                 const status = p.kycStatus || 'pending';
                 const isSuspended = p.status === 'suspended' || p.status === 'blocked';
                 return (
@@ -122,25 +129,29 @@ const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
                     key={p._id}
                     onClick={() => handleOpenDocVerify(p)}
                     style={{
-                      borderBottom: '1px solid var(--border-light)',
+                      borderBottom: '1px solid #f1f5f9',
                       cursor: 'pointer',
+                      background: '#ffffff',
                       transition: 'background-color 0.15s ease',
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
                   >
-                    <td style={{ padding: '14px' }}>
+                    <td style={{ padding: '14px 16px', fontWeight: '700', color: '#64748b', fontSize: '0.82rem', textAlign: 'center' }}>
+                      {idx + 1}
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
                       <div style={{ fontWeight: '800', fontSize: '0.9rem', color: '#2563eb', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         {p.name} <Eye size={13} color="#94a3b8" />
                       </div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Display: {p.agencyName || `${p.name} (${getDisplayCategory(p)})`}</div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '600' }}>Display: {p.agencyName || `${p.name} (${getDisplayCategory(p)})`}</div>
                     </td>
-                    <td style={{ padding: '14px', fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                    <td style={{ padding: '14px 16px', fontSize: '0.85rem', fontWeight: '800', color: '#0f172a' }}>
                       {getDisplayCategory(p)}
                     </td>
-                    <td style={{ padding: '14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                      <div>{p.phone || '+91 98765 43210'}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.email}</div>
+                    <td style={{ padding: '14px 16px', fontSize: '0.82rem', color: '#334155', fontWeight: '600' }}>
+                      <div style={{ color: '#0f172a', fontWeight: '700' }}>{p.phone || '+91 98765 43210'}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{p.email}</div>
                     </td>
                     <td style={{ padding: '14px' }}>
                       <button

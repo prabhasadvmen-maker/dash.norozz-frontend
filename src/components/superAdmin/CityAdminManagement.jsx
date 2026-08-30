@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, Plus, KeyRound, MapPin, Power, Search, Edit3, LogIn, Loader2 } from 'lucide-react';
+import { Building2, Plus, KeyRound, MapPin, Power, Search, Edit3, LogIn, Loader2, Settings } from 'lucide-react';
 import CityAdminModal from './CityAdminModal';
 import { useSuperAdmin } from '../../hooks/useSuperAdmin.js';
 import { cityService } from '../../services/city.service.js';
@@ -8,13 +8,14 @@ import { toast } from '../../utils/toast.js';
 
 const CityAdminManagement = () => {
   const { cityAdmins, createCityAdmin, updateCityAdminStatus, impersonateCityAdmin } = useSuperAdmin();
-  const { login } = useAuthContext();
+  const { login, loginNewTab } = useAuthContext();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' | 'edit' | 'resetPassword'
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [citiesMap, setCitiesMap] = useState({});
   const [loggingInId, setLoggingInId] = useState(null);
+  const [activeDropdownId, setActiveDropdownId] = useState(null);
 
   useEffect(() => {
     cityService
@@ -30,6 +31,13 @@ const CityAdminManagement = () => {
         }
       })
       .catch((err) => console.warn('City map fetch warning:', err));
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = () => setActiveDropdownId(null);
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
   }, []);
 
   const getCityName = (admin) => {
@@ -88,8 +96,12 @@ const CityAdminManagement = () => {
       const token = responseData?.accessToken || responseData?.token || res?.accessToken;
 
       if (targetUser && token) {
-        toast.success(`🔐 Logged in directly as City Admin (${targetUser.name || admin.name})!`);
-        login(targetUser, token);
+        toast.success(`🚀 Opening City Admin Portal for (${targetUser.name || admin.name}) in a NEW TAB!`);
+        if (loginNewTab) {
+          loginNewTab(targetUser, token);
+        } else {
+          login(targetUser, token);
+        }
       } else {
         toast.error('Impersonation token missing from server response');
       }
@@ -108,34 +120,70 @@ const CityAdminManagement = () => {
   };
 
   return (
-    <div className="mui-card" style={{ padding: '26px' }}>
+    <div style={{
+      background: '#ffffff',
+      borderRadius: '20px',
+      padding: '26px',
+      border: '1px solid #f0f0f0',
+      boxShadow: '0 8px 26px rgba(0, 0, 0, 0.03)'
+    }}>
       
       {/* Header Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
-        <div>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Building2 size={22} color="#7c3aed" /> City Admins & Operational Coverage
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px', gap: '16px', flexWrap: 'nowrap' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Building2 size={22} color="#10b981" /> City Admins & Operational Coverage
           </h3>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+          <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '4px', fontWeight: '500', lineHeight: '1.4' }}>
             Create City Admins, assign operational cities, reset passwords, and manage access rights
           </p>
         </div>
 
-        <button onClick={handleOpenCreate} className="btn btn-primary">
-          <Plus size={16} /> Create City Admin
+        <button
+          onClick={handleOpenCreate}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '10px 20px',
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '12px',
+            fontWeight: '700',
+            fontSize: '0.88rem',
+            cursor: 'pointer',
+            boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+            transition: 'all 0.2s ease',
+            whiteSpace: 'nowrap',
+            flexShrink: 0
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
+        >
+          <Plus size={18} /> Create City Admin
         </button>
       </div>
 
       {/* Search Input */}
-      <div style={{ position: 'relative', width: '300px', marginBottom: '20px' }}>
-        <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+      <div style={{ position: 'relative', width: '320px', marginBottom: '20px' }}>
+        <Search size={16} color="#64748b" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
         <input
           type="text"
-          className="form-input"
           placeholder="Filter by admin name or city..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          style={{ paddingLeft: '36px', fontSize: '0.85rem' }}
+          style={{
+            width: '100%',
+            padding: '10px 14px 10px 38px',
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: '10px',
+            fontSize: '0.86rem',
+            outline: 'none',
+            color: '#0f172a',
+            fontWeight: '600'
+          }}
         />
       </div>
 
@@ -143,18 +191,19 @@ const CityAdminManagement = () => {
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-              <th style={{ padding: '12px 14px' }}>ADMIN NAME</th>
+            <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #e2e8f0', color: '#475569', fontSize: '0.78rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <th style={{ padding: '12px 14px', borderRadius: '8px 0 0 8px' }}>ADMIN NAME</th>
               <th style={{ padding: '12px 14px' }}>OFFICIAL EMAIL</th>
               <th style={{ padding: '12px 14px' }}>ASSIGNED CITY</th>
               <th style={{ padding: '12px 14px' }}>STATUS</th>
-              <th style={{ padding: '12px 14px' }}>ACTIONS</th>
+              <th style={{ padding: '12px 14px' }}>PORTAL ACCESS</th>
+              <th style={{ padding: '12px 14px', borderRadius: '0 8px 8px 0', textAlign: 'center' }}>ACTIONS</th>
             </tr>
           </thead>
           <tbody>
             {filteredAdmins.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontWeight: '600' }}>
                   No City Admins found. Click 'Create City Admin' to add one.
                 </td>
               </tr>
@@ -162,15 +211,15 @@ const CityAdminManagement = () => {
               filteredAdmins.map((admin) => {
                 const isActive = admin.status === 'active';
                 return (
-                  <tr key={admin._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                    <td style={{ padding: '14px', fontWeight: '800', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                  <tr key={admin._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '14px', fontWeight: '800', fontSize: '0.92rem', color: '#0f172a' }}>
                       {admin.name}
                     </td>
-                    <td style={{ padding: '14px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    <td style={{ padding: '14px', fontSize: '0.86rem', fontWeight: '600', color: '#475569' }}>
                       {admin.email}
                     </td>
                     <td style={{ padding: '14px' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ fontSize: '0.86rem', fontWeight: '700', color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                         <MapPin size={14} color="#2563eb" /> {getCityName(admin)}
                       </span>
                     </td>
@@ -179,59 +228,171 @@ const CityAdminManagement = () => {
                         {isActive ? 'ACTIVE' : 'DISABLED'}
                       </span>
                     </td>
+
+                    {/* Dedicated PORTAL ACCESS Column */}
                     <td style={{ padding: '14px' }}>
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => handleDirectLogin(admin)}
+                        disabled={loggingInId === admin._id || !isActive}
+                        style={{
+                          background: isActive ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#cbd5e1',
+                          color: '#ffffff',
+                          fontWeight: '800',
+                          borderRadius: '8px',
+                          border: 'none',
+                          padding: '6px 14px',
+                          boxShadow: isActive ? '0 2px 8px rgba(16, 185, 129, 0.35)' : 'none',
+                          cursor: isActive ? 'pointer' : 'not-allowed',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '0.82rem'
+                        }}
+                        title={isActive ? `Directly login into ${admin.name}'s City Admin portal` : 'Cannot login to disabled admin'}
+                      >
+                        {loggingInId === admin._id ? (
+                          <Loader2 size={14} className="spin" />
+                        ) : (
+                          <LogIn size={14} />
+                        )}
+                        Login
+                      </button>
+                    </td>
+
+                    {/* Dedicated ACTIONS Column (Only Gear Icon) */}
+                    <td style={{ padding: '14px', textAlign: 'center' }}>
+                      <div style={{ position: 'relative', display: 'inline-block' }} onClick={(e) => e.stopPropagation()}>
                         <button
-                          onClick={() => handleDirectLogin(admin)}
-                          disabled={loggingInId === admin._id || !isActive}
-                          className="btn btn-sm"
+                          onClick={() => setActiveDropdownId(activeDropdownId === admin._id ? null : admin._id)}
                           style={{
-                            background: isActive ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#cbd5e1',
-                            color: '#ffffff',
-                            fontWeight: '800',
-                            borderRadius: '8px',
-                            border: 'none',
-                            padding: '6px 12px',
-                            boxShadow: isActive ? '0 2px 8px rgba(16, 185, 129, 0.35)' : 'none',
-                            cursor: isActive ? 'pointer' : 'not-allowed',
-                            display: 'inline-flex',
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '10px',
+                            background: activeDropdownId === admin._id ? '#e2e8f0' : '#f1f5f9',
+                            border: '1px solid #cbd5e1',
+                            display: 'flex',
                             alignItems: 'center',
-                            gap: '4px',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            color: '#334155'
                           }}
-                          title={isActive ? `Directly login into ${admin.name}'s City Admin portal` : 'Cannot login to disabled admin'}
+                          title="City Admin Actions"
                         >
-                          {loggingInId === admin._id ? (
-                            <Loader2 size={14} className="spin" />
-                          ) : (
-                            <LogIn size={14} />
-                          )}
-                          Login
+                          <Settings size={18} />
                         </button>
 
-                        <button
-                          onClick={() => handleOpenEdit(admin)}
-                          className="btn btn-secondary btn-sm"
-                          title="Assign City & Edit"
-                        >
-                          <Edit3 size={14} color="#2563eb" /> Assign City
-                        </button>
-                        
-                        <button
-                          onClick={() => handleOpenResetPassword(admin)}
-                          className="btn btn-secondary btn-sm"
-                          title="Reset Admin Password"
-                        >
-                          <KeyRound size={14} color="#7c3aed" /> Reset Pass
-                        </button>
+                          {activeDropdownId === admin._id && (
+                            <div style={{
+                              position: 'absolute',
+                              right: 0,
+                              top: '42px',
+                              background: '#ffffff',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '12px',
+                              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.12)',
+                              padding: '6px',
+                              zIndex: 50,
+                              minWidth: '190px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '4px'
+                            }}>
+                              <button
+                                onClick={() => { setActiveDropdownId(null); handleDirectLogin(admin); }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  padding: '8px 12px',
+                                  fontSize: '0.82rem',
+                                  fontWeight: '700',
+                                  color: '#059669',
+                                  background: 'transparent',
+                                  border: 'none',
+                                  borderRadius: '8px',
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                  width: '100%'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#ecfdf5'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <LogIn size={15} color="#059669" /> Login as City Admin
+                              </button>
 
-                        <button
-                          onClick={() => handleToggleStatus(admin)}
-                          className={`btn btn-sm ${isActive ? 'btn-danger' : 'btn-primary'}`}
-                          title={isActive ? 'Disable Admin' : 'Enable Admin'}
-                          style={{ padding: '6px 10px' }}
-                        >
-                          <Power size={14} /> {isActive ? 'Disable' : 'Enable'}
-                        </button>
+                              <button
+                                onClick={() => { setActiveDropdownId(null); handleOpenEdit(admin); }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  padding: '8px 12px',
+                                  fontSize: '0.82rem',
+                                  fontWeight: '700',
+                                  color: '#2563eb',
+                                  background: 'transparent',
+                                  border: 'none',
+                                  borderRadius: '8px',
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                  width: '100%'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#eff6ff'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <Edit3 size={15} color="#2563eb" /> Assign City & Edit
+                              </button>
+
+                            <button
+                              onClick={() => { setActiveDropdownId(null); handleOpenResetPassword(admin); }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '8px 12px',
+                                fontSize: '0.82rem',
+                                fontWeight: '700',
+                                color: '#7c3aed',
+                                background: 'transparent',
+                                border: 'none',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                width: '100%'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#f5f3ff'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <KeyRound size={15} color="#7c3aed" /> Reset Password
+                            </button>
+
+                            <div style={{ height: '1px', background: '#f1f5f9', margin: '2px 0' }} />
+
+                            <button
+                              onClick={() => { setActiveDropdownId(null); handleToggleStatus(admin); }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '8px 12px',
+                                fontSize: '0.82rem',
+                                fontWeight: '700',
+                                color: isActive ? '#dc2626' : '#16a34a',
+                                background: 'transparent',
+                                border: 'none',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                width: '100%'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = isActive ? '#fef2f2' : '#f0fdf4'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <Power size={15} color={isActive ? '#dc2626' : '#16a34a'} /> {isActive ? 'Disable Admin' : 'Enable Admin'}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>

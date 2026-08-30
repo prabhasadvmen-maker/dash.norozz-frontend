@@ -12,7 +12,9 @@ import {
   ShieldCheck,
   AlertCircle,
   Loader2,
-  X
+  X,
+  Settings,
+  Power
 } from 'lucide-react';
 import { superAdminService } from '../../services/superAdmin.service.js';
 import { toast } from '../../utils/toast.js';
@@ -22,11 +24,18 @@ const SuperAdminCouponsView = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [activeDropdownId, setActiveDropdownId] = useState(null);
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = () => setActiveDropdownId(null);
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, []);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -166,7 +175,6 @@ const SuperAdminCouponsView = () => {
         <button
           type="button"
           onClick={handleOpenCreateModal}
-          className="btn btn-primary"
           style={{
             padding: '11px 20px',
             borderRadius: '14px',
@@ -175,8 +183,11 @@ const SuperAdminCouponsView = () => {
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-            boxShadow: '0 4px 14px rgba(124, 58, 237, 0.3)',
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+            color: '#ffffff',
+            border: 'none',
+            cursor: 'pointer'
           }}
         >
           <Plus size={18} /> Create New Coupon
@@ -364,38 +375,120 @@ const SuperAdminCouponsView = () => {
                         {c.isActive ? '● Active' : '○ Inactive'}
                       </button>
                     </td>
-                    <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
+                      <div style={{ position: 'relative', display: 'inline-block' }} onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
-                          onClick={() => handleOpenEditModal(c)}
+                          onClick={() => setActiveDropdownId(activeDropdownId === c._id ? null : c._id)}
                           style={{
-                            background: '#f1f5f9',
-                            border: 'none',
-                            color: '#475569',
-                            padding: '6px',
-                            borderRadius: '8px',
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '10px',
+                            background: activeDropdownId === c._id ? '#e2e8f0' : '#f1f5f9',
+                            border: '1px solid #cbd5e1',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            color: '#334155'
                           }}
-                          title="Edit Coupon"
+                          title="Coupon Actions"
                         >
-                          <Edit2 size={16} />
+                          <Settings size={18} />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(c._id, c.code)}
-                          style={{
-                            background: '#fef2f2',
-                            border: 'none',
-                            color: '#ef4444',
+
+                        {activeDropdownId === c._id && (
+                          <div style={{
+                            position: 'absolute',
+                            right: 0,
+                            top: '42px',
+                            background: '#ffffff',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '12px',
+                            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.12)',
                             padding: '6px',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                          }}
-                          title="Delete Coupon"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                            zIndex: 50,
+                            minWidth: '160px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '4px'
+                          }}>
+                            <button
+                              type="button"
+                              onClick={() => { setActiveDropdownId(null); handleOpenEditModal(c); }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '8px 12px',
+                                fontSize: '0.82rem',
+                                fontWeight: '700',
+                                color: '#2563eb',
+                                background: 'transparent',
+                                border: 'none',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                width: '100%'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#eff6ff'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <Edit2 size={15} color="#2563eb" /> Edit Coupon
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => { setActiveDropdownId(null); handleToggleActive(c); }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '8px 12px',
+                                fontSize: '0.82rem',
+                                fontWeight: '700',
+                                color: c.isActive ? '#d97706' : '#16a34a',
+                                background: 'transparent',
+                                border: 'none',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                width: '100%'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = c.isActive ? '#fffbeb' : '#f0fdf4'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <Power size={15} color={c.isActive ? '#d97706' : '#16a34a'} /> {c.isActive ? 'Deactivate' : 'Activate'}
+                            </button>
+
+                            <div style={{ height: '1px', background: '#f1f5f9', margin: '2px 0' }} />
+
+                            <button
+                              type="button"
+                              onClick={() => { setActiveDropdownId(null); handleDelete(c._id, c.code); }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '8px 12px',
+                                fontSize: '0.82rem',
+                                fontWeight: '700',
+                                color: '#dc2626',
+                                background: 'transparent',
+                                border: 'none',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                width: '100%'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <Trash2 size={15} color="#dc2626" /> Delete Coupon
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -411,54 +504,60 @@ const SuperAdminCouponsView = () => {
         <div
           style={{
             position: 'fixed',
-            inset: 0,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
             zIndex: 1100,
-            background: 'rgba(15, 23, 42, 0.75)',
-            backdropFilter: 'blur(4px)',
+            background: 'rgba(15, 23, 42, 0.55)',
             display: 'flex',
             alignItems: 'center',
-            justify: 'center',
+            justifyContent: 'center',
             padding: '20px',
           }}
         >
           <div
             style={{
-              maxWidth: '520px',
+              maxWidth: '540px',
               width: '100%',
+              maxHeight: '85vh',
               background: '#ffffff',
               borderRadius: '24px',
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
+              margin: 'auto',
+              border: '1px solid #e2e8f0'
             }}
           >
             {/* MODAL HEADER */}
             <div
               style={{
-                padding: '20px 24px',
-                borderBottom: '1px solid #f1f5f9',
+                padding: '18px 24px',
+                borderBottom: '1px solid #e2e8f0',
                 display: 'flex',
                 alignItems: 'center',
-                justify: 'space-between',
-                background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-                color: '#ffffff',
+                justifyContent: 'space-between',
+                background: '#ffffff',
+                color: '#0f172a',
+                flexShrink: 0
               }}
             >
-              <h4 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '800' }}>
+              <h4 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '800', color: '#0f172a' }}>
                 {editingCoupon ? `Edit Coupon: ${editingCoupon.code}` : 'Create New Promo Coupon'}
               </h4>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', color: '#fff', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '50%', color: '#64748b', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
               >
                 <X size={18} />
               </button>
             </div>
 
             {/* FORM BODY */}
-            <form onSubmit={handleSubmit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <form onSubmit={handleSubmit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', flex: 1 }}>
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#475569', display: 'block', marginBottom: '6px' }}>
                   PROMO CODE *
@@ -646,7 +745,7 @@ const SuperAdminCouponsView = () => {
                       type="checkbox"
                       checked={formData.isActive}
                       onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                      style={{ width: '18px', height: '18px', accentColor: '#7c3aed' }}
+                      style={{ width: '18px', height: '18px', accentColor: '#10b981' }}
                     />
                     Enable Coupon
                   </label>
@@ -677,7 +776,8 @@ const SuperAdminCouponsView = () => {
                     padding: '12px 24px',
                     borderRadius: '14px',
                     border: 'none',
-                    background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
                     fontWeight: '800',
                     color: '#ffffff',
                     cursor: 'pointer',

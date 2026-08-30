@@ -203,38 +203,58 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
         {/* Modal Header */}
         <div style={{
           padding: '20px 24px',
-          background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
-          color: '#ffffff',
+          background: '#ffffff',
+          borderBottom: '1px solid #e2e8f0',
           display: 'flex',
           alignItems: 'center',
-          justify: 'space-between'
+          justifyContent: 'space-between'
         }}>
           <div>
-            <span className="badge" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', fontSize: '0.7rem' }}>
+            <span style={{
+              fontSize: '0.7rem',
+              fontWeight: '800',
+              padding: '4px 10px',
+              borderRadius: '9999px',
+              background: '#eff6ff',
+              color: '#2563eb',
+              border: '1px solid #bfdbfe'
+            }}>
               SERVICE PACKAGE MANAGER
             </span>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Layers size={20} /> Packages for: {service.name}
+            <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: '6px 0 0 0', display: 'flex', alignItems: 'center', gap: '8px', color: '#0f172a' }}>
+              <Layers size={20} color="#10b981" /> Packages for: {service.name}
             </h2>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer' }}
+            style={{
+              background: '#f1f5f9',
+              border: '1px solid #e2e8f0',
+              borderRadius: '50%',
+              color: '#64748b',
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
+            }}
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+        <div style={{ padding: '24px', overflowY: 'auto', flex: 1, background: '#ffffff' }}>
           
           {/* Top Bar Actions & Status Notice */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <div style={{ fontSize: '0.9rem', fontWeight: '800', color: 'var(--text-primary)' }}>
+              <div style={{ fontSize: '1rem', fontWeight: '800', color: '#0f172a' }}>
                 Configured Packages ({packages.length})
               </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              <div style={{ fontSize: '0.82rem', color: '#475569', fontWeight: '500', marginTop: '2px' }}>
                 Customer app displays active packages. Single active package auto-selects during checkout.
               </div>
             </div>
@@ -497,7 +517,7 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
 
           {/* PACKAGE LISTING CARDS */}
           {packages.length === 0 ? (
-            <div style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <div style={{ padding: '36px', textAlign: 'center', color: '#64748b', fontWeight: '600' }}>
               No packages configured yet. Click "+ Create New Package" above to add the first package.
             </div>
           ) : (
@@ -507,63 +527,81 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
                 return (
                   <div
                     key={pkg._id}
-                    className="mui-card"
                     style={{
-                      padding: '18px',
-                      border: isActive ? '1px solid var(--border-light)' : '1px solid #fca5a5',
+                      padding: '20px',
+                      borderRadius: '16px',
+                      border: isActive ? '1px solid #e2e8f0' : '1px solid #fca5a5',
                       background: isActive ? '#ffffff' : '#fef2f2',
+                      boxShadow: '0 4px 14px rgba(0,0,0,0.03)',
                       display: 'flex',
                       flexDirection: 'column',
-                      justify: 'space-between',
-                      opacity: isActive ? 1 : 0.8
+                      justifyContent: 'space-between',
+                      opacity: isActive ? 1 : 0.85
                     }}
                   >
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', gap: '8px' }}>
                         <div>
-                          <div style={{ fontWeight: '800', fontSize: '1.05rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div style={{ fontWeight: '800', fontSize: '1.1rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             {pkg.title}
-                            {pkg.isPopular && <span className="badge badge-purple" style={{ fontSize: '0.62rem' }}>🔥 POPULAR</span>}
-                            {pkg.isRecommended && <span className="badge badge-success" style={{ fontSize: '0.62rem' }}>⭐ RECOMMENDED</span>}
+                            {pkg.isPopular && (
+                              <span style={{ fontSize: '0.68rem', fontWeight: '800', padding: '3px 8px', borderRadius: '6px', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' }}>
+                                🔥 POPULAR
+                              </span>
+                            )}
+                            {pkg.isRecommended && (
+                              <span style={{ fontSize: '0.68rem', fontWeight: '800', padding: '3px 8px', borderRadius: '6px', background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>
+                                ⭐ RECOMMENDED
+                              </span>
+                            )}
                           </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '600', marginTop: '4px' }}>
                             ⏱️ Duration: {pkg.duration || '45 mins'} • Sort Order: {pkg.sortOrder || 0}
                           </div>
                         </div>
 
-                        <span className={`badge ${isActive ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.7rem' }}>
+                        <span style={{
+                          fontSize: '0.72rem',
+                          fontWeight: '800',
+                          padding: '4px 10px',
+                          borderRadius: '9999px',
+                          background: isActive ? '#ecfdf5' : '#fef2f2',
+                          color: isActive ? '#047857' : '#dc2626',
+                          border: isActive ? '1px solid #a7f3d0' : '1px solid #fecaca',
+                          whiteSpace: 'nowrap'
+                        }}>
                           {pkg.status.toUpperCase()}
                         </span>
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', margin: '12px 0 10px 0' }}>
-                        <span style={{ fontSize: '1.35rem', fontWeight: '800', color: '#10b981' }}>
+                        <span style={{ fontSize: '1.4rem', fontWeight: '800', color: '#059669' }}>
                           ₹{pkg.finalPrice}
                         </span>
                         {pkg.price > pkg.finalPrice && (
-                          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                          <span style={{ fontSize: '0.88rem', color: '#94a3b8', textDecoration: 'line-through', fontWeight: '600' }}>
                             ₹{pkg.price}
                           </span>
                         )}
                         {pkg.discountValue > 0 && (
-                          <span style={{ fontSize: '0.72rem', color: '#ef4444', fontWeight: '700' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: '800' }}>
                             ({pkg.discountType === 'percentage' ? `${pkg.discountValue}% OFF` : `Save ₹${pkg.discountValue}`})
                           </span>
                         )}
                       </div>
 
                       {pkg.description && (
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 10px 0', lineHeight: 1.4 }}>
+                        <p style={{ fontSize: '0.85rem', color: '#475569', margin: '0 0 10px 0', lineHeight: 1.4, fontWeight: '500' }}>
                           {pkg.description}
                         </p>
                       )}
 
                       {/* Included Features Tags */}
                       {Array.isArray(pkg.features) && pkg.features.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '14px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '14px' }}>
                           {pkg.features.map((feat, idx) => (
-                            <div key={idx} style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                              <CheckCircle2 size={13} color="#10b981" /> {feat}
+                            <div key={idx} style={{ fontSize: '0.8rem', color: '#334155', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <CheckCircle2 size={14} color="#10b981" /> {feat}
                             </div>
                           ))}
                         </div>
@@ -576,21 +614,37 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
                         <button
                           type="button"
                           onClick={() => handleTogglePopular(pkg)}
-                          className={`btn btn-sm ${pkg.isPopular ? 'btn-primary' : 'btn-secondary'}`}
-                          style={{ padding: '4px 8px', fontSize: '0.72rem' }}
+                          style={{
+                            padding: '5px 10px',
+                            fontSize: '0.74rem',
+                            fontWeight: '700',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            background: pkg.isPopular ? '#fef3c7' : '#f8fafc',
+                            color: pkg.isPopular ? '#b45309' : '#64748b',
+                            border: pkg.isPopular ? '1px solid #fde68a' : '1px solid #e2e8f0'
+                          }}
                           title="Toggle Popular Flag"
                         >
-                          <Flame size={12} /> {pkg.isPopular ? 'Popular' : '+ Popular'}
+                          <Flame size={12} style={{ display: 'inline', marginRight: '3px' }} /> {pkg.isPopular ? 'Popular' : '+ Popular'}
                         </button>
 
                         <button
                           type="button"
                           onClick={() => handleToggleRecommended(pkg)}
-                          className={`btn btn-sm ${pkg.isRecommended ? 'btn-success' : 'btn-secondary'}`}
-                          style={{ padding: '4px 8px', fontSize: '0.72rem' }}
+                          style={{
+                            padding: '5px 10px',
+                            fontSize: '0.74rem',
+                            fontWeight: '700',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            background: pkg.isRecommended ? '#ecfdf5' : '#f8fafc',
+                            color: pkg.isRecommended ? '#047857' : '#64748b',
+                            border: pkg.isRecommended ? '1px solid #a7f3d0' : '1px solid #e2e8f0'
+                          }}
                           title="Toggle Recommended Flag"
                         >
-                          <Star size={12} /> {pkg.isRecommended ? 'Recommended' : '+ Recommended'}
+                          <Star size={12} style={{ display: 'inline', marginRight: '3px' }} /> {pkg.isRecommended ? 'Recommended' : '+ Recommended'}
                         </button>
                       </div>
 
@@ -598,8 +652,16 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
                         <button
                           type="button"
                           onClick={() => handleToggleStatus(pkg)}
-                          className={`btn btn-sm ${isActive ? 'btn-warning' : 'btn-success'}`}
-                          style={{ padding: '4px 8px', fontSize: '0.72rem' }}
+                          style={{
+                            padding: '5px 10px',
+                            fontSize: '0.74rem',
+                            fontWeight: '700',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            background: isActive ? '#fffbeb' : '#f0fdf4',
+                            color: isActive ? '#b45309' : '#15803d',
+                            border: isActive ? '1px solid #fde68a' : '1px solid #bbf7d0'
+                          }}
                         >
                           {isActive ? 'Deactivate' : 'Activate'}
                         </button>
@@ -607,17 +669,33 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
                         <button
                           type="button"
                           onClick={() => handleOpenEditForm(pkg)}
-                          className="btn btn-secondary btn-sm"
-                          style={{ padding: '4px 8px', fontSize: '0.72rem' }}
+                          style={{
+                            padding: '5px 10px',
+                            fontSize: '0.74rem',
+                            fontWeight: '700',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            background: '#eff6ff',
+                            color: '#2563eb',
+                            border: '1px solid #bfdbfe'
+                          }}
                         >
-                          <Edit2 size={12} /> Edit
+                          <Edit2 size={12} style={{ display: 'inline', marginRight: '3px' }} /> Edit
                         </button>
 
                         <button
                           type="button"
                           onClick={() => handleDeletePackage(pkg._id, pkg.title)}
-                          className="btn btn-danger btn-sm"
-                          style={{ padding: '4px 8px', fontSize: '0.72rem' }}
+                          style={{
+                            padding: '5px 8px',
+                            fontSize: '0.74rem',
+                            fontWeight: '700',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            background: '#fef2f2',
+                            color: '#dc2626',
+                            border: '1px solid #fecaca'
+                          }}
                         >
                           <Trash2 size={12} />
                         </button>
@@ -633,16 +711,25 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
 
         {/* Modal Footer */}
         <div style={{
-          padding: '14px 24px',
-          borderTop: '1px solid var(--border-light)',
+          padding: '16px 24px',
+          borderTop: '1px solid #e2e8f0',
           background: '#ffffff',
           display: 'flex',
-          justify: 'flex-end'
+          justifyContent: 'flex-end'
         }}>
           <button
+            type="button"
             onClick={onClose}
-            className="btn btn-secondary"
-            style={{ fontWeight: '700' }}
+            style={{
+              padding: '8px 22px',
+              borderRadius: '10px',
+              background: '#f1f5f9',
+              border: '1px solid #cbd5e1',
+              color: '#334155',
+              fontWeight: '700',
+              fontSize: '0.88rem',
+              cursor: 'pointer'
+            }}
           >
             Close Manager
           </button>

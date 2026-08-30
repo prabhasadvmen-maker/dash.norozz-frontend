@@ -36,14 +36,36 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('norozz_token');
-    const storedUser = localStorage.getItem('norozz_user');
+    // 1. Check for single-instance impersonation handoff for new tab openings
+    const impersonateDataStr = localStorage.getItem('norozz_impersonate_data');
+    if (impersonateDataStr) {
+      try {
+        const imp = JSON.parse(impersonateDataStr);
+        localStorage.removeItem('norozz_impersonate_data'); // Clear handoff key so original tab stays unchanged
+        if (imp?.user && imp?.token) {
+          sessionStorage.setItem('norozz_token', imp.token);
+          sessionStorage.setItem('norozz_user', JSON.stringify(imp.user));
+          setToken(imp.token);
+          setCurrentUser(imp.user);
+          setLoading(false);
+          return;
+        }
+      } catch (e) {
+        console.warn('Impersonation parse error:', e);
+      }
+    }
+
+    // 2. Read tab-isolated sessionStorage first, fallback to localStorage
+    const storedToken = sessionStorage.getItem('norozz_token') || localStorage.getItem('norozz_token');
+    const storedUser = sessionStorage.getItem('norozz_user') || localStorage.getItem('norozz_user');
 
     if (storedToken && storedUser) {
       try {
         setToken(storedToken);
         setCurrentUser(JSON.parse(storedUser));
       } catch (err) {
+        sessionStorage.removeItem('norozz_token');
+        sessionStorage.removeItem('norozz_user');
         localStorage.removeItem('norozz_token');
         localStorage.removeItem('norozz_user');
       }
@@ -63,11 +85,28 @@ export const AuthProvider = ({ children }) => {
     setToken(accessToken);
     if (accessToken) {
       try {
+        sessionStorage.setItem('norozz_token', accessToken);
         localStorage.setItem('norozz_token', accessToken);
       } catch (e) {}
     }
     if (userData) {
       safeSaveUserToStorage(userData);
+      try {
+        sessionStorage.setItem('norozz_user', JSON.stringify(sanitizeUserForStorage(userData)));
+      } catch (e) {}
+    }
+  };
+
+  const loginNewTab = (userData, accessToken) => {
+    if (!userData || !accessToken) return;
+    try {
+      localStorage.setItem('norozz_impersonate_data', JSON.stringify({
+        user: sanitizeUserForStorage(userData),
+        token: accessToken
+      }));
+      window.open(window.location.origin, '_blank');
+    } catch (e) {
+      console.error('Failed to launch impersonated dashboard in new tab:', e);
     }
   };
 
@@ -75,6 +114,8 @@ export const AuthProvider = ({ children }) => {
     setCurrentUser(null);
     setToken(null);
     try {
+      sessionStorage.removeItem('norozz_token');
+      sessionStorage.removeItem('norozz_user');
       localStorage.removeItem('norozz_token');
       localStorage.removeItem('norozz_user');
     } catch (e) {}
@@ -84,6 +125,9 @@ export const AuthProvider = ({ children }) => {
     setCurrentUser((prev) => {
       const newObj = { ...prev, ...updatedData };
       safeSaveUserToStorage(newObj);
+      try {
+        sessionStorage.setItem('norozz_user', JSON.stringify(sanitizeUserForStorage(newObj)));
+      } catch (e) {}
       return newObj;
     });
   };
@@ -96,6 +140,7 @@ export const AuthProvider = ({ children }) => {
         role: currentUser?.role || null,
         loading,
         login,
+        loginNewTab,
         logout,
         updateUser,
         isAuthenticated: !!currentUser,

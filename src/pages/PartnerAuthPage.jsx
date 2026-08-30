@@ -502,27 +502,22 @@ const PartnerAuthPage = () => {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: 'calc(100vh - 68px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '20px 16px',
-      background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 50%, #f1f5f9 100%)',
+      padding: '32px 24px'
     }}>
-      <div style={{
+      <div className="glass-card" style={{
         width: '100%',
         maxWidth: '440px',
-        background: '#ffffff',
-        borderRadius: '28px',
-        boxShadow: '0 20px 50px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04)',
-        border: '1px solid rgba(226, 232, 240, 0.8)',
-        overflow: 'hidden',
         position: 'relative',
+        padding: '24px'
       }}>
 
         {/* Top Header Bar */}
         <div style={{
-          padding: '18px 24px 10px 24px',
+          padding: '10px 12px 10px 12px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -545,8 +540,8 @@ const PartnerAuthPage = () => {
                 else if (step === 'email-login') setStep('phone');
               }}
               style={{
-                background: '#f1f5f9',
-                border: 'none',
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
                 width: '36px',
                 height: '36px',
                 borderRadius: '50%',
@@ -554,7 +549,7 @@ const PartnerAuthPage = () => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                color: '#1e293b',
+                color: '#ffffff',
               }}
             >
               <ArrowLeft size={18} />
@@ -562,7 +557,7 @@ const PartnerAuthPage = () => {
           )}
 
           <div style={{ marginLeft: step === 'phone' || step === 'approval-pending' ? 'auto' : 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#16a34a', background: '#dcfce7', padding: '3px 10px', borderRadius: '12px' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#34d399', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '4px 12px', borderRadius: '12px' }}>
               NOROZZ PARTNER
             </span>
           </div>
@@ -570,14 +565,14 @@ const PartnerAuthPage = () => {
 
         {/* Alerts */}
         {error && (
-          <div style={{ margin: '0 24px 12px 24px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', padding: '10px 14px', borderRadius: '12px', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ margin: '12px 0', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '10px 14px', borderRadius: '12px', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <AlertCircle size={16} style={{ flexShrink: 0 }} />
             <span>{error}</span>
           </div>
         )}
 
         {successMsg && (
-          <div style={{ margin: '0 24px 12px 24px', background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', padding: '10px 14px', borderRadius: '12px', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ margin: '12px 0', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '10px 14px', borderRadius: '12px', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Sparkles size={16} style={{ flexShrink: 0 }} />
             <span>{successMsg}</span>
           </div>
@@ -587,43 +582,44 @@ const PartnerAuthPage = () => {
         {/* STEP 1: PHONE LOGIN / SIGNUP (login-signup) */}
         {/* ============================================================ */}
         {step === 'phone' && (
-          <div style={{ padding: '0 24px 28px 24px' }}>
+          <div style={{ padding: '0 0 16px 0' }}>
             <div style={{ textAlign: 'center', margin: '16px 0 28px 0' }}>
-              <div style={{
-                width: '68px',
-                height: '68px',
-                margin: '0 auto 14px auto',
-                borderRadius: '22px',
-                background: 'linear-gradient(135deg, #16a34a 0%, #059669 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 10px 25px rgba(22, 163, 74, 0.35)',
-              }}>
-                <img src="/logo.png" alt="NOROZZ" style={{ width: '42px', height: '42px', objectFit: 'contain' }} />
-              </div>
-              <h2 style={{ fontSize: '1.45rem', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.3px', margin: 0 }}>
+              <img
+                src="/logo.png"
+                alt="NOROZZ Logo"
+                style={{
+                  width: '72px',
+                  height: '72px',
+                  margin: '0 auto 16px',
+                  borderRadius: '18px',
+                  objectFit: 'contain',
+                  display: 'block',
+                  boxShadow: '0 8px 24px rgba(16, 185, 129, 0.25)',
+                  border: '2px solid rgba(16, 185, 129, 0.3)'
+                }}
+              />
+              <h2 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#ffffff', letterSpacing: '-0.3px', margin: 0 }}>
                 Welcome Partner
               </h2>
-              <p style={{ color: '#64748b', fontSize: '0.86rem', marginTop: '6px', margin: 0 }}>
+              <p style={{ color: '#94a3b8', fontSize: '0.86rem', marginTop: '6px', margin: 0 }}>
                 Login or Sign up to access your business account
               </p>
             </div>
 
             <form onSubmit={handleSendOtp}>
               <div style={{ marginBottom: '22px' }}>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '700', color: '#334155', marginBottom: '8px' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '700', color: '#94a3b8', marginBottom: '8px' }}>
                   Enter Phone Number
                 </label>
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  border: '2px solid #e2e8f0',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
                   borderRadius: '14px',
                   padding: '4px 12px',
-                  background: '#f8fafc',
+                  background: 'rgba(15, 23, 42, 0.6)',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingRight: '10px', borderRight: '1px solid #cbd5e1', fontWeight: '700', fontSize: '0.92rem', color: '#1e293b' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingRight: '10px', borderRight: '1px solid rgba(255, 255, 255, 0.15)', fontWeight: '700', fontSize: '0.92rem', color: '#ffffff' }}>
                     <span>🇮🇳</span>
                     <span>+91</span>
                   </div>
@@ -640,7 +636,7 @@ const PartnerAuthPage = () => {
                       fontSize: '1rem',
                       fontWeight: '600',
                       background: 'transparent',
-                      color: '#0f172a',
+                      color: '#ffffff',
                     }}
                     required
                   />

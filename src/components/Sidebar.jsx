@@ -38,15 +38,15 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout }) => {
   return (
     <aside style={{
       width: '260px',
-      background: 'var(--bg-sidebar)',
+      background: 'rgba(17, 24, 39, 0.95)',
       borderRight: '1px solid var(--border-light)',
       padding: '24px 16px',
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'space-between',
-      minHeight: 'calc(100vh - 74px)',
+      minHeight: 'calc(100vh - 68px)',
       flexShrink: 0,
-      boxShadow: 'var(--shadow-sm)'
+      boxShadow: 'var(--shadow-md)'
     }}>
       <div>
         {/* Section Header */}
@@ -61,10 +61,10 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout }) => {
           alignItems: 'center',
           gap: '6px'
         }}>
-          <Sparkles size={14} color="var(--accent-purple)" /> PLATFORM NAVIGATION
+          <Sparkles size={14} color="#10b981" /> PLATFORM NAVIGATION
         </div>
 
-        {/* 14 Navigation Links */}
+        {/* Navigation Links */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {menuItems.map((item) => {
             const Icon = item.icon;
@@ -77,23 +77,23 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout }) => {
                 style={{
                   justifyContent: 'flex-start',
                   padding: '11px 14px',
-                  fontSize: '0.88rem',
+                  fontSize: '0.86rem',
                   borderRadius: 'var(--radius-md)',
-                  background: isActive ? 'linear-gradient(135deg, rgba(118, 215, 41, 0.12) 0%, rgba(0, 180, 216, 0.12) 50%, rgba(0, 82, 212, 0.12) 100%)' : 'transparent',
-                  color: isActive ? '#0052d4' : 'var(--text-secondary)',
-                  border: isActive ? '1px solid #00b4d8' : '1px solid transparent',
+                  background: isActive ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 182, 212, 0.12) 100%)' : 'transparent',
+                  color: isActive ? '#34d399' : 'var(--text-secondary)',
+                  border: isActive ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid transparent',
                   fontWeight: isActive ? '700' : '500',
-                  boxShadow: isActive ? 'var(--shadow-sm)' : 'none',
+                  boxShadow: isActive ? '0 4px 12px rgba(16, 185, 129, 0.15)' : 'none',
                   transition: 'all 0.2s ease',
                   width: '100%'
                 }}
               >
-                <Icon size={18} color={isActive ? '#0052d4' : '#64748b'} />
+                <Icon size={18} color={isActive ? '#34d399' : '#64748b'} />
                 <span style={{ flex: 1, textAlign: 'left' }}>
                   {item.label}
                 </span>
                 {item.badge && (
-                  <span className={`badge ${isActive ? 'badge-blue' : 'badge-purple'}`} style={{ fontSize: '0.62rem', padding: '2px 6px' }}>
+                  <span className={`badge ${isActive ? 'badge-success' : 'badge-purple'}`} style={{ fontSize: '0.62rem', padding: '2px 6px' }}>
                     {item.badge}
                   </span>
                 )}

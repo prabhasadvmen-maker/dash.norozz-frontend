@@ -23,6 +23,14 @@ import {
   User,
   Plus,
   Trash2,
+  X,
+  Sparkles,
+  Home,
+  Zap,
+  Scissors,
+  Paintbrush,
+  Car,
+  Star
 } from 'lucide-react';
 
 const SuperAdminPanel = ({ currentUser, onLogout }) => {
@@ -43,6 +51,35 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
   } = useCatalog();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [refreshing, setRefreshing] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Formatted date string (Image 2 style: "Saturday, 29 August 2026")
+  const currentDateStr = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const tabTitles = {
+    dashboard: 'Overview',
+    cityAdmins: 'City Admins Management',
+    cities: 'Dynamic City Operations',
+    coupons: 'Coupons & Promos',
+    customers: 'Customer Directory',
+    partners: 'Marketplace Partners',
+    categories: 'Categories Directory',
+    skills: 'Skill Management',
+    subCategories: 'Sub Categories',
+    services: 'Services & Pricing',
+    bookings: 'Bookings & Dispatch',
+    payments: 'Payments & Payouts',
+    reviews: 'Reviews & Ratings',
+    reports: 'Reports & Growth',
+    notifications: 'Notifications & Broadcasts',
+    settings: 'Platform Settings',
+    profile: 'Super Admin Account',
+  };
 
   // Category Modal state
   const [catModalOpen, setCatModalOpen] = useState(false);
@@ -166,6 +203,80 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     }
   };
 
+  const renderCategoryIcon = (cat) => {
+    const iconStr = cat.icon || cat.image || cat.thumbnail || '';
+    
+    // If base64 image or web image URL, render img element
+    if (typeof iconStr === 'string' && (iconStr.startsWith('data:image') || iconStr.startsWith('http://') || iconStr.startsWith('https://') || iconStr.startsWith('/uploads/'))) {
+      return (
+        <img
+          src={iconStr}
+          alt={cat.name}
+          style={{
+            width: '46px',
+            height: '46px',
+            borderRadius: '14px',
+            objectFit: 'cover',
+            border: '1.5px solid #e2e8f0',
+            boxShadow: '0 4px 10px rgba(0,0,0,0.06)',
+            flexShrink: 0
+          }}
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
+      );
+    }
+
+    // Map icon name or category name to appropriate Lucide Icon symbol
+    const nameLower = (cat.name || '').toLowerCase();
+    const iconLower = typeof iconStr === 'string' ? iconStr.toLowerCase() : '';
+
+    let IconComp = Grid;
+    let bg = '#ecfdf5';
+    let border = '#a7f3d0';
+    let color = '#10b981';
+
+    if (iconLower === 'sparkles' || nameLower.includes('beauty') || nameLower.includes('salon') || nameLower.includes('spa') || nameLower.includes('skin')) {
+      IconComp = Sparkles;
+      bg = '#f3e8ff'; border = '#e9d5ff'; color = '#7c3aed';
+    } else if (iconLower === 'home' || nameLower.includes('clean') || nameLower.includes('pest') || nameLower.includes('home')) {
+      IconComp = Home;
+      bg = '#eff6ff'; border = '#bfdbfe'; color = '#2563eb';
+    } else if (iconLower === 'zap' || nameLower.includes('electric') || nameLower.includes('wire')) {
+      IconComp = Zap;
+      bg = '#fffbeb'; border = '#fde68a'; color = '#d97706';
+    } else if (iconLower === 'wrench' || nameLower.includes('repair') || nameLower.includes('ac') || nameLower.includes('appliance') || nameLower.includes('plumb')) {
+      IconComp = Wrench;
+      bg = '#ecfdf5'; border = '#a7f3d0'; color = '#059669';
+    } else if (iconLower === 'scissors' || nameLower.includes('hair') || nameLower.includes('grooming') || nameLower.includes('barber')) {
+      IconComp = Scissors;
+      bg = '#fdf2f8'; border = '#fbcfe8'; color = '#db2777';
+    } else if (iconLower === 'paintbrush' || nameLower.includes('paint')) {
+      IconComp = Paintbrush;
+      bg = '#f0f9ff'; border = '#bae6fd'; color = '#0284c7';
+    } else if (nameLower.includes('driver') || nameLower.includes('car') || nameLower.includes('cab')) {
+      IconComp = Car;
+      bg = '#f0fdf4'; border = '#bbf7d0'; color = '#16a34a';
+    }
+
+    return (
+      <div style={{
+        width: '46px',
+        height: '46px',
+        borderRadius: '14px',
+        background: bg,
+        border: `1.5px solid ${border}`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: color,
+        boxShadow: '0 4px 10px rgba(0,0,0,0.03)',
+        flexShrink: 0
+      }}>
+        <IconComp size={24} color={color} />
+      </div>
+    );
+  };
+
   const handleCreateCategorySubmit = async (e) => {
     e.preventDefault();
     if (!newCatName.trim()) return;
@@ -174,6 +285,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
       name: newCatName.trim(),
       description: newCatDesc.trim(),
       image: newCatImage,
+      icon: newCatImage,
       skills: skillsArray,
     });
     setNewCatName('');
@@ -245,54 +357,66 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#f4f6f8', color: '#0f172a' }}>
       
-      {/* Super Admin Top Header */}
-      <SuperAdminNavbar
-        currentUser={currentUser}
+      {/* Super Admin Dark Green Sticky Full-Height Sidebar */}
+      <SuperAdminSidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
         onLogout={onLogout}
-        onRefresh={handleRefresh}
-        refreshing={refreshing}
+        collapsed={collapsed}
       />
 
-      {/* Main Layout */}
-      <div style={{ display: 'flex', minHeight: 'calc(100vh - 74px)' }}>
-        
-        {/* 14-Item Super Admin Sidebar */}
-        <SuperAdminSidebar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
+      {/* Main Right Column Container */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+
+        {/* Super Admin Top Header */}
+        <SuperAdminNavbar
+          currentUser={currentUser}
           onLogout={onLogout}
+          onRefresh={handleRefresh}
+          refreshing={refreshing}
+          collapsed={collapsed}
+          setCollapsed={setCollapsed}
+          activeTitle={tabTitles[activeTab] || 'Overview'}
         />
 
         {/* Content View Area */}
-        <main style={{ flex: 1, padding: '28px 32px', overflowX: 'hidden' }}>
+        <main style={{ flex: 1, padding: '32px 36px', overflowX: 'hidden', maxWidth: '1600px', width: '100%', margin: '0 auto' }}>
           
-          {/* View Title */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+          {/* Page Header (Image 2 exact style: Large Heading + Date + Live Status Pill) */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>
             <div>
-              <h2 style={{ fontSize: '1.4rem', fontWeight: '800', margin: 0 }}>
-                {activeTab === 'dashboard' && 'Master Platform Analytics & Overview'}
-                {activeTab === 'cityAdmins' && 'City Admin Management & City Assignment'}
-                {activeTab === 'cities' && 'Dynamic Operational Cities Management'}
-                {activeTab === 'coupons' && 'Master Coupon & Promo Code Management'}
-                {activeTab === 'customers' && `Global Customer Directory (${customers.length} Registered)`}
-                {activeTab === 'partners' && `Verified Marketplace Partners (${partners.length} Agencies)`}
-                {activeTab === 'categories' && 'Service Category Master Directory'}
-                {activeTab === 'skills' && 'Category-wise Skill Options Management'}
-                {activeTab === 'subCategories' && 'Sub Category Services'}
-                {activeTab === 'services' && 'Individual Service Packages & Base Pricing'}
-                {activeTab === 'bookings' && `Master Bookings & Dispatch Log (${bookings.length} Total)`}
-                {activeTab === 'payments' && 'Platform Commission & Partner Payout Ledger'}
-                {activeTab === 'reviews' && 'Reviews & Two-Way Ratings Moderation'}
-                {activeTab === 'reports' && 'Financial Growth & Revenue Analytics Reports'}
-                {activeTab === 'notifications' && 'Platform Notifications & System Broadcasts'}
-                {activeTab === 'settings' && 'Global Platform Configuration & Commission %'}
-                {activeTab === 'profile' && 'Super Admin Account Profile'}
-              </h2>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                Multi-Service Platform Master Control • Dedicated Super Admin Panel
+              <h1 style={{ fontSize: '2rem', fontWeight: '800', margin: 0, color: '#0f172a', letterSpacing: '-0.5px' }}>
+                {activeTab === 'dashboard' ? 'Overview' : tabTitles[activeTab]}
+              </h1>
+              <p style={{ fontSize: '0.88rem', color: '#64748b', marginTop: '4px', fontWeight: '500' }}>
+                {currentDateStr}
               </p>
+            </div>
+
+            {/* System Live Pill (Image 2 exact style) */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              background: '#e6f4ea',
+              border: '1px solid #a7f3d0',
+              borderRadius: '9999px',
+              boxShadow: '0 2px 6px rgba(16, 185, 129, 0.08)'
+            }}>
+              <span style={{
+                width: '9px',
+                height: '9px',
+                borderRadius: '50%',
+                background: '#10b981',
+                boxShadow: '0 0 0 3px rgba(16, 185, 129, 0.25)',
+                display: 'inline-block'
+              }}></span>
+              <span style={{ fontSize: '0.82rem', fontWeight: '700', color: '#065f46' }}>
+                System Live and Synchronized
+              </span>
             </div>
           </div>
 
@@ -329,29 +453,35 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
 
           {/* TAB 3: CUSTOMERS */}
           {activeTab === 'customers' && (
-            <div className="mui-card" style={{ padding: '26px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Users size={20} color="#2563eb" /> Customer Directory ({customers.length} Registered)
+            <div style={{
+              background: '#ffffff',
+              borderRadius: '20px',
+              padding: '26px',
+              border: '1px solid #f0f0f0',
+              boxShadow: '0 8px 26px rgba(0, 0, 0, 0.03)'
+            }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: '18px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Users size={20} color="#10b981" /> Customer Directory ({customers.length} Registered)
               </h3>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                      <th style={{ padding: '12px' }}>NAME</th>
+                    <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #e2e8f0', color: '#475569', fontSize: '0.78rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <th style={{ padding: '12px', borderRadius: '8px 0 0 8px' }}>NAME</th>
                       <th style={{ padding: '12px' }}>EMAIL</th>
                       <th style={{ padding: '12px' }}>CITY</th>
-                      <th style={{ padding: '12px' }}>STATUS</th>
+                      <th style={{ padding: '12px', borderRadius: '0 8px 8px 0' }}>STATUS</th>
                     </tr>
                   </thead>
                   <tbody>
                     {customers.length === 0 ? (
-                      <tr><td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No customers registered yet.</td></tr>
+                      <tr><td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontWeight: '600' }}>No customers registered yet.</td></tr>
                     ) : (
                       customers.map((c) => (
-                        <tr key={c._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                          <td style={{ padding: '12px', fontWeight: '800' }}>{c.name}</td>
-                          <td style={{ padding: '12px', fontSize: '0.85rem' }}>{c.email}</td>
-                          <td style={{ padding: '12px', fontSize: '0.85rem', color: '#2563eb' }}>{c.city || 'Delhi NCR'}</td>
+                        <tr key={c._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '12px', fontWeight: '800', color: '#0f172a' }}>{c.name}</td>
+                          <td style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: '600' }}>{c.email}</td>
+                          <td style={{ padding: '12px', fontSize: '0.85rem', color: '#2563eb', fontWeight: '700' }}>{c.city || 'Delhi NCR'}</td>
                           <td style={{ padding: '12px' }}><span className="badge badge-success">ACTIVE</span></td>
                         </tr>
                       ))
@@ -364,31 +494,37 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
 
           {/* TAB 4: PARTNERS */}
           {activeTab === 'partners' && (
-            <div className="mui-card" style={{ padding: '26px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Briefcase size={20} color="#7c3aed" /> Marketplace Service Partners ({partners.length} Verified Agencies)
+            <div style={{
+              background: '#ffffff',
+              borderRadius: '20px',
+              padding: '26px',
+              border: '1px solid #f0f0f0',
+              boxShadow: '0 8px 26px rgba(0, 0, 0, 0.03)'
+            }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: '18px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Briefcase size={20} color="#10b981" /> Marketplace Service Partners ({partners.length} Verified Agencies)
               </h3>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                      <th style={{ padding: '12px' }}>TECHNICIAN / PARTNER</th>
+                    <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #e2e8f0', color: '#475569', fontSize: '0.78rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <th style={{ padding: '12px', borderRadius: '8px 0 0 8px' }}>TECHNICIAN / PARTNER</th>
                       <th style={{ padding: '12px' }}>SKILL CATEGORY</th>
                       <th style={{ padding: '12px' }}>EMAIL</th>
                       <th style={{ padding: '12px' }}>CITY</th>
-                      <th style={{ padding: '12px' }}>KYC STATUS</th>
+                      <th style={{ padding: '12px', borderRadius: '0 8px 8px 0' }}>KYC STATUS</th>
                     </tr>
                   </thead>
                   <tbody>
                     {partners.length === 0 ? (
-                      <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No partners registered yet.</td></tr>
+                      <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontWeight: '600' }}>No partners registered yet.</td></tr>
                     ) : (
                       partners.map((p) => (
-                        <tr key={p._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                          <td style={{ padding: '12px', fontWeight: '800' }}>{p.name}</td>
-                          <td style={{ padding: '12px', fontSize: '0.85rem' }}>{p.category || 'Service Technician'}</td>
-                          <td style={{ padding: '12px', fontSize: '0.85rem' }}>{p.email}</td>
-                          <td style={{ padding: '12px', fontSize: '0.85rem', color: '#2563eb' }}>{p.assignedCity || p.city || 'Delhi NCR'}</td>
+                        <tr key={p._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '12px', fontWeight: '800', color: '#0f172a' }}>{p.name}</td>
+                          <td style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: '600' }}>{p.category || 'Service Technician'}</td>
+                          <td style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: '600' }}>{p.email}</td>
+                          <td style={{ padding: '12px', fontSize: '0.85rem', color: '#2563eb', fontWeight: '700' }}>{p.assignedCity || p.city || 'Delhi NCR'}</td>
                           <td style={{ padding: '12px' }}>
                             <span className={`badge ${p.kycStatus === 'approved' ? 'badge-success' : 'badge-warning'}`}>
                               {(p.kycStatus || 'pending').toUpperCase()}
@@ -405,43 +541,199 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
 
           {/* TAB 5: CATEGORIES */}
           {activeTab === 'categories' && (
-            <div className="mui-card" style={{ padding: '26px' }}>
+            <div style={{
+              background: '#ffffff',
+              borderRadius: '20px',
+              padding: '26px',
+              border: '1px solid #f0f0f0',
+              boxShadow: '0 8px 26px rgba(0, 0, 0, 0.03)'
+            }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                    <Grid size={20} color="#2563eb" /> Service Categories Master List ({categories.length})
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                    <Grid size={20} color="#10b981" /> Service Categories Master List ({categories.length})
                   </h3>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>Top-level categories for services</p>
+                  <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '4px 0 0 0' }}>Top-level categories for services</p>
                 </div>
-                <button onClick={() => setCatModalOpen(true)} className="btn btn-primary"><Plus size={16} /> Create Category</button>
+                <button
+                  onClick={() => setCatModalOpen(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '10px 18px',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontWeight: '700',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(16, 185, 129, 0.25)'
+                  }}
+                >
+                  <Plus size={16} /> Create Category
+                </button>
               </div>
 
               {categories.length === 0 ? (
-                <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>No categories created yet. Click "Create Category" to add one.</div>
+                <div style={{ padding: '30px', textAlign: 'center', color: '#64748b', fontWeight: '600' }}>No categories created yet. Click "Create Category" to add one.</div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
                   {categories.map((cat) => {
                     const subCount = subCategories.filter(sc => (sc.category?._id || sc.category) === cat._id).length;
                     const srvCount = services.filter(s => (s.category?._id || s.category) === cat._id).length;
+                    const catSkills = skills.filter((sk) => {
+                      const cId = typeof sk.category === 'object' ? sk.category?._id : sk.category;
+                      return cId === cat._id;
+                    });
+                    const iconUrl = cat.icon || cat.image;
+
                     return (
-                      <div key={cat._id} style={{ padding: '18px', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div
+                        key={cat._id}
+                        style={{
+                          padding: '22px',
+                          background: '#ffffff',
+                          borderRadius: '18px',
+                          border: '1px solid #e2e8f0',
+                          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
                         <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div style={{ fontWeight: '800', fontSize: '1rem', color: 'var(--text-primary)' }}>{cat.name}</div>
-                            <span className="badge badge-purple" style={{ fontSize: '0.7rem' }}>ACTIVE</span>
+                          {/* Top Row: Icon/Image + Name + Status Badge */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              {renderCategoryIcon(cat)}
+
+                              <div>
+                                <div style={{ fontWeight: '800', fontSize: '1.1rem', color: '#0f172a', lineHeight: '1.2' }}>
+                                  {cat.name}
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600', marginTop: '2px', fontFamily: 'monospace' }}>
+                                  /{cat.slug}
+                                </div>
+                              </div>
+                            </div>
+
+                            <span style={{
+                              fontSize: '0.72rem',
+                              fontWeight: '800',
+                              padding: '4px 10px',
+                              borderRadius: '9999px',
+                              background: '#ecfdf5',
+                              color: '#047857',
+                              border: '1px solid #a7f3d0',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              ● ACTIVE
+                            </span>
                           </div>
+
+                          {/* Description */}
                           {cat.description && (
-                            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '6px 0 10px 0' }}>{cat.description}</p>
+                            <p style={{ fontSize: '0.85rem', color: '#475569', margin: '8px 0 14px 0', fontWeight: '500', lineHeight: '1.4' }}>
+                              {cat.description}
+                            </p>
                           )}
-                          <div style={{ display: 'flex', gap: '12px', fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                            <span>📁 <strong>{subCount}</strong> Subcategories</span>
-                            <span>🛠️ <strong>{srvCount}</strong> Services</span>
+
+                          {/* Metrics Badges */}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
+                            <span style={{
+                              fontSize: '0.78rem',
+                              fontWeight: '700',
+                              color: '#3b82f6',
+                              background: '#eff6ff',
+                              border: '1px solid #bfdbfe',
+                              padding: '4px 10px',
+                              borderRadius: '8px'
+                            }}>
+                              📁 <strong>{subCount}</strong> Subcategories
+                            </span>
+                            <span style={{
+                              fontSize: '0.78rem',
+                              fontWeight: '700',
+                              color: '#7c3aed',
+                              background: '#f5f3ff',
+                              border: '1px solid #ddd6fe',
+                              padding: '4px 10px',
+                              borderRadius: '8px'
+                            }}>
+                              🛠️ <strong>{srvCount}</strong> Services
+                            </span>
+                            <span style={{
+                              fontSize: '0.78rem',
+                              fontWeight: '700',
+                              color: '#059669',
+                              background: '#ecfdf5',
+                              border: '1px solid #a7f3d0',
+                              padding: '4px 10px',
+                              borderRadius: '8px'
+                            }}>
+                              ⚡ <strong>{catSkills.length}</strong> Skills
+                            </span>
                           </div>
+
+                          {/* Skills Preview */}
+                          {catSkills.length > 0 && (
+                            <div style={{ marginBottom: '14px' }}>
+                              <div style={{ fontSize: '0.72rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>
+                                Onboarding Skills ({catSkills.length}):
+                              </div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                                {catSkills.slice(0, 4).map((sk) => (
+                                  <span
+                                    key={sk._id}
+                                    style={{
+                                      fontSize: '0.74rem',
+                                      fontWeight: '700',
+                                      padding: '3px 8px',
+                                      borderRadius: '6px',
+                                      background: '#f8fafc',
+                                      border: '1px solid #e2e8f0',
+                                      color: '#334155'
+                                    }}
+                                  >
+                                    {sk.name}
+                                  </span>
+                                ))}
+                                {catSkills.length > 4 && (
+                                  <span style={{ fontSize: '0.74rem', fontWeight: '700', color: '#64748b', alignSelf: 'center' }}>
+                                    +{catSkills.length - 4} more
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px dashed #e2e8f0' }}>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>/{cat.slug}</span>
-                          <button onClick={() => deleteCategory(cat._id)} className="btn btn-danger btn-sm" title="Delete Category">
-                            <Trash2 size={14} /> Delete
+
+                        {/* Footer Action Row */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', paddingTop: '12px', borderTop: '1px dashed #e2e8f0' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600' }}>
+                            ID: <span style={{ fontFamily: 'monospace' }}>{cat._id.slice(-6)}</span>
+                          </span>
+                          <button
+                            onClick={() => deleteCategory(cat._id)}
+                            style={{
+                              background: '#fef2f2',
+                              color: '#dc2626',
+                              border: '1px solid #fecaca',
+                              padding: '6px 14px',
+                              borderRadius: '8px',
+                              fontWeight: '700',
+                              fontSize: '0.82rem',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                            title="Delete Category"
+                          >
+                            <Trash2 size={14} /> Delete Category
                           </button>
                         </div>
                       </div>
@@ -454,11 +746,17 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
 
           {/* TAB 5.5: SKILL MANAGEMENT PAGE */}
           {activeTab === 'skills' && (
-            <div className="mui-card" style={{ padding: '26px' }}>
+            <div style={{
+              background: '#ffffff',
+              borderRadius: '20px',
+              padding: '26px',
+              border: '1px solid #f0f0f0',
+              boxShadow: '0 8px 26px rgba(0, 0, 0, 0.03)'
+            }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                    <Grid size={20} color="#7c3aed" /> Category-wise Skill Options Management ({categories.length} Categories)
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                    <Grid size={20} color="#10b981" /> Category-wise Skill Options Management ({categories.length} Categories)
                   </h3>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
                     Manage skill choices for each category. Technicians will see these skills on Partner Onboarding Step 4.
@@ -583,15 +881,24 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
             <div className="mui-card" style={{ padding: '26px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                    <Layers size={20} color="#7c3aed" /> Sub Categories Management ({subCategories.length})
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', margin: 0, color: '#0f172a' }}>
+                    <Layers size={22} color="#7c3aed" /> Sub Categories Management ({subCategories.length})
                   </h3>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>Sub-groupings belonging to parent categories</p>
+                  <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '4px 0 0 0', fontWeight: '500' }}>Sub-groupings belonging to parent categories</p>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                   <select
-                    className="form-input"
-                    style={{ width: '180px', padding: '6px 12px', fontSize: '0.82rem' }}
+                    style={{
+                      width: '200px',
+                      padding: '8px 12px',
+                      fontSize: '0.85rem',
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '10px',
+                      color: '#0f172a',
+                      fontWeight: '600',
+                      outline: 'none'
+                    }}
                     value={subCatFilterCategory}
                     onChange={(e) => setSubCatFilterCategory(e.target.value)}
                   >
@@ -600,38 +907,94 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                       <option key={c._id} value={c._id}>{c.name}</option>
                     ))}
                   </select>
-                  <button onClick={() => setSubCatModalOpen(true)} className="btn btn-primary"><Plus size={16} /> Create SubCategory</button>
+                  <button
+                    onClick={() => setSubCatModalOpen(true)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '9px 18px',
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontWeight: '700',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)'
+                    }}
+                  >
+                    <Plus size={16} /> Create SubCategory
+                  </button>
                 </div>
               </div>
 
               {subCategories.length === 0 ? (
-                <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>No subcategories found. Click "Create SubCategory" to add one.</div>
+                <div style={{ padding: '30px', textAlign: 'center', color: '#64748b', fontWeight: '600' }}>No subcategories found. Click "Create SubCategory" to add one.</div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px' }}>
                   {subCategories
                     .filter((sc) => !subCatFilterCategory || (sc.category?._id || sc.category) === subCatFilterCategory)
                     .map((sub) => {
                       const parentCatName = typeof sub.category === 'object' ? sub.category?.name : categories.find(c => c._id === sub.category)?.name;
                       const srvCount = services.filter(s => (s.subCategory?._id || s.subCategory) === sub._id).length;
                       return (
-                        <div key={sub._id} style={{ padding: '18px', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                        <div
+                          key={sub._id}
+                          style={{
+                            padding: '20px',
+                            background: '#ffffff',
+                            borderRadius: '16px',
+                            border: '1px solid #e2e8f0',
+                            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.03)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
                           <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                              <div style={{ fontWeight: '800', fontSize: '1rem', color: 'var(--text-primary)' }}>{sub.name}</div>
-                              <span className="badge badge-purple" style={{ fontSize: '0.7rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                              <div style={{ fontWeight: '800', fontSize: '1.05rem', color: '#0f172a' }}>{sub.name}</div>
+                              <span style={{
+                                fontSize: '0.72rem',
+                                fontWeight: '700',
+                                padding: '3px 10px',
+                                borderRadius: '9999px',
+                                background: '#f3e8ff',
+                                color: '#7c3aed',
+                                border: '1px solid #e9d5ff',
+                                whiteSpace: 'nowrap'
+                              }}>
                                 {parentCatName || 'Category Linked'}
                               </span>
                             </div>
                             {sub.description && (
-                              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '6px 0 10px 0' }}>{sub.description}</p>
+                              <p style={{ fontSize: '0.85rem', color: '#475569', margin: '8px 0 10px 0', fontWeight: '500', lineHeight: '1.4' }}>{sub.description}</p>
                             )}
-                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                              🛠️ <strong>{srvCount}</strong> Services attached
+                            <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '10px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              🛠️ <strong style={{ color: '#0f172a' }}>{srvCount}</strong> Services attached
                             </div>
                           </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px dashed #e2e8f0' }}>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>/{sub.slug}</span>
-                            <button onClick={() => deleteSubCategory(sub._id)} className="btn btn-danger btn-sm" title="Delete SubCategory">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '18px', paddingTop: '14px', borderTop: '1px dashed #e2e8f0' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace', fontWeight: '600' }}>/{sub.slug}</span>
+                            <button
+                              onClick={() => deleteSubCategory(sub._id)}
+                              style={{
+                                background: '#fef2f2',
+                                color: '#dc2626',
+                                border: '1px solid #fecaca',
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                fontWeight: '700',
+                                fontSize: '0.82rem',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                              title="Delete SubCategory"
+                            >
                               <Trash2 size={14} /> Delete
                             </button>
                           </div>
@@ -797,69 +1160,84 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
           {/* TAB 9: PAYMENTS / FINANCIAL OVERVIEW */}
           {activeTab === 'payments' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <div className="mui-card" style={{ padding: '26px', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: '#ffffff', border: '1px solid #334155' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div style={{
+                background: '#ffffff',
+                borderRadius: '20px',
+                padding: '26px',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px', flexWrap: 'wrap', gap: '12px' }}>
                   <div>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: '900', color: '#38bdf8', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <CreditCard size={22} color="#38bdf8" /> NOROZZ FINANCIAL OVERVIEW
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <CreditCard size={22} color="#10b981" /> NOROZZ FINANCIAL OVERVIEW
                     </h3>
-                    <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '4px 0 0 0' }}>
+                    <p style={{ fontSize: '0.84rem', color: '#64748b', margin: '4px 0 0 0', fontWeight: '500' }}>
                       Master Dual-Sided Revenue, Partner Payouts & Double-Entry Ledger Summary
                     </p>
                   </div>
-                  <span style={{ padding: '6px 14px', borderRadius: '20px', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', fontSize: '0.78rem', fontWeight: '800', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
-                    LIVE AUDIT LEDGER
+                  <span style={{
+                    padding: '6px 14px',
+                    borderRadius: '9999px',
+                    background: '#ecfdf5',
+                    color: '#047857',
+                    fontSize: '0.78rem',
+                    fontWeight: '800',
+                    border: '1px solid #a7f3d0'
+                  }}>
+                    ● LIVE AUDIT LEDGER
                   </span>
                 </div>
 
+                {/* Top Metrics Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-                  <div style={{ padding: '16px', background: 'rgba(255,255,255,0.04)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase' }}>Gross Booking Value</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#ffffff', marginTop: '4px' }}>₹1,00,000</div>
+                  <div style={{ padding: '18px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Gross Booking Value</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', marginTop: '6px' }}>₹1,00,000</div>
                   </div>
 
-                  <div style={{ padding: '16px', background: 'rgba(56, 189, 248, 0.08)', borderRadius: '16px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: '700', textTransform: 'uppercase' }}>Customer Platform Fees</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#38bdf8', marginTop: '4px' }}>+ ₹5,000</div>
+                  <div style={{ padding: '18px', background: '#eff6ff', borderRadius: '16px', border: '1px solid #bfdbfe' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#1d4ed8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Customer Platform Fees</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#2563eb', marginTop: '6px' }}>+ ₹5,000</div>
                   </div>
 
-                  <div style={{ padding: '16px', background: 'rgba(168, 85, 247, 0.08)', borderRadius: '16px', border: '1px solid rgba(168, 85, 247, 0.2)' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#c084fc', fontWeight: '700', textTransform: 'uppercase' }}>Partner Commissions</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#c084fc', marginTop: '4px' }}>+ ₹5,000</div>
+                  <div style={{ padding: '18px', background: '#f5f3ff', borderRadius: '16px', border: '1px solid #ddd6fe' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#6d28d9', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Partner Commissions</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#7c3aed', marginTop: '6px' }}>+ ₹5,000</div>
                   </div>
 
-                  <div style={{ padding: '16px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '16px', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#4ade80', fontWeight: '700', textTransform: 'uppercase' }}>Gross Platform Revenue</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: '900', color: '#4ade80', marginTop: '4px' }}>₹10,000</div>
+                  <div style={{ padding: '18px', background: '#ecfdf5', borderRadius: '16px', border: '1px solid #a7f3d0' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#047857', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Gross Platform Revenue</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#059669', marginTop: '6px' }}>₹10,000</div>
                   </div>
                 </div>
 
                 {/* Ledger Breakdown Card */}
-                <div style={{ background: 'rgba(0, 0, 0, 0.25)', borderRadius: '16px', padding: '20px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: '800', color: '#94a3b8', marginBottom: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <div style={{ background: '#f8fafc', borderRadius: '16px', padding: '22px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.88rem', fontWeight: '800', color: '#0f172a', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     Platform Net Contribution & Revenue Deductions
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.9rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#cbd5e1' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.9rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#334155', fontWeight: '600' }}>
                       <span>Gross Platform Revenue</span>
-                      <span style={{ fontWeight: '800', color: '#ffffff' }}>₹10,000</span>
+                      <span style={{ fontWeight: '800', color: '#0f172a' }}>₹10,000</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#f87171' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', fontWeight: '600' }}>
                       <span>Customer Refunds & Adjustments</span>
                       <span style={{ fontWeight: '800' }}>- ₹1,000</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fb923c' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#d97706', fontWeight: '600' }}>
                       <span>Payment Gateway Charges (Razorpay / UPI)</span>
                       <span style={{ fontWeight: '800' }}>- ₹300</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontWeight: '600' }}>
                       <span>Statutory & Other Adjustments</span>
                       <span style={{ fontWeight: '800' }}>- ₹200</span>
                     </div>
-                    <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.1)', margin: '4px 0' }} />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.15rem', fontWeight: '900' }}>
-                      <span style={{ color: '#ffffff' }}>Net Platform Revenue / Contribution</span>
-                      <span style={{ color: '#4ade80' }}>₹8,500</span>
+                    <div style={{ height: '1px', background: '#cbd5e1', margin: '6px 0' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.15rem', fontWeight: '800' }}>
+                      <span style={{ color: '#0f172a' }}>Net Platform Revenue / Contribution</span>
+                      <span style={{ color: '#059669' }}>₹8,500</span>
                     </div>
                   </div>
                 </div>
@@ -1053,7 +1431,16 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
       {catModalOpen && (
         <div className="modal-overlay" onClick={() => setCatModalOpen(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ padding: '28px', maxWidth: '440px' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '16px' }}>Create New Category</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>Create New Category</h3>
+              <button
+                type="button"
+                onClick={() => setCatModalOpen(false)}
+                style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '50%', color: '#64748b', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
             <form onSubmit={handleCreateCategorySubmit}>
               <div className="form-group">
                 <label className="form-label">Category Name *</label>
@@ -1102,7 +1489,16 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
       {subCatModalOpen && (
         <div className="modal-overlay" onClick={() => setSubCatModalOpen(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ padding: '28px', maxWidth: '460px' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '16px' }}>Create New SubCategory</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>Create New SubCategory</h3>
+              <button
+                type="button"
+                onClick={() => setSubCatModalOpen(false)}
+                style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '50%', color: '#64748b', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
             <form onSubmit={handleCreateSubCategorySubmit}>
               <div className="form-group">
                 <label className="form-label">SubCategory Name *</label>
@@ -1134,7 +1530,16 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
       {srvModalOpen && (
         <div className="modal-overlay" onClick={() => setSrvModalOpen(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ padding: '28px', maxWidth: '500px' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '16px' }}>Create New Service Package</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>Create New Service Package</h3>
+              <button
+                type="button"
+                onClick={() => setSrvModalOpen(false)}
+                style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '50%', color: '#64748b', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
             <form onSubmit={handleCreateServiceSubmit}>
               <div className="form-group">
                 <label className="form-label">Service Package Name *</label>

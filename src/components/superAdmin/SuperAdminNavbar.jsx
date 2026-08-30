@@ -1,131 +1,222 @@
-import React from 'react';
-import { Crown, Search, Bell, RefreshCw, LogOut, UserCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, RefreshCw, Menu, LogOut, ChevronDown, User, ShieldCheck } from 'lucide-react';
 
-const SuperAdminNavbar = ({ currentUser, onLogout, onRefresh, refreshing }) => {
+const SuperAdminNavbar = ({
+  currentUser,
+  onLogout,
+  onRefresh,
+  refreshing,
+  collapsed,
+  setCollapsed,
+  activeTitle = 'Overview'
+}) => {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = () => setDropdownOpen(false);
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, []);
+
   return (
     <header style={{
       background: '#ffffff',
-      borderBottom: '1px solid var(--border-light)',
-      padding: '14px 28px',
+      borderBottom: '1px solid #e5e7eb',
+      padding: '12px 28px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
       position: 'sticky',
       top: 0,
       zIndex: 100,
-      boxShadow: 'var(--shadow-sm)'
+      boxShadow: '0 2px 12px rgba(0, 0, 0, 0.03)'
     }}>
-      {/* Brand Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <img
-          src="/logo.png"
-          alt="NOROZZ Logo"
+      {/* Left Area: Toggle & Page Title */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          title="Toggle Sidebar"
           style={{
-            width: '42px',
-            height: '42px',
-            borderRadius: '12px',
-            objectFit: 'cover',
-            boxShadow: '0 4px 14px rgba(0, 180, 216, 0.35)',
-            border: '1px solid rgba(118, 215, 41, 0.3)'
-          }}
-        />
-        <div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            NOROZZ <span className="gradient-text">SUPER ADMIN PANEL</span>
-          </h2>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span className="dot-pulse dot-pulse-active"></span> Isolated Master Control • Full System Rights
-          </span>
-        </div>
-      </div>
-
-      {/* Global Search Bar */}
-      <div style={{ position: 'relative', width: '380px' }}>
-        <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
-        <input
-          type="text"
-          className="form-input"
-          placeholder="Search City Admins, Categories, Services, Cities..."
-          style={{
-            paddingLeft: '40px',
-            paddingRight: '50px',
             background: '#f8fafc',
-            borderRadius: '9999px',
-            fontSize: '0.88rem'
+            border: '1px solid #e2e8f0',
+            borderRadius: '10px',
+            width: '38px',
+            height: '38px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: '#1e293b',
+            transition: 'all 0.2s ease'
           }}
-        />
-        <span style={{
-          position: 'absolute',
-          right: '12px',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          fontSize: '0.7rem',
-          background: '#e2e8f0',
-          padding: '2px 6px',
-          borderRadius: '4px',
-          color: 'var(--text-secondary)',
-          fontWeight: '600'
+          onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
+        >
+          <Menu size={20} color="#0f172a" />
+        </button>
+
+        <h1 style={{
+          fontSize: '1.35rem',
+          fontWeight: '800',
+          color: '#0f172a',
+          margin: 0,
+          letterSpacing: '-0.3px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
         }}>
-          ⌘K
-        </span>
+          {activeTitle}
+        </h1>
       </div>
 
-      {/* Right Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+      {/* Right Controls: Refresh & User Profile Dropdown Pill */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         
         {/* Refresh Data */}
         <button
           onClick={onRefresh}
-          className="btn btn-secondary btn-sm"
           disabled={refreshing}
-          title="Refresh Data"
+          title="Refresh Platform Data"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '7px 14px',
+            background: '#ecfdf5',
+            border: '1px solid #a7f3d0',
+            borderRadius: '9999px',
+            color: '#047857',
+            fontWeight: '700',
+            fontSize: '0.8rem',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = '#d1fae5'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = '#ecfdf5'; }}
         >
-          <RefreshCw size={14} style={{ animation: refreshing ? 'spin 0.8s linear infinite' : 'none', color: '#7c3aed' }} />
+          <RefreshCw size={14} style={{ animation: refreshing ? 'spin 0.8s linear infinite' : 'none', color: '#10b981' }} />
           <span>Refresh</span>
         </button>
 
-        {/* Super Admin Profile Pill */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          padding: '4px 12px 4px 6px',
-          background: '#f8fafc',
-          borderRadius: '9999px',
-          border: '1px solid var(--border-light)'
-        }}>
-          <div style={{
-            width: '34px',
-            height: '34px',
-            borderRadius: '50%',
-            background: 'var(--gradient-brand)',
-            color: '#ffffff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: '800',
-            fontSize: '0.85rem'
-          }}>
-            {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'S'}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-              {currentUser?.name || 'Super Admin'}
-            </span>
-            <span style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: '700' }}>
-              MASTER CONTROL
-            </span>
-          </div>
-        </div>
+        {/* Clickable User Profile Pill & Dropdown */}
+        <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+          <div
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '6px 12px 6px 14px',
+              borderRadius: '9999px',
+              background: dropdownOpen ? '#f1f5f9' : '#f8fafc',
+              border: '1px solid #cbd5e1',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+            onMouseLeave={(e) => {
+              if (!dropdownOpen) e.currentTarget.style.background = '#f8fafc';
+            }}
+          >
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: '800', color: '#0f172a', lineHeight: '1.2' }}>
+                {currentUser?.email || 'superadmin@norozz.com'}
+              </div>
+              <div style={{ fontSize: '0.72rem', fontWeight: '700', color: '#10b981', marginTop: '1px' }}>
+                Super Admin
+              </div>
+            </div>
 
-        {/* Logout */}
-        <button
-          onClick={onLogout}
-          className="btn btn-danger btn-sm"
-          title="Logout"
-        >
-          <LogOut size={16} /> Logout
-        </button>
+            <div style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: '800',
+              fontSize: '0.9rem',
+              boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)'
+            }}>
+              {currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : 'S'}
+            </div>
+
+            <ChevronDown size={15} color="#64748b" style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }} />
+          </div>
+
+          {/* Profile Dropdown Menu */}
+          {dropdownOpen && (
+            <div style={{
+              position: 'absolute',
+              right: 0,
+              top: '52px',
+              width: '240px',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '16px',
+              boxShadow: '0 12px 32px rgba(0, 0, 0, 0.12)',
+              padding: '8px',
+              zIndex: 200,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px'
+            }}>
+              {/* Profile summary header inside dropdown */}
+              <div style={{ padding: '8px 10px 10px 10px', borderBottom: '1px solid #f1f5f9', marginBottom: '4px' }}>
+                <div style={{ fontSize: '0.88rem', fontWeight: '800', color: '#0f172a' }}>
+                  {currentUser?.name || 'Master Super Admin'}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', wordBreak: 'break-all', marginTop: '2px', fontWeight: '500' }}>
+                  {currentUser?.email || 'superadmin@norozz.com'}
+                </div>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '0.65rem',
+                  fontWeight: '800',
+                  padding: '2px 8px',
+                  borderRadius: '9999px',
+                  background: '#e6f4ea',
+                  color: '#047857',
+                  marginTop: '6px'
+                }}>
+                  <ShieldCheck size={12} color="#047857" /> MASTER CONTROL ROLE
+                </span>
+              </div>
+
+              {/* Logout Option */}
+              <button
+                onClick={() => {
+                  setDropdownOpen(false);
+                  if (onLogout) onLogout();
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  width: '100%',
+                  padding: '10px 14px',
+                  background: '#fef2f2',
+                  color: '#dc2626',
+                  border: '1px solid #fecaca',
+                  borderRadius: '10px',
+                  fontSize: '0.85rem',
+                  fontWeight: '800',
+                  cursor: 'pointer',
+                  transition: 'all 0.18s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#fef2f2'}
+              >
+                <LogOut size={16} color="#dc2626" />
+                <span>Logout Account</span>
+              </button>
+            </div>
+          )}
+        </div>
 
       </div>
 
@@ -140,3 +231,4 @@ const SuperAdminNavbar = ({ currentUser, onLogout, onRefresh, refreshing }) => {
 };
 
 export default SuperAdminNavbar;
+

@@ -330,14 +330,13 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: 'calc(100vh - 68px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '24px',
-      background: 'var(--bg-primary)'
+      padding: '32px 24px'
     }}>
-      <div className="mui-card" style={{ width: '100%', maxWidth: '440px', padding: '36px', background: '#ffffff' }}>
+      <div className="glass-card" style={{ width: '100%', maxWidth: '440px', padding: '36px' }}>
         
         {/* Branding Header */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
@@ -345,19 +344,20 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
             src="/logo.png"
             alt="NOROZZ Logo"
             style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '20px',
-              objectFit: 'cover',
-              marginBottom: '14px',
-              boxShadow: '0 6px 20px rgba(0, 180, 216, 0.35)',
-              border: '2px solid rgba(118, 215, 41, 0.4)'
+              width: '72px',
+              height: '72px',
+              margin: '0 auto 16px',
+              borderRadius: '18px',
+              objectFit: 'contain',
+              display: 'block',
+              boxShadow: '0 8px 24px rgba(16, 185, 129, 0.25)',
+              border: '2px solid rgba(16, 185, 129, 0.3)'
             }}
           />
-          <h1 style={{ fontSize: '1.65rem', fontWeight: '800', letterSpacing: '-0.5px' }}>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: '800', letterSpacing: '-0.5px', color: '#ffffff' }}>
             NOROZZ <span className="gradient-text">CUSTOMER APP</span>
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.86rem', marginTop: '4px' }}>
+          <p style={{ color: '#94a3b8', fontSize: '0.86rem', marginTop: '4px' }}>
             Book 50+ Home Services On Demand
           </p>
         </div>
@@ -365,17 +365,17 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
         {/* Info Header Badge */}
         {step !== 'profile' && (
           <div style={{
-            background: 'linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(124,58,237,0.06) 100%)',
+            background: 'rgba(16, 185, 129, 0.1)',
             padding: '12px 16px',
             borderRadius: 'var(--radius-md)',
             marginBottom: '20px',
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
-            border: '1px solid rgba(37,99,235,0.15)'
+            border: '1px solid rgba(16, 185, 129, 0.25)'
           }}>
-            <ShieldCheck size={20} color="#2563eb" style={{ flexShrink: 0 }} />
-            <p style={{ margin: 0, fontSize: '0.83rem', color: '#1e293b', lineHeight: 1.4, fontWeight: '500' }}>
+            <ShieldCheck size={20} color="#34d399" style={{ flexShrink: 0 }} />
+            <p style={{ margin: 0, fontSize: '0.83rem', color: '#cbd5e1', lineHeight: 1.4, fontWeight: '500' }}>
               Instant Login / Register with OTP. Existing users log in & new users complete basic profile!
             </p>
           </div>
@@ -384,36 +384,36 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
         {/* Alerts */}
         {error && (
           <div style={{
-            background: 'var(--accent-rose-light)',
-            color: 'var(--accent-rose)',
-            border: '1px solid #fecaca',
-            padding: '10px 14px',
+            background: 'rgba(239, 68, 68, 0.15)',
+            color: '#f87171',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            padding: '12px 16px',
             borderRadius: 'var(--radius-md)',
             fontSize: '0.85rem',
             marginBottom: '18px',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '10px'
           }}>
-            <AlertCircle size={16} style={{ flexShrink: 0 }} />
+            <AlertCircle size={18} style={{ flexShrink: 0 }} />
             <span>{error}</span>
           </div>
         )}
 
         {successMessage && (
           <div style={{
-            background: 'var(--accent-emerald-light)',
-            color: 'var(--accent-emerald)',
-            border: '1px solid #a7f3d0',
-            padding: '10px 14px',
+            background: 'rgba(16, 185, 129, 0.15)',
+            color: '#34d399',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            padding: '12px 16px',
             borderRadius: 'var(--radius-md)',
             fontSize: '0.85rem',
             marginBottom: '18px',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '10px'
           }}>
-            <Sparkles size={16} style={{ flexShrink: 0 }} />
+            <Sparkles size={18} style={{ flexShrink: 0 }} />
             <span>{successMessage}</span>
           </div>
         )}
