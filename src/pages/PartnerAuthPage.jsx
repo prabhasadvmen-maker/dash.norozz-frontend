@@ -850,7 +850,7 @@ const PartnerAuthPage = () => {
 
               <div style={{ marginBottom: '14px' }}>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
-                  Full Name
+                  Full Name <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -864,7 +864,7 @@ const PartnerAuthPage = () => {
 
               <div style={{ marginBottom: '14px' }}>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
-                  Email Address
+                  Email Address <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <input
                   type="email"
@@ -878,7 +878,7 @@ const PartnerAuthPage = () => {
 
               <div style={{ marginBottom: '14px' }}>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
-                  Date of Birth
+                  Date of Birth <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <input
                   type="date"
@@ -891,7 +891,7 @@ const PartnerAuthPage = () => {
 
               <div style={{ marginBottom: '14px' }}>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
-                  Gender
+                  Gender <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                   {['Male', 'Female', 'Other'].map((g) => (
@@ -918,12 +918,13 @@ const PartnerAuthPage = () => {
 
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
-                  Preferred Work City
+                  Preferred Work City <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <select
                   value={workCity}
                   onChange={(e) => setWorkCity(e.target.value)}
                   style={{ width: '100%', padding: '11px 14px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '0.92rem', background: '#ffffff', outline: 'none' }}
+                  required
                 >
                   {activeCitiesList.length > 0 ? (
                     activeCitiesList.map((c) => (
