@@ -49,7 +49,7 @@ const CityBookingDispatch = ({ assignedCity = 'Delhi NCR' }) => {
       boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
       padding: '26px'
     }}>
-      
+
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
         <div>
@@ -86,129 +86,52 @@ const CityBookingDispatch = ({ assignedCity = 'Delhi NCR' }) => {
                 </td>
               </tr>
             ) : (
-              bookings.map((o, idx) => {
-                let rawPartnerName = o.partner?.name || o.partner?.agencyName || 'Unassigned';
-                rawPartnerName = rawPartnerName.replace(/\([0-9a-fA-F]{24}\)/g, '').trim();
-                const isUnassigned = !o.partner || rawPartnerName.toLowerCase() === 'unassigned';
-
+              bookings.map((o) => {
+                const partnerName = o.partner?.name ? `${o.partner.name} (${o.partner.category || 'Specialist'})` : (o.partner?.agencyName || 'Unassigned');
                 return (
-                  <tr key={o._id} style={{ borderBottom: '1px solid #f1f5f9', background: '#ffffff' }}>
-                    <td style={{ padding: '12px 8px', fontWeight: '700', color: '#64748b', fontSize: '0.82rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                      {idx + 1}
-                    </td>
-                    <td style={{ padding: '12px 10px', fontWeight: '800', color: '#2563eb', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                  <tr key={o._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                    <td style={{ padding: '14px', fontWeight: '800', color: '#2563eb', fontSize: '0.85rem' }}>
                       {o.bookingNumber || o._id.substring(0, 8).toUpperCase()}
                     </td>
-                    <td style={{ padding: '12px 10px', fontWeight: '800', fontSize: '0.84rem', color: '#0f172a', whiteSpace: 'nowrap', maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={o.customer?.name}>
+                    <td style={{ padding: '14px', fontWeight: '700', fontSize: '0.88rem', color: 'var(--text-primary)' }}>
                       {o.customer?.name || 'Ananya Deshmukh'}
                     </td>
-                    <td style={{ padding: '12px 10px', fontWeight: '700', fontSize: '0.82rem', color: '#0f172a', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={o.packageName || o.packageSnapshot?.title || (typeof o.service === 'object' ? o.service?.name : o.serviceName)}>
+                    <td style={{ padding: '14px', fontWeight: '700', fontSize: '0.88rem', color: 'var(--text-primary)' }}>
                       {o.packageName || o.packageSnapshot?.title || (typeof o.service === 'object' ? o.service?.name : o.serviceName || 'Service Package')}
                     </td>
-                    <td style={{ padding: '12px 10px', fontSize: '0.8rem', fontWeight: '600', color: '#334155', whiteSpace: 'nowrap', maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      <MapPin size={11} color="#2563eb" style={{ display: 'inline', marginRight: '3px' }} />
+                    <td style={{ padding: '14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      <MapPin size={12} color="#2563eb" style={{ display: 'inline', marginRight: '4px' }} />
                       {o.address?.city || assignedCity}
                     </td>
-                    <td style={{ padding: '12px 10px', fontSize: '0.8rem', fontWeight: '700', color: isUnassigned ? '#ef4444' : '#0f172a', whiteSpace: 'nowrap', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={rawPartnerName}>
-                      {isUnassigned ? 'Unassigned' : rawPartnerName}
+                    <td style={{ padding: '14px', fontSize: '0.82rem', fontWeight: '700', color: partnerName === 'Unassigned' ? '#ef4444' : 'var(--text-primary)' }}>
+                      {partnerName}
                     </td>
-                    <td style={{ padding: '12px 10px', fontWeight: '800', color: '#059669', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '14px', fontWeight: '800', color: '#10b981', fontSize: '0.9rem' }}>
                       ₹{o.totalAmount || o.financialSnapshot?.customerPayable || o.amount || 599}
                     </td>
-                    <td style={{ padding: '12px 10px', whiteSpace: 'nowrap' }}>
-                      <span className={`badge ${o.status === 'Pending' ? 'badge-warning' : o.status === 'Assigned' ? 'badge-purple' : 'badge-blue'}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
-                        {(o.status || 'PENDING').toUpperCase()}
+                    <td style={{ padding: '14px' }}>
+                      <span className={`badge ${o.status === 'Pending' ? 'badge-warning' : o.status === 'Assigned' ? 'badge-purple' : 'badge-blue'}`}>
+                        {o.status.toUpperCase()}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 12px', textAlign: 'center', whiteSpace: 'nowrap', minWidth: '70px', width: '70px' }}>
-                      <div style={{ position: 'relative', display: 'inline-block' }} onClick={(e) => e.stopPropagation()}>
+                    <td style={{ padding: '14px' }}>
+                      <div style={{ display: 'flex', gap: '6px' }}>
                         <button
-                          type="button"
-                          onClick={() => setActiveDropdownId(activeDropdownId === o._id ? null : o._id)}
-                          style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '8px',
-                            background: activeDropdownId === o._id ? '#e2e8f0' : '#f1f5f9',
-                            border: '1px solid #cbd5e1',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            color: '#334155',
-                            margin: '0 auto'
-                          }}
-                          title="Booking Actions"
+                          onClick={() => handleOpenAssign(o)}
+                          className="btn btn-primary btn-sm"
+                          style={{ padding: '6px 10px', fontSize: '0.78rem' }}
                         >
-                          <Settings size={16} />
+                          <UserCheck size={14} /> Assign
                         </button>
 
-                        {activeDropdownId === o._id && (
-                          <div style={{
-                            position: 'absolute',
-                            right: 0,
-                            top: '38px',
-                            background: '#ffffff',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '12px',
-                            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.12)',
-                            padding: '6px',
-                            zIndex: 9999,
-                            minWidth: '160px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '4px'
-                          }}>
-                            <button
-                              type="button"
-                              onClick={() => { setActiveDropdownId(null); handleOpenAssign(o); }}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '8px 10px',
-                                fontSize: '0.8rem',
-                                fontWeight: '700',
-                                color: '#2563eb',
-                                background: 'transparent',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                width: '100%'
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = '#eff6ff'}
-                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <UserCheck size={14} color="#2563eb" /> Assign Technician
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => { setActiveDropdownId(null); handleOpenCancel(o); }}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '8px 10px',
-                                fontSize: '0.8rem',
-                                fontWeight: '700',
-                                color: '#dc2626',
-                                background: 'transparent',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                width: '100%'
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
-                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <XCircle size={14} color="#dc2626" /> Cancel Booking
-                            </button>
-                          </div>
-                        )}
+                        <button
+                          onClick={() => handleOpenCancel(o)}
+                          className="btn btn-danger btn-sm"
+                          style={{ padding: '6px 8px', fontSize: '0.75rem' }}
+                          title="Cancel Booking"
+                        >
+                          <XCircle size={12} />
+                        </button>
                       </div>
                     </td>
                   </tr>

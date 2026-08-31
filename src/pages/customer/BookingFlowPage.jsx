@@ -20,12 +20,15 @@ import {
 } from 'lucide-react';
 import { useBookings } from '../../hooks/useBookings.js';
 import { useCustomer } from '../../hooks/useCustomer.js';
+import { useAuth } from '../../hooks/useAuth.js';
 import { customerService } from '../../services/customer.service.js';
+import { paymentService } from '../../services/payment.service.js';
 import { toast } from '../../utils/toast.js';
 
 const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToBookings }) => {
   const { createBooking, payBooking } = useBookings();
   const { addresses, refetchCustomer } = useCustomer();
+  const { updateUser } = useAuth();
 
   // Active full page step: 'choose_package' | 'select_address' | 'add_address' | 'booking_summary' | 'apply_coupon' | 'payment' | 'finding_partner' | 'booking_confirmed'
   const [currentStep, setCurrentStep] = useState('choose_package');
@@ -257,6 +260,33 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
 
   // Start Payment & Searching Partner Radar Handler
   const handleStartPaymentAndFindingPartner = async () => {
+    const isWalletMethod = selectedPaymentMethod === 'Wallets' || selectedPaymentMethod === 'Wallet';
+
+    // 1. If Wallet payment method is selected, strictly check current customer wallet balance first
+    if (isWalletMethod) {
+      setLoading(true);
+      let currentBal = currentUser?.walletBalance ?? 0;
+      try {
+        const walletRes = await customerService.getWallet();
+        const data = walletRes.data?.data || walletRes.data || {};
+        if (typeof data.balance === 'number') {
+          currentBal = data.balance;
+        }
+      } catch (err) {
+        console.warn('Wallet balance check notice:', err);
+      }
+
+      if (currentBal < totalAmount) {
+        setLoading(false);
+        toast.error(
+          `❌ Insufficient NOROZZ Wallet Balance!\nYour available balance is ₹${currentBal}, but total amount is ₹${totalAmount}.\nPlease add money to your wallet or select another payment method.`,
+          { duration: 6000 }
+        );
+        return; // STOP! Stay on 'payment' step, DO NOT create booking or switch step!
+      }
+    }
+
+    // 2. Wallet balance is sufficient (or another payment method selected)
     setCurrentStep('finding_partner');
     setLoading(true);
 
@@ -274,17 +304,31 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
         amount: totalAmount,
         discountAmount: couponDiscountVal,
         couponCode: appliedCoupon?.code || null,
-        paymentMethod: selectedPaymentMethod
+        paymentMethod: isWalletMethod ? 'Wallet' : selectedPaymentMethod
       });
 
       const backendBooking = res.data || res.booking || res;
       const finalBookingRef = backendBooking.bookingId || backendBooking.bookingNumber || `#NZ-${Math.floor(1000 + Math.random() * 9000)}`;
 
       if (backendBooking._id) {
-        try {
-          await payBooking({ id: backendBooking._id, paymentMethod: selectedPaymentMethod });
-        } catch (e) {
-          console.warn('Payment API call:', e);
+        if (isWalletMethod) {
+          // Deduct Wallet Balance via Backend Wallet Pay API
+          const payRes = await paymentService.walletPay({
+            bookingId: backendBooking._id,
+            amount: totalAmount,
+          });
+          const payData = payRes.data?.data || payRes.data || {};
+          const newWalletBal = typeof payData.walletBalance === 'number' ? payData.walletBalance : (currentUser?.walletBalance - totalAmount);
+          if (updateUser) {
+            updateUser({ walletBalance: Math.max(0, newWalletBal) });
+          }
+          toast.success(payRes.data?.message || `🎉 ₹${totalAmount} deducted from NOROZZ Wallet!`);
+        } else {
+          try {
+            await payBooking({ id: backendBooking._id, paymentMethod: selectedPaymentMethod });
+          } catch (e) {
+            console.warn('Payment API call:', e);
+          }
         }
       }
 
@@ -303,7 +347,16 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
       }, 2500);
 
     } catch (err) {
-      console.warn('Backend order created in fallback mock mode:', err);
+      console.warn('Backend order payment error / fallback notice:', err);
+      const errMsg = err.response?.data?.message || err.message || '';
+      
+      if (isWalletMethod && (errMsg.includes('Insufficient') || errMsg.includes('balance'))) {
+        setLoading(false);
+        setCurrentStep('payment');
+        toast.error(errMsg || 'Insufficient wallet balance for payment.');
+        return;
+      }
+
       const mockRef = `#NZ-${Math.floor(2000 + Math.random() * 8000)}`;
       setConfirmedOrder({
         bookingId: mockRef,

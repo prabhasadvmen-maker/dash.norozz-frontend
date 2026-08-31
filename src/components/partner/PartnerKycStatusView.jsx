@@ -226,30 +226,6 @@ const PartnerKycStatusView = ({ kycStatus, onSimulateStatusChange, partnerData }
         </div>
       )}
 
-      {/* DEMO SIMULATION HELPER */}
-      <div className="mui-card" style={{ padding: '20px', textAlign: 'center' }}>
-        <div style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-          ⚡ DEMO FEATURE UNLOCKING SIMULATION
-        </div>
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-          <button
-            type="button"
-            onClick={() => onSimulateStatusChange('pending')}
-            className={`btn btn-sm ${isPending ? 'btn-primary' : 'btn-secondary'}`}
-          >
-            <Clock size={14} /> Set Pending (Locked)
-          </button>
-          <button
-            type="button"
-            onClick={() => onSimulateStatusChange('approved')}
-            className={`btn btn-sm ${isApproved ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ background: isApproved ? '#10b981' : undefined, color: isApproved ? '#ffffff' : undefined }}
-          >
-            <Sparkles size={14} /> Approve KYC (Unlock Portal)
-          </button>
-        </div>
-      </div>
-
     </div>
   );
 };

@@ -7,6 +7,7 @@ export const customerService = {
   getFeaturedServices: () => axiosInstance.get('/customer/services/featured'),
   getOffers: () => axiosInstance.get('/customer/offers'),
   getWallet: () => axiosInstance.get('/customer/wallet'),
+  addWalletMoney: (data) => axiosInstance.post('/customer/wallet/add-money', data),
   getNotifications: () => axiosInstance.get('/customer/notifications'),
   getReviews: () => axiosInstance.get('/customer/reviews'),
   getFavorites: () => axiosInstance.get('/customer/favorites'),

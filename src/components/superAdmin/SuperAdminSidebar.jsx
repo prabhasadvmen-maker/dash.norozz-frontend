@@ -3,9 +3,11 @@ import {
   LayoutDashboard,
   Building2,
   MapPin,
+  Tag,
   Users,
   Briefcase,
   Grid,
+  Sparkles,
   Layers,
   Wrench,
   CalendarCheck,
@@ -14,12 +16,8 @@ import {
   Bell,
   Settings,
   User,
-  LogOut,
-  Tag,
-  Sparkles,
   Star,
-  ChevronRight,
-  HelpCircle,
+  LogOut,
   ShieldCheck
 } from 'lucide-react';
 
@@ -67,7 +65,7 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout, collapsed }) => 
       boxShadow: '4px 0 24px rgba(0, 0, 0, 0.12)',
       zIndex: 40
     }}>
-      {/* 1. Brand Header (Fixed at top) */}
+      {/* 1. Brand Header */}
       <div style={{ padding: collapsed ? '16px 10px 12px 10px' : '20px 16px 12px 16px', flexShrink: 0 }}>
         <div style={{
           display: 'flex',
@@ -95,7 +93,6 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout, collapsed }) => 
               onError={(e) => { e.target.style.display = 'none'; }}
               style={{ width: '28px', height: '28px', objectFit: 'contain' }}
             />
-            <ShieldCheck size={22} color="#ffffff" style={{ display: 'none' }} />
           </div>
 
           {!collapsed && (
@@ -123,7 +120,7 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout, collapsed }) => 
         </div>
       </div>
 
-      {/* 2. Primary Navigation Menu (Middle Scrollable) */}
+      {/* 2. Primary Navigation Menu */}
       <div style={{
         flex: 1,
         overflowY: 'auto',
@@ -210,7 +207,7 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout, collapsed }) => 
         })}
       </div>
 
-      {/* 3. Bottom Action Buttons (Sticky/Pinned at Bottom) */}
+      {/* 3. Bottom Action Buttons */}
       <div style={{
         flexShrink: 0,
         padding: collapsed ? '12px 10px 16px 10px' : '12px 16px 16px 16px',
@@ -262,42 +259,9 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout, collapsed }) => 
             </button>
           );
         })}
-
-        {/* Help button */}
-        <button
-          onClick={() => setActiveTab('notifications')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            width: '100%',
-            padding: collapsed ? '10px' : '10px 14px',
-            justifyContent: collapsed ? 'center' : 'flex-start',
-            fontSize: '0.85rem',
-            fontWeight: '500',
-            borderRadius: '10px',
-            border: 'none',
-            cursor: 'pointer',
-            background: 'transparent',
-            color: 'rgba(255, 255, 255, 0.72)',
-            transition: 'all 0.18s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-            e.currentTarget.style.color = '#ffffff';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = 'rgba(255, 255, 255, 0.72)';
-          }}
-        >
-          <HelpCircle size={18} color="rgba(255, 255, 255, 0.75)" />
-          {!collapsed && <span>Help</span>}
-        </button>
       </div>
     </aside>
   );
 };
 
 export default SuperAdminSidebar;
-

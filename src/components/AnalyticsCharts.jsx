@@ -1,11 +1,9 @@
-import React from 'react';
 import {
   TrendingUp,
   BarChart2,
   Award,
   Sparkles,
-  ShieldCheck,
-  Users
+  ShieldCheck
 } from 'lucide-react';
 
 const AnalyticsCharts = () => {
@@ -18,34 +16,25 @@ const AnalyticsCharts = () => {
   ];
 
   const topPartners = [
-    { name: 'Rajesh Kumar', profession: 'AC Technician Master', rating: 4.95, completed: 840, earnings: '₹1,84,000', city: 'Delhi NCR' },
-    { name: 'Priya Sharma', profession: 'Senior Beauty Therapist', rating: 4.92, completed: 720, earnings: '₹1,62,000', city: 'Mumbai' },
-    { name: 'Amitabh Verma', profession: 'Master Plumber', rating: 4.88, completed: 690, earnings: '₹1,45,000', city: 'Bengaluru' },
-    { name: 'Sunil Malhotra', profession: 'Electrical Expert', rating: 4.85, completed: 610, earnings: '₹1,28,000', city: 'Hyderabad' },
-  ];
-
-  const userRegistrations = [
-    { month: 'Mar', count: 120 },
-    { month: 'Apr', count: 240 },
-    { month: 'May', count: 380 },
-    { month: 'Jun', count: 510 },
-    { month: 'Jul', count: 720 },
-    { month: 'Aug', count: 950 },
+    { name: 'Rajesh Sharma', profession: 'AC & Appliance Technician', city: 'Jaipur', earnings: '₹1,48,500', rating: '4.95', completed: '240' },
+    { name: 'Priya Verma', profession: 'Beauty & Wellness Specialist', city: 'Delhi NCR', earnings: '₹1,26,000', rating: '4.92', completed: '198' },
+    { name: 'Vikram Singh', profession: 'Master Plumber', city: 'Mumbai', earnings: '₹1,12,400', rating: '4.88', completed: '175' },
+    { name: 'Suresh Kumar', profession: 'Electrician Specialist', city: 'Bengaluru', earnings: '₹98,200', rating: '4.85', completed: '152' },
   ];
 
   const financialTrends = [
-    { month: 'Mar', revenue: 4.2, expenses: 1.1 },
-    { month: 'Apr', revenue: 4.8, expenses: 1.3 },
-    { month: 'May', revenue: 5.4, expenses: 1.4 },
-    { month: 'Jun', revenue: 5.1, expenses: 1.2 },
-    { month: 'Jul', revenue: 5.8, expenses: 1.5 },
-    { month: 'Aug', revenue: 6.0, expenses: 1.6 },
+    { month: 'Jan', revenue: 4.2, expenses: 1.1 },
+    { month: 'Feb', revenue: 5.1, expenses: 1.3 },
+    { month: 'Mar', revenue: 4.8, expenses: 1.2 },
+    { month: 'Apr', revenue: 5.9, expenses: 1.4 },
+    { month: 'May', revenue: 6.4, expenses: 1.6 },
+    { month: 'Jun', revenue: 6.9, expenses: 1.7 },
   ];
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: '24px', marginBottom: '28px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
       
-      {/* 1. User Registrations Chart Card (Image 2 style) */}
+      {/* 1. Category Revenue Distribution */}
       <div style={{
         background: '#ffffff',
         borderRadius: '20px',
@@ -53,46 +42,73 @@ const AnalyticsCharts = () => {
         border: '1px solid #f0f0f0',
         boxShadow: '0 8px 26px rgba(0, 0, 0, 0.03)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
           <div>
-            <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Users size={20} color="#10b981" /> User Registrations
+            <h3 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <BarChart2 size={20} color="#10b981" /> Category Revenue Distribution
             </h3>
-            <p style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '3px' }}>
-              USER REGISTRATIONS (LAST 6 MONTHS)
+            <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px', fontWeight: '500' }}>
+              Monthly revenue share across top service categories
             </p>
           </div>
           <span style={{
-            fontSize: '0.75rem',
+            fontSize: '0.7rem',
             fontWeight: '700',
-            padding: '4px 12px',
+            padding: '3px 10px',
             borderRadius: '9999px',
-            background: '#e6f4ea',
+            background: '#ecfdf5',
             color: '#047857',
             border: '1px solid #a7f3d0'
           }}>
-            Monthly
+            Live Share
           </span>
         </div>
 
-        {/* Visual Bar Chart */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '170px', paddingTop: '20px', borderBottom: '1px solid #f1f5f9' }}>
-          {userRegistrations.map((item, idx) => (
-            <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', flex: 1 }}>
-              <div style={{
-                width: '24px',
-                height: `${(item.count / 1000) * 100}%`,
-                background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)',
-                borderRadius: '6px 6px 0 0',
-                transition: 'all 0.3s ease'
-              }} title={`${item.count} Registrations`} />
-              <span style={{ fontSize: '0.76rem', fontWeight: '700', color: '#64748b' }}>{item.month}</span>
+        {/* Custom Visual Distribution Bars */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '14px' }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', fontWeight: '700', color: '#0f172a', marginBottom: '6px' }}>
+              <span>AC & Appliance Repair</span>
+              <span style={{ color: '#10b981' }}>38% • ₹41.0L</span>
             </div>
-          ))}
+            <div style={{ height: '10px', background: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
+              <div style={{ width: '38%', height: '100%', background: 'linear-gradient(90deg, #10b981, #059669)', borderRadius: '9999px' }} />
+            </div>
+          </div>
+
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', fontWeight: '700', color: '#0f172a', marginBottom: '6px' }}>
+              <span>Home Deep Cleaning</span>
+              <span style={{ color: '#0284c7' }}>28% • ₹34.6L</span>
+            </div>
+            <div style={{ height: '10px', background: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
+              <div style={{ width: '28%', height: '100%', background: 'linear-gradient(90deg, #0284c7, #0369a1)', borderRadius: '9999px' }} />
+            </div>
+          </div>
+
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', fontWeight: '700', color: '#0f172a', marginBottom: '6px' }}>
+              <span>Beauty & Spa for Women</span>
+              <span style={{ color: '#8b5cf6' }}>20% • ₹25.8L</span>
+            </div>
+            <div style={{ height: '10px', background: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
+              <div style={{ width: '20%', height: '100%', background: 'linear-gradient(90deg, #8b5cf6, #6d28d9)', borderRadius: '9999px' }} />
+            </div>
+          </div>
+
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', fontWeight: '700', color: '#0f172a', marginBottom: '6px' }}>
+              <span>Plumbing & Electrician</span>
+              <span style={{ color: '#d97706' }}>14% • ₹18.2L</span>
+            </div>
+            <div style={{ height: '10px', background: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
+              <div style={{ width: '14%', height: '100%', background: 'linear-gradient(90deg, #d97706, #b45309)', borderRadius: '9999px' }} />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* 2. Monthly Financial Trends (Income vs Expenses) (Image 2 style) */}
+      {/* 2. Platform Financial Growth Trend */}
       <div style={{
         background: '#ffffff',
         borderRadius: '20px',
@@ -100,24 +116,19 @@ const AnalyticsCharts = () => {
         border: '1px solid #f0f0f0',
         boxShadow: '0 8px 26px rgba(0, 0, 0, 0.03)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
           <div>
-            <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <TrendingUp size={20} color="#047857" /> Monthly Financial Trends (Income vs Expenses)
+            <h3 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <TrendingUp size={20} color="#059669" /> Platform Financial Growth Trend
             </h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '6px', fontSize: '0.75rem', fontWeight: '700' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#047857' }}>
-                <span style={{ width: '8px', height: '8px', background: '#047857', borderRadius: '50%' }}></span> Revenue
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444' }}>
-                <span style={{ width: '8px', height: '8px', background: '#ef4444', borderRadius: '50%' }}></span> Expenses
-              </div>
-            </div>
+            <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px', fontWeight: '500' }}>
+              Monthly Gross Revenue vs Operating Expense (₹ Lakhs)
+            </p>
           </div>
           <span style={{
-            fontSize: '0.75rem',
+            fontSize: '0.7rem',
             fontWeight: '700',
-            padding: '4px 12px',
+            padding: '3px 10px',
             borderRadius: '9999px',
             background: '#ffe4e6',
             color: '#be123c',
@@ -275,4 +286,3 @@ const AnalyticsCharts = () => {
 };
 
 export default AnalyticsCharts;
-

@@ -37,32 +37,32 @@ const PlatformAnalyticsGrid = () => {
       icon: Building2,
       color: '#06b6d4',
       bg: '#e0f2fe',
-      subtext: `${citiesCount} Active Cities`
+      subtext: 'Active Dynamic Cities'
     },
     {
       title: 'Registered Customers',
-      value: Number(customersCount).toLocaleString('en-IN'),
+      value: Number(customersCount).toLocaleString(),
       icon: Users,
-      color: '#10b981',
-      bg: '#e8f5e9',
-      subtext: 'Live Database Count'
+      color: '#3b82f6',
+      bg: '#eff6ff',
+      subtext: 'Total Active Accounts'
     },
     {
       title: 'Verified Partners',
-      value: Number(partnersCount).toLocaleString('en-IN'),
+      value: Number(partnersCount).toLocaleString(),
       icon: Briefcase,
-      color: '#0284c7',
-      bg: '#e0f2fe',
-      subtext: 'Live Database Count'
+      color: '#8b5cf6',
+      bg: '#f3e8ff',
+      subtext: 'Approved Technicians'
     },
     {
       title: 'Total Service Bookings',
-      value: Number(bookingsCount).toLocaleString('en-IN'),
+      value: Number(bookingsCount).toLocaleString(),
       icon: CalendarCheck,
-      color: '#d97706',
+      color: '#f59e0b',
       bg: '#fef3c7',
-      subtext: 'Live Database Count'
-    },
+      subtext: 'Dispatched & Live Orders'
+    }
   ];
 
   return (
@@ -143,4 +143,3 @@ const PlatformAnalyticsGrid = () => {
 };
 
 export default PlatformAnalyticsGrid;
-

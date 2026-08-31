@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   X,
@@ -29,11 +29,42 @@ import { useBookings } from '../../hooks/useBookings.js';
 import { axiosInstance } from '../../api/axiosInstance.js';
 import { partnerService } from '../../services/partner.service.js';
 import LiveChatModal from '../../components/common/LiveChatModal.jsx';
+import VoiceCallModal from '../../components/common/VoiceCallModal.jsx';
+import { socketService } from '../../services/socket.service.js';
 
 const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) => {
   const { updateBookingStatus, completeBooking } = useBookings();
   const [chatOpen, setChatOpen] = useState(false);
+  const [voiceCallOpen, setVoiceCallOpen] = useState(false);
+  const [isIncomingCall, setIsIncomingCall] = useState(false);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const socketRef = useRef(null);
+
+  const bookingIdStr = booking?._id || booking?.id;
+
+  useEffect(() => {
+    if (!bookingIdStr) return;
+    const socket = socketService.connect();
+    socketRef.current = socket;
+
+    socket.emit('join_partner', { partnerId: currentUser?._id || currentUser?.id });
+    socket.emit('join_chat_room', { bookingId: bookingIdStr });
+
+    const handleIncomingCall = (data) => {
+      if (!data || data.callerRole === 'partner') return;
+      if (data.bookingId === bookingIdStr || data.conversationId === bookingIdStr || !data.bookingId) {
+        setIsIncomingCall(true);
+        setVoiceCallOpen(true);
+        toast.info('📞 Incoming Call from Customer...');
+      }
+    };
+
+    socket.on('voice:call:incoming', handleIncomingCall);
+
+    return () => {
+      socket.off('voice:call:incoming', handleIncomingCall);
+    };
+  }, [bookingIdStr, currentUser]);
 
   // Full Booking Data from API
   const [fullBookingData, setFullBookingData] = useState(booking);
@@ -346,13 +377,18 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                   >
                     <MessageSquare size={14} /> Live Chat
                   </button>
-                  <a
-                    href={`tel:${custPhone}`}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#ecfdf5', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsIncomingCall(false);
+                      setVoiceCallOpen(true);
+                    }}
+                    style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#ecfdf5', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}
+                    title="Start Encrypted Voice Call with Customer"
                   >
                     <Phone size={18} />
-                  </a>
+                  </button>
                 </div>
               </div>
 
@@ -530,14 +566,18 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                   >
                     <MessageSquare size={14} /> Live Chat
                   </button>
-                  <a
-                    href={`tel:${custPhone}`}
-                    onClick={(e) => e.stopPropagation()}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsIncomingCall(false);
+                      setVoiceCallOpen(true);
+                    }}
                     className="btn btn-sm"
-                    style={{ background: '#ecfdf5', color: '#16a34a', fontWeight: '700', borderRadius: '10px', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
+                    style={{ background: '#ecfdf5', color: '#16a34a', fontWeight: '700', borderRadius: '10px', border: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
                   >
                     <Phone size={14} /> Call
-                  </a>
+                  </button>
                 </div>
               </div>
 
@@ -593,13 +633,17 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                 >
                   <MessageSquare size={16} /> Live Chat
                 </button>
-                <a
-                  href={`tel:${custPhone}`}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsIncomingCall(false);
+                    setVoiceCallOpen(true);
+                  }}
                   className="btn"
-                  style={{ padding: '12px', background: '#16a34a', color: '#ffffff', borderRadius: '14px', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', textDecoration: 'none' }}
+                  style={{ padding: '12px', background: '#16a34a', color: '#ffffff', borderRadius: '14px', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', border: 'none', cursor: 'pointer' }}
                 >
                   <Phone size={16} /> Call Customer
-                </a>
+                </button>
               </div>
 
               <button
@@ -1060,13 +1104,18 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
               >
                 <MessageSquare size={16} /> Open Live Chat
               </button>
-              <a
-                href={`tel:${custPhone}`}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCustomerModal(false);
+                  setIsIncomingCall(false);
+                  setVoiceCallOpen(true);
+                }}
                 className="btn"
-                style={{ padding: '12px', background: '#16a34a', color: '#ffffff', borderRadius: '14px', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', textDecoration: 'none' }}
+                style={{ padding: '12px', background: '#16a34a', color: '#ffffff', borderRadius: '14px', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', border: 'none', cursor: 'pointer' }}
               >
                 <Phone size={16} /> Call Customer
-              </a>
+              </button>
             </div>
 
           </div>
@@ -1080,6 +1129,20 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
         currentUser={currentUser}
         userRole="partner"
         onClose={() => setChatOpen(false)}
+      />
+
+      {/* REAL-TIME WEBRTC VOICE CALL MODAL */}
+      <VoiceCallModal
+        isOpen={voiceCallOpen}
+        onClose={() => {
+          setVoiceCallOpen(false);
+          setIsIncomingCall(false);
+        }}
+        bookingId={rawId}
+        remoteUserName={custName}
+        role="partner"
+        isIncoming={isIncomingCall}
+        socket={socketRef.current}
       />
     </div>
   );

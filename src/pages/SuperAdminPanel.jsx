@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import SuperAdminNavbar from '../components/superAdmin/SuperAdminNavbar';
 import SuperAdminSidebar from '../components/superAdmin/SuperAdminSidebar';
 import AdminPackageManagementModal from '../components/admin/AdminPackageManagementModal';
@@ -22,7 +22,6 @@ import {
   Settings,
   User,
   Plus,
-  Trash2,
   X,
   Sparkles,
   Home,
@@ -30,7 +29,10 @@ import {
   Scissors,
   Paintbrush,
   Car,
-  Star
+  Star,
+  ShieldCheck,
+  Eye,
+  Gift
 } from 'lucide-react';
 
 const SuperAdminPanel = ({ currentUser, onLogout }) => {
@@ -118,6 +120,48 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
   // Package Management Modal State
   const [selectedServiceForPackages, setSelectedServiceForPackages] = useState(null);
   const [isPkgModalOpen, setIsPkgModalOpen] = useState(false);
+
+  // Referral Bonus Settings State
+  const [referralBonusAmount, setReferralBonusAmount] = useState(500);
+  const [savingReferral, setSavingReferral] = useState(false);
+  const [referralSuccessMsg, setReferralSuccessMsg] = useState('');
+
+  useEffect(() => {
+    fetch('/api/super-admin/referral-settings', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data?.referralBonusAmount) {
+          setReferralBonusAmount(data.data.referralBonusAmount);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSaveReferralBonus = async (e) => {
+    e.preventDefault();
+    setSavingReferral(true);
+    try {
+      const res = await fetch('/api/super-admin/referral-settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ referralBonusAmount: Number(referralBonusAmount) }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setReferralSuccessMsg('Partner Referral Bonus updated successfully!');
+        setTimeout(() => setReferralSuccessMsg(''), 3000);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingReferral(false);
+    }
+  };
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -384,7 +428,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
         {/* Content View Area */}
         <main style={{ flex: 1, padding: '32px 36px', overflowX: 'hidden', maxWidth: '1600px', width: '100%', margin: '0 auto' }}>
           
-          {/* Page Header (Image 2 exact style: Large Heading + Date + Live Status Pill) */}
+          {/* Page Header */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <h1 style={{ fontSize: '2rem', fontWeight: '800', margin: 0, color: '#0f172a', letterSpacing: '-0.5px' }}>
@@ -1141,15 +1185,24 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                     {bookings.length === 0 ? (
                       <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No bookings created yet.</td></tr>
                     ) : (
-                      bookings.map((b) => (
-                        <tr key={b._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                          <td style={{ padding: '12px', fontWeight: '800', color: '#2563eb' }}>{b.bookingNumber || b._id.substring(0, 8).toUpperCase()}</td>
-                          <td style={{ padding: '12px' }}>{b.customer?.name || 'Customer'}</td>
-                          <td style={{ padding: '12px' }}>{b.serviceName || 'AC Service'}</td>
-                          <td style={{ padding: '12px', fontWeight: '800', color: '#10b981' }}>₹{b.totalAmount || b.finalPrice || 599}</td>
-                          <td style={{ padding: '12px' }}><span className="badge badge-purple">{b.status}</span></td>
-                        </tr>
-                      ))
+                      bookings.map((b) => {
+                        const custName = typeof b.customer === 'object' && b.customer?.name
+                          ? b.customer.name
+                          : (b.customer?.email || 'Customer');
+                        const srvTitle = b.packageName || (typeof b.service === 'object' && b.service?.name ? b.service.name : b.serviceName) || 'Home Service';
+                        const bAmount = b.amount ?? b.totalAmount ?? b.financialSnapshot?.customerPayable ?? 0;
+                        const refCode = b.bookingNumber || b.bookingId || (b._id ? b._id.substring(0, 8).toUpperCase() : 'NZ-BOOKING');
+
+                        return (
+                          <tr key={b._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                            <td style={{ padding: '12px', fontWeight: '800', color: '#2563eb' }}>{refCode}</td>
+                            <td style={{ padding: '12px', fontWeight: '700' }}>{custName}</td>
+                            <td style={{ padding: '12px' }}>{srvTitle}</td>
+                            <td style={{ padding: '12px', fontWeight: '800', color: '#10b981' }}>₹{Number(bAmount).toLocaleString()}</td>
+                            <td style={{ padding: '12px' }}><span className="badge badge-purple">{(b.status || 'Pending').toUpperCase()}</span></td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -1246,123 +1299,106 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
           )}
 
           {/* TAB 9.5: REVIEWS & RATINGS MODERATION */}
-          {activeTab === 'reviews' && (
-            <div className="mui-card" style={{ padding: '26px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: '900', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Star size={22} color="#f59e0b" fill="#f59e0b" /> Reviews & Two-Way Ratings Moderation
-                  </h3>
-                  <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '4px 0 0 0' }}>
-                    Manage customer and partner reviews, moderate inappropriate content, and view platform ratings
-                  </p>
+          {activeTab === 'reviews' && (() => {
+            const liveReviews = (bookings || [])
+              .filter((b) => b.rating || b.customerRated || b.reviewComment)
+              .map((b) => ({
+                _id: b._id,
+                reviewerName: typeof b.customer === 'object' && b.customer?.name ? b.customer.name : (b.customer?.email || 'Customer'),
+                reviewerRole: 'CUSTOMER',
+                revieweeName: typeof b.partner === 'object' && (b.partner?.name || b.partner?.agencyName) ? (b.partner.name || b.partner.agencyName) : (b.partnerName || 'Service Partner'),
+                revieweeRole: 'PARTNER',
+                rating: b.rating || 5,
+                comment: b.reviewComment || 'Great service experience!',
+                status: 'PUBLISHED',
+                date: b.updatedAt ? new Date(b.updatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recent',
+              }));
+
+            const ratingsList = liveReviews.map(r => r.rating);
+            const avgRating = ratingsList.length > 0
+              ? (ratingsList.reduce((a, b) => a + b, 0) / ratingsList.length).toFixed(1)
+              : '5.0';
+
+            return (
+              <div className="mui-card" style={{ padding: '26px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: '900', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Star size={22} color="#f59e0b" fill="#f59e0b" /> Reviews & Two-Way Ratings Moderation
+                    </h3>
+                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '4px 0 0 0' }}>
+                      Manage customer and partner reviews, moderate inappropriate content, and view platform ratings
+                    </p>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <span className="badge badge-purple" style={{ padding: '6px 14px', fontSize: '0.8rem' }}>
+                      ⭐ {avgRating} Platform Average Rating
+                    </span>
+                  </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <span className="badge badge-purple" style={{ padding: '6px 14px', fontSize: '0.8rem' }}>
-                    ⭐ 4.9 Platform Average Rating
-                  </span>
-                </div>
-              </div>
-
-              {/* Reviews Moderation Table */}
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                      <th style={{ padding: '12px' }}>REVIEWER</th>
-                      <th style={{ padding: '12px' }}>REVIEWEE</th>
-                      <th style={{ padding: '12px' }}>RATING</th>
-                      <th style={{ padding: '12px' }}>COMMENT / FEEDBACK</th>
-                      <th style={{ padding: '12px' }}>STATUS</th>
-                      <th style={{ padding: '12px', textAlign: 'right' }}>MODERATION ACTIONS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      {
-                        _id: 'rev-1',
-                        reviewerName: 'Ananya Deshmukh',
-                        reviewerRole: 'CUSTOMER',
-                        revieweeName: 'Rahul Kumar (CleanPro Agency)',
-                        revieweeRole: 'PARTNER',
-                        rating: 5,
-                        comment: 'Punctual, professional AC foam cleaning. Highly recommended service expert!',
-                        status: 'PUBLISHED',
-                        date: '27 July 2026',
-                      },
-                      {
-                        _id: 'rev-2',
-                        reviewerName: 'Rahul Kumar (CleanPro Agency)',
-                        reviewerRole: 'PARTNER',
-                        revieweeName: 'Ananya Deshmukh',
-                        revieweeRole: 'CUSTOMER',
-                        rating: 5,
-                        comment: 'Customer was very polite, cooperative and provided easy gate entry code.',
-                        status: 'PUBLISHED',
-                        date: '27 July 2026',
-                      },
-                      {
-                        _id: 'rev-3',
-                        reviewerName: 'Vikram Mehta',
-                        reviewerRole: 'CUSTOMER',
-                        revieweeName: 'Speedy Plumber Agency',
-                        revieweeRole: 'PARTNER',
-                        rating: 4,
-                        comment: 'Great job with pipe repair, arrived slightly late due to traffic but fixed issue well.',
-                        status: 'PUBLISHED',
-                        date: '25 July 2026',
-                      },
-                    ].map((rev) => (
-                      <tr key={rev._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                        <td style={{ padding: '12px' }}>
-                          <div style={{ fontWeight: '800', fontSize: '0.88rem', color: '#0f172a' }}>{rev.reviewerName}</div>
-                          <span className={`badge ${rev.reviewerRole === 'CUSTOMER' ? 'badge-blue' : 'badge-purple'}`} style={{ fontSize: '0.65rem' }}>
-                            {rev.reviewerRole}
-                          </span>
-                        </td>
-
-                        <td style={{ padding: '12px' }}>
-                          <div style={{ fontWeight: '800', fontSize: '0.88rem', color: '#0f172a' }}>{rev.revieweeName}</div>
-                          <span className={`badge ${rev.revieweeRole === 'CUSTOMER' ? 'badge-blue' : 'badge-purple'}`} style={{ fontSize: '0.65rem' }}>
-                            {rev.revieweeRole}
-                          </span>
-                        </td>
-
-                        <td style={{ padding: '12px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#f59e0b', fontWeight: '800' }}>
-                            <Star size={16} fill="#f59e0b" color="#f59e0b" />
-                            <span>{rev.rating}.0</span>
-                          </div>
-                        </td>
-
-                        <td style={{ padding: '12px', fontSize: '0.84rem', color: '#334155', maxWidth: '280px' }}>
-                          "{rev.comment}"
-                        </td>
-
-                        <td style={{ padding: '12px' }}>
-                          <span className={`badge ${rev.status === 'PUBLISHED' ? 'badge-success' : 'badge-warning'}`}>
-                            {rev.status}
-                          </span>
-                        </td>
-
-                        <td style={{ padding: '12px', textAlign: 'right' }}>
-                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                            <button className="btn btn-secondary btn-sm" style={{ padding: '4px 8px', fontSize: '0.72rem' }}>
-                              Hide
-                            </button>
-                            <button className="btn btn-danger btn-sm" style={{ padding: '4px 8px', fontSize: '0.72rem' }}>
-                              Delete
-                            </button>
-                          </div>
-                        </td>
+                {/* Reviews Moderation Table */}
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                        <th style={{ padding: '12px' }}>REVIEWER</th>
+                        <th style={{ padding: '12px' }}>REVIEWEE</th>
+                        <th style={{ padding: '12px' }}>RATING</th>
+                        <th style={{ padding: '12px' }}>COMMENT / FEEDBACK</th>
+                        <th style={{ padding: '12px' }}>STATUS</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {liveReviews.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} style={{ padding: '28px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                            No customer or partner ratings submitted yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        liveReviews.map((rev) => (
+                          <tr key={rev._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                            <td style={{ padding: '12px' }}>
+                              <div style={{ fontWeight: '800', fontSize: '0.88rem', color: '#0f172a' }}>{rev.reviewerName}</div>
+                              <span className={`badge ${rev.reviewerRole === 'CUSTOMER' ? 'badge-blue' : 'badge-purple'}`} style={{ fontSize: '0.65rem' }}>
+                                {rev.reviewerRole}
+                              </span>
+                            </td>
+
+                            <td style={{ padding: '12px' }}>
+                              <div style={{ fontWeight: '800', fontSize: '0.88rem', color: '#0f172a' }}>{rev.revieweeName}</div>
+                              <span className={`badge ${rev.revieweeRole === 'CUSTOMER' ? 'badge-blue' : 'badge-purple'}`} style={{ fontSize: '0.65rem' }}>
+                                {rev.revieweeRole}
+                              </span>
+                            </td>
+
+                            <td style={{ padding: '12px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#f59e0b', fontWeight: '800' }}>
+                                <Star size={16} fill="#f59e0b" color="#f59e0b" />
+                                <span>{rev.rating}.0</span>
+                              </div>
+                            </td>
+
+                            <td style={{ padding: '12px', fontSize: '0.84rem', color: '#334155', maxWidth: '320px' }}>
+                              "{rev.comment}"
+                            </td>
+
+                            <td style={{ padding: '12px' }}>
+                              <span className={`badge ${rev.status === 'PUBLISHED' ? 'badge-success' : 'badge-warning'}`}>
+                                {rev.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* TAB 10: REPORTS */}
           {activeTab === 'reports' && (
@@ -1390,16 +1426,50 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
 
           {/* TAB 12: SETTINGS */}
           {activeTab === 'settings' && (
-            <div className="mui-card" style={{ padding: '26px', maxWidth: '500px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Settings size={20} color="#2563eb" /> Platform Settings & Commission Rates
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div className="form-group">
-                  <label className="form-label">Platform Default Commission (%)</label>
-                  <input type="number" className="form-input" defaultValue={20} />
+            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              <div className="mui-card" style={{ padding: '26px', maxWidth: '480px', flex: '1 1 400px' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Settings size={20} color="#2563eb" /> Platform Settings & Commission Rates
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Platform Default Commission (%)</label>
+                    <input type="number" className="form-input" defaultValue={20} />
+                  </div>
+                  <button className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>Save Configuration</button>
                 </div>
-                <button className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>Save Configuration</button>
+              </div>
+
+              <div className="mui-card" style={{ padding: '26px', maxWidth: '520px', flex: '1 1 400px', borderLeft: '4px solid #701a75' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '900', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px', color: '#701a75' }}>
+                  <Gift size={22} color="#c026d3" /> Partner Referral Bonus Program Settings
+                </h3>
+                <p style={{ fontSize: '0.84rem', color: '#64748b', marginBottom: '16px' }}>
+                  Configure the referral bonus amount credited to partners when a referred technician registers and completes their 1st booking.
+                </p>
+                <form onSubmit={handleSaveReferralBonus} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '800', color: '#0f172a' }}>Partner Referral Bonus Per Signup (₹)</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={referralBonusAmount}
+                      onChange={(e) => setReferralBonusAmount(e.target.value)}
+                      placeholder="e.g. 500"
+                      min={0}
+                      required
+                      style={{ fontSize: '1.1rem', fontWeight: '800' }}
+                    />
+                  </div>
+                  {referralSuccessMsg && (
+                    <div style={{ background: '#f0fdf4', color: '#15803d', padding: '10px 14px', border: '1px solid #bbf7d0', fontSize: '0.84rem', fontWeight: '800' }}>
+                      ✓ {referralSuccessMsg}
+                    </div>
+                  )}
+                  <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', background: '#701a75', border: 'none', padding: '12px 20px', fontWeight: '800' }} disabled={savingReferral}>
+                    {savingReferral ? 'Saving...' : 'Save Referral Bonus'}
+                  </button>
+                </form>
               </div>
             </div>
           )}

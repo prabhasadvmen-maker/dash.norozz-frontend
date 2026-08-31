@@ -46,25 +46,16 @@ const SuperAdminNavbar = ({
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            color: '#1e293b',
+            color: '#334155',
             transition: 'all 0.2s ease'
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
         >
-          <Menu size={20} color="#0f172a" />
+          <Menu size={18} />
         </button>
 
-        <h1 style={{
-          fontSize: '1.35rem',
-          fontWeight: '800',
-          color: '#0f172a',
-          margin: 0,
-          letterSpacing: '-0.3px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
+        <h1 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0, color: '#0f172a', letterSpacing: '-0.3px' }}>
           {activeTitle}
         </h1>
       </div>
@@ -231,4 +222,3 @@ const SuperAdminNavbar = ({
 };
 
 export default SuperAdminNavbar;
-

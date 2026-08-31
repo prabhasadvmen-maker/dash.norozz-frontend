@@ -62,7 +62,7 @@
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
-  --radius-xl: 24px;
+  --radius-xl: 20px;
 
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.3);
@@ -74,10 +74,13 @@
   --font-main: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  border-radius: 0 !important;
 }
 
 body {
@@ -96,13 +99,16 @@ body {
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: var(--bg-primary);
 }
+
 ::-webkit-scrollbar-thumb {
   background: #334155;
   border-radius: 10px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: var(--accent-emerald);
 }
@@ -126,7 +132,7 @@ body {
 .bg-mesh-dark {
   position: relative;
   background-color: #0b0f19;
-  background-image: 
+  background-image:
     radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.15) 0px, transparent 50%),
     radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.15) 0px, transparent 50%),
     radial-gradient(at 50% 100%, rgba(59, 130, 246, 0.12) 0px, transparent 50%);
@@ -266,10 +272,21 @@ body {
   background: var(--accent-blue);
 }
 
-.metric-card.purple::before { background: var(--accent-purple); }
-.metric-card.emerald::before { background: var(--accent-emerald); }
-.metric-card.amber::before { background: var(--accent-amber); }
-.metric-card.rose::before { background: var(--accent-rose); }
+.metric-card.purple::before {
+  background: var(--accent-purple);
+}
+
+.metric-card.emerald::before {
+  background: var(--accent-emerald);
+}
+
+.metric-card.amber::before {
+  background: var(--accent-amber);
+}
+
+.metric-card.rose::before {
+  background: var(--accent-rose);
+}
 
 /* Buttons */
 .btn {
@@ -293,6 +310,7 @@ body {
   color: #ffffff;
   box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
 }
+
 .btn-primary:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 22px rgba(16, 185, 129, 0.45);
@@ -303,6 +321,7 @@ body {
   color: var(--text-primary);
   border: 1px solid var(--border-light);
 }
+
 .btn-secondary:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: var(--border-medium);
@@ -314,6 +333,7 @@ body {
   color: #f87171;
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
+
 .btn-danger:hover {
   background: var(--accent-rose);
   color: #ffffff;
@@ -324,6 +344,7 @@ body {
   color: #34d399;
   border: 1px solid rgba(16, 185, 129, 0.3);
 }
+
 .btn-success:hover {
   background: var(--accent-emerald);
   color: #ffffff;
@@ -334,6 +355,7 @@ body {
   color: #fbbf24;
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
+
 .btn-warning:hover {
   background: var(--accent-amber);
   color: #ffffff;
@@ -370,13 +392,15 @@ body {
   border: 1px solid rgba(139, 92, 246, 0.3);
 }
 
-.badge-active, .badge-success {
+.badge-active,
+.badge-success {
   background: var(--accent-emerald-light);
   color: #34d399;
   border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
-.badge-blocked, .badge-danger {
+.badge-blocked,
+.badge-danger {
   background: var(--accent-rose-light);
   color: #f87171;
   border: 1px solid rgba(239, 68, 68, 0.3);
@@ -395,6 +419,7 @@ body {
   border-radius: 50%;
   display: inline-block;
 }
+
 .dot-pulse-active {
   background-color: var(--accent-emerald);
   box-shadow: 0 0 10px var(--accent-emerald);
@@ -445,7 +470,8 @@ body {
   color: var(--text-primary);
 }
 
-.form-input, .form-select {
+.form-input,
+.form-select {
   width: 100%;
   padding: 12px 16px;
   background: rgba(17, 24, 39, 0.8);
@@ -466,13 +492,15 @@ body {
   padding-right: 44px;
 }
 
-.form-input:focus, .form-select:focus {
+.form-input:focus,
+.form-select:focus {
   border-color: var(--brand-green);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
   background: rgba(17, 24, 39, 0.95);
 }
 
-.form-input:focus + .input-icon, .form-input:focus ~ .input-icon {
+.form-input:focus+.input-icon,
+.form-input:focus~.input-icon {
   color: var(--brand-green);
 }
 
@@ -524,21 +552,25 @@ div[style*="backdrop-filter"] {
   -ms-overflow-style: none !important;
 }
 
-.modal-content h1, .modal-content h2, .modal-content h3, .modal-content h4 {
+.modal-content h1,
+.modal-content h2,
+.modal-content h3,
+.modal-content h4 {
   color: #0f172a !important;
 }
 
-.modal-content label, .modal-content .form-label {
+.modal-content label,
+.modal-content .form-label {
   color: #334155 !important;
   font-weight: 700 !important;
   font-size: 0.85rem !important;
   margin-bottom: 6px !important;
 }
 
-.modal-content input, 
-.modal-content select, 
+.modal-content input,
+.modal-content select,
 .modal-content textarea,
-.modal-content .form-input, 
+.modal-content .form-input,
 .modal-content .form-select {
   background: #f8fafc !important;
   border: 1px solid #e2e8f0 !important;
@@ -547,10 +579,10 @@ div[style*="backdrop-filter"] {
   font-weight: 600 !important;
 }
 
-.modal-content input:focus, 
-.modal-content select:focus, 
+.modal-content input:focus,
+.modal-content select:focus,
 .modal-content textarea:focus,
-.modal-content .form-input:focus, 
+.modal-content .form-input:focus,
 .modal-content .form-select:focus {
   border-color: #10b981 !important;
   background: #ffffff !important;
@@ -562,6 +594,7 @@ div[style*="backdrop-filter"] {
     opacity: 0;
     transform: translateY(20px) scale(0.96);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -603,8 +636,13 @@ table tbody tr:hover {
 
 /* Keyframe animations */
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .spin {

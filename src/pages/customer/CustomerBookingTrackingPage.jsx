@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   Phone,
@@ -22,6 +22,8 @@ import LiveChatModal from '../../components/common/LiveChatModal.jsx';
 import PartnerProfileModal from '../../components/customer/PartnerProfileModal.jsx';
 import ReviewModal from '../../components/common/ReviewModal.jsx';
 import CancelBookingModal from '../../components/customer/CancelBookingModal.jsx';
+import VoiceCallModal from '../../components/common/VoiceCallModal.jsx';
+import { socketService } from '../../services/socket.service.js';
 import { toast } from '../../utils/toast.js';
 
 const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
@@ -30,6 +32,36 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [showInvoiceView, setShowInvoiceView] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [voiceCallOpen, setVoiceCallOpen] = useState(false);
+  const [isIncomingCall, setIsIncomingCall] = useState(false);
+  const socketRef = useRef(null);
+
+  useEffect(() => {
+    if (!booking) return;
+    const socket = socketService.connect();
+    socketRef.current = socket;
+
+    const bIdStr = booking._id || booking.id;
+    socket.emit('join_user', { userId: currentUser?._id || currentUser?.id });
+    if (bIdStr) {
+      socket.emit('join_chat_room', { bookingId: bIdStr });
+    }
+
+    const handleIncomingCall = (data) => {
+      if (!data || data.callerRole === 'customer') return;
+      if (data.bookingId === bIdStr || data.conversationId === bIdStr || !data.bookingId) {
+        setIsIncomingCall(true);
+        setVoiceCallOpen(true);
+        toast.info('📞 Incoming Call from Service Partner...');
+      }
+    };
+
+    socket.on('voice:call:incoming', handleIncomingCall);
+
+    return () => {
+      socket.off('voice:call:incoming', handleIncomingCall);
+    };
+  }, [booking, currentUser]);
 
   if (!booking) return null;
 
@@ -63,14 +95,18 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
   const partnerObj = typeof booking.partner === 'object' ? booking.partner : null;
   const partnerName = isAssigned ? (partnerObj?.name || 'Assigned Technician') : 'Searching Partner';
   const partnerPhone = isAssigned ? (partnerObj?.phone || '') : null;
-  const partnerCategory = isAssigned
-    ? (partnerObj?.agencyName || partnerObj?.category || 'Verified Technician Partner')
-    : 'Awaiting Acceptance';
-
-  const sSlot = booking.timeSlot || booking.bookingTimeSlot || '10:30 AM';
-  const sDate = booking.bookingDate
+  const rawDateStr = booking.bookingDate
     ? new Date(booking.bookingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
     : 'Today';
+
+  let displaySlot = booking.timeSlot || booking.bookingTimeSlot || '10:30 AM';
+  if (displaySlot.includes('•')) {
+    displaySlot = displaySlot.split('•').pop().trim();
+  } else if (displaySlot.includes(' at ')) {
+    displaySlot = displaySlot.split(' at ').pop().trim();
+  }
+
+  const sFormattedDate = `${rawDateStr} • ${displaySlot}`;
 
   const addressText = typeof booking.address === 'object'
     ? `${booking.address?.addressLine ? booking.address.addressLine + ', ' : ''}${booking.address?.city || booking.city || 'Delhi NCR'}`
@@ -708,7 +744,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
               }}
             >
               {/* 3. ASSIGNED TECHNICIAN CONTACT CARD */}
-              <div style={{ padding: '18px', background: isAssigned ? '#f8fafc' : '#fffef0', borderRadius: '18px', border: isAssigned ? '1px solid var(--border-light)' : '1px solid #fde68a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ padding: '18px', background: isAssigned ? '#f8fafc' : '#fffef0', borderRadius: '18px', border: isAssigned ? '1px solid var(--border-light)' : '1px solid #fde68a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
                 <div
                   onClick={() => isAssigned && setPartnerProfileOpen(true)}
                   style={{
@@ -724,7 +760,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                     {isAssigned ? partnerName.charAt(0).toUpperCase() : '?'}
                   </div>
                   <div>
-                    <div style={{ fontWeight: '800', fontSize: '1.05rem', color: isAssigned ? 'var(--text-primary)' : '#b45309', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ fontWeight: '800', fontSize: '1.05rem', color: isAssigned ? 'var(--text-primary)' : '#b45309', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       {isAssigned ? partnerName : 'Searching for Nearby Partner...'}
                       {isAssigned && (
                         <span style={{ fontSize: '0.68rem', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '2px 8px', borderRadius: '10px', fontWeight: '800' }}>
@@ -732,7 +768,6 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{partnerCategory}</div>
                     {isAssigned ? (
                       <div style={{ fontSize: '0.8rem', color: '#f59e0b', fontWeight: '700', marginTop: '2px' }}>⭐ 4.9 Technician Rating (120+ Services)</div>
                     ) : (
@@ -764,24 +799,34 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                     <MessageSquare size={16} /> Live Chat
                   </button>
 
-                  {isAssigned && partnerPhone ? (
-                    <a
-                      href={`tel:${partnerPhone}`}
-                      className="btn btn-sm"
-                      style={{ background: '#ecfdf5', color: '#16a34a', fontWeight: '800', borderRadius: '12px', border: 'none', padding: '10px 16px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                    >
-                      <Phone size={16} /> Call Partner
-                    </a>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled
-                      className="btn btn-sm"
-                      style={{ background: '#f1f5f9', color: '#94a3b8', fontWeight: '800', borderRadius: '12px', border: 'none', padding: '10px 16px', display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'not-allowed' }}
-                    >
-                      <Phone size={16} /> Call Partner
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isAssigned) {
+                        toast.error('Partner has not accepted the booking yet.');
+                        return;
+                      }
+                      setIsIncomingCall(false);
+                      setVoiceCallOpen(true);
+                    }}
+                    disabled={!isAssigned}
+                    className="btn btn-sm"
+                    style={{
+                      background: isAssigned ? '#ecfdf5' : '#f1f5f9',
+                      color: isAssigned ? '#16a34a' : '#94a3b8',
+                      fontWeight: '800',
+                      borderRadius: '12px',
+                      border: 'none',
+                      padding: '10px 16px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      cursor: isAssigned ? 'pointer' : 'not-allowed'
+                    }}
+                    title={isAssigned ? 'Start Real-Time Voice Call with Partner' : 'Call unlocks when partner is assigned'}
+                  >
+                    <Phone size={16} /> Call Partner
+                  </button>
                 </div>
               </div>
 
@@ -793,7 +838,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid var(--border-light)', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
                   <div>
                     <Clock size={16} style={{ display: 'inline', marginRight: '6px' }} />
-                    {sDate} at {sSlot}
+                    {sFormattedDate}
                   </div>
                   <div style={{ fontWeight: '800', fontSize: '1.3rem', color: '#16a34a' }}>₹{sAmount}</div>
                 </div>
@@ -882,6 +927,20 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
           if (onBack) onBack();
         }}
       />
+      {/* REAL-TIME VOICE CALL MODAL */}
+      <VoiceCallModal
+        isOpen={voiceCallOpen}
+        onClose={() => {
+          setVoiceCallOpen(false);
+          setIsIncomingCall(false);
+        }}
+        bookingId={booking._id || booking.id}
+        remoteUserName={partnerName}
+        role="customer"
+        isIncoming={isIncomingCall}
+        socket={socketRef.current}
+      />
+
     </div>
   );
 };

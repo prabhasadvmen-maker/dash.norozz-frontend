@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import BottomNav from '../components/customer/BottomNav';
+import DedicatedCustomerNavbar from '../components/customer/DedicatedCustomerNavbar';
 import HomeBannerSlider from '../components/customer/HomeBannerSlider';
 import PopularCategories from '../components/customer/PopularCategories';
 import FeaturedServices from '../components/customer/FeaturedServices';
 import CustomerHomeSections from '../components/customer/CustomerHomeSections';
 import CustomerProfileView from '../components/customer/CustomerProfileView';
+import CustomerWalletView from '../components/customer/CustomerWalletView';
 import { useAuth } from '../hooks/useAuth.js';
 import { authService } from '../services/auth.service.js';
 import { toast } from '../utils/toast.js';
@@ -26,8 +27,15 @@ import {
 
 const CustomerDashboard = ({ currentUser, onLogout, selectedCity }) => {
   const { updateUser } = useAuth();
-  // 5 Bottom Nav Tabs: 'home' | 'bookings' | 'wallet' | 'notifications' | 'profile'
   const [activeTab, setActiveTab] = useState('home');
+  const [profileSubTab, setProfileSubTab] = useState('overview');
+
+  const handleNavigateTab = (tab, subTab) => {
+    setActiveTab(tab);
+    if (subTab) {
+      setProfileSubTab(subTab);
+    }
+  };
   const [detectingLocation, setDetectingLocation] = useState(false);
   const hasAttemptedAutoDetectRef = useRef(false);
 
@@ -144,98 +152,32 @@ const CustomerDashboard = ({ currentUser, onLogout, selectedCity }) => {
   }, [activeTab]);
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 74px)', background: 'var(--bg-primary)', paddingBottom: '90px' }}>
-      
-      {/* Search Header for Home view */}
-      {activeTab === 'home' && (
-        <div style={{
-          background: '#ffffff',
-          borderBottom: '1px solid var(--border-light)',
-          padding: '16px 32px',
-          boxShadow: 'var(--shadow-sm)'
-        }}>
-          <div style={{ maxWidth: '960px', margin: '0 auto' }}>
-            {/* Address Selector */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                <MapPin size={18} color="#2563eb" style={{ flexShrink: 0 }} />
-                <div style={{ overflow: 'hidden' }}>
-                  <span style={{ fontSize: '0.88rem', fontWeight: '800', color: 'var(--text-primary)', display: 'block' }}>
-                    {currentUser?.city || (detectingLocation ? 'Detecting Location...' : 'Current Location')}
-                  </span>
-                  <span style={{
-                    fontSize: '0.75rem',
-                    color: 'var(--text-muted)',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    display: 'block',
-                    maxWidth: '450px'
-                  }}>
-                    {currentUser?.address || 'Click DETECT LOCATION to fetch live address'}
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleDetectLocation(true)}
-                disabled={detectingLocation}
-                className="badge badge-purple"
-                style={{
-                  fontSize: '0.68rem',
-                  cursor: 'pointer',
-                  border: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '5px 10px',
-                  flexShrink: 0
-                }}
-              >
-                {detectingLocation ? <Loader2 size={12} className="spin" /> : 'DETECT LOCATION'}
-              </button>
-            </div>
+    <div style={{ minHeight: 'calc(100vh - 74px)', background: 'var(--bg-primary)', paddingBottom: '0px' }}>
 
-            {/* Big Search Input */}
-            <div style={{ position: 'relative' }}>
-              <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Search for AC Service, House Cleaning, Women Salon..."
-                style={{
-                  paddingLeft: '48px',
-                  paddingRight: '48px',
-                  paddingTop: '12px',
-                  paddingBottom: '12px',
-                  borderRadius: '9999px',
-                  fontSize: '0.92rem',
-                  boxShadow: 'var(--shadow-sm)'
-                }}
-              />
-              <SlidersHorizontal size={18} color="var(--accent-blue)" style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer' }} />
-            </div>
-          </div>
-        </div>
-      )}
+      <DedicatedCustomerNavbar
+        currentUser={currentUser}
+        onLogout={onLogout}
+        activeTab={activeTab}
+        onNavigateTab={handleNavigateTab}
+      />
 
       {/* Main Screen Container */}
-      <main style={{ maxWidth: '960px', margin: '0 auto', padding: '24px 20px' }}>
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 20px' }}>
         
         {/* SCREEN 1: HOME */}
         {activeTab === 'home' && (
           <>
-            {/* Promotional Banner Slider */}
+            {/* Dark Navy Hero Banner */}
             <HomeBannerSlider />
 
             {/* Popular Categories Grid */}
             <PopularCategories />
 
-            {/* Featured Services */}
-            <FeaturedServices />
-
-            {/* Recommended Services, Offers, Recently Booked & NOROZZ PLUS Membership */}
+            {/* Deals, Trust Features & Footer */}
             <CustomerHomeSections />
+
+            {/* Top Rated Services */}
+            <FeaturedServices />
           </>
         )}
 
@@ -266,14 +208,7 @@ const CustomerDashboard = ({ currentUser, onLogout, selectedCity }) => {
 
         {/* SCREEN 3: WALLET */}
         {activeTab === 'wallet' && (
-          <div>
-            <h2 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '16px' }}>NOROZZ Wallet</h2>
-            <div className="mui-card" style={{ padding: '28px', background: 'var(--gradient-brand)', color: '#fff', borderRadius: 'var(--radius-xl)', marginBottom: '24px' }}>
-              <div style={{ fontSize: '0.85rem', opacity: 0.9, marginBottom: '6px' }}>Total Wallet Balance</div>
-              <div style={{ fontSize: '2.4rem', fontWeight: '800' }}>₹{(dashboard?.walletBalance ?? currentUser?.walletBalance ?? 0).toFixed(2)}</div>
-              <div style={{ fontSize: '0.78rem', opacity: 0.85, marginTop: '8px' }}>Use wallet credits automatically on your next booking checkout.</div>
-            </div>
-          </div>
+          <CustomerWalletView currentUser={currentUser} />
         )}
 
         {/* SCREEN 4: NOTIFICATIONS */}
@@ -301,13 +236,17 @@ const CustomerDashboard = ({ currentUser, onLogout, selectedCity }) => {
 
         {/* SCREEN 5: PROFILE */}
         {activeTab === 'profile' && (
-          <CustomerProfileView currentUser={currentUser} onLogout={onLogout} onNavigateTab={(tab) => setActiveTab(tab)} />
+          <CustomerProfileView
+            key={profileSubTab}
+            initialSubTab={profileSubTab}
+            currentUser={currentUser}
+            onLogout={onLogout}
+            onNavigateTab={(tab) => setActiveTab(tab)}
+            onBookService={(serviceToBook) => setActiveTab('bookings')}
+          />
         )}
 
       </main>
-
-      {/* 5-Item Bottom Navigation Bar */}
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
     </div>
   );

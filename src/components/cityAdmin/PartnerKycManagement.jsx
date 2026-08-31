@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { ShieldCheck, CheckCircle2, XCircle, FileCheck, Power, Eye } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ShieldCheck, CheckCircle2, FileCheck, Power, Eye } from 'lucide-react';
 import { useCityAdmin } from '../../hooks/useCityAdmin.js';
 import { catalogService } from '../../services/catalog.service.js';
 import PartnerKycDetailPage from './PartnerKycDetailPage';
 
 const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
-  const { partners, approvePartner, rejectPartner, updateDocumentStatus, verifyPartnerKyc, suspendPartner, activatePartner } = useCityAdmin();
+  const { partners, approvePartner, rejectPartner, updateDocumentStatus, suspendPartner, activatePartner } = useCityAdmin();
   const [selectedPartner, setSelectedPartner] = useState(null);
   const [categoryMap, setCategoryMap] = useState({});
 

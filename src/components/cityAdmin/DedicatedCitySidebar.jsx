@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   LayoutDashboard,
   Briefcase,
@@ -6,7 +5,6 @@ import {
   CalendarCheck,
   CreditCard,
   BarChart3,
-  Headphones,
   User,
   Settings,
   HelpCircle
@@ -15,7 +13,6 @@ import {
 const DedicatedCitySidebar = ({
   activeTab,
   setActiveTab,
-  onLogout,
   collapsed,
   assignedCity = 'Delhi NCR',
   partnersCount = null,
@@ -44,12 +41,13 @@ const DedicatedCitySidebar = ({
       minWidth: sidebarWidth,
       background: 'linear-gradient(180deg, #09331E 0%, #062616 100%)',
       color: '#ffffff',
-      height: '100vh',
+      height: 'calc(100vh - 74px)',
       position: 'sticky',
-      top: 0,
-      overflow: 'hidden',
+      top: '74px',
+      overflowY: 'auto',
       display: 'flex',
       flexDirection: 'column',
+      justifyContent: 'space-between',
       flexShrink: 0,
       transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
       borderRight: '1px solid rgba(255, 255, 255, 0.08)',

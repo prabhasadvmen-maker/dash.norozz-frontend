@@ -185,8 +185,15 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
 
     return () => {
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
+        try {
+          mapInstanceRef.current.off();
+          mapInstanceRef.current.remove();
+        } catch (e) {
+          console.warn('Map cleanup error:', e);
+        }
         mapInstanceRef.current = null;
+        circleInstanceRef.current = null;
+        markerInstanceRef.current = null;
       }
     };
   }, [city]);
@@ -196,13 +203,21 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
     if (coords?.lat && coords?.lng && mapInstanceRef.current) {
       const cLat = Number(coords.lat);
       const cLng = Number(coords.lng);
-      mapInstanceRef.current.setView([cLat, cLng], 14);
-      if (markerInstanceRef.current) {
-        markerInstanceRef.current.setLatLng([cLat, cLng]);
-        markerInstanceRef.current.bindPopup(`<b>Selected Position</b><br>Lat: ${cLat.toFixed(4)}, Lng: ${cLng.toFixed(4)}`).openPopup();
-      }
-      if (circleInstanceRef.current) {
-        circleInstanceRef.current.setLatLng([cLat, cLng]);
+      try {
+        const map = mapInstanceRef.current;
+        if (map && map._container) {
+          map.invalidateSize();
+          map.setView([cLat, cLng], 13);
+          if (markerInstanceRef.current) {
+            markerInstanceRef.current.setLatLng([cLat, cLng]);
+            markerInstanceRef.current.bindPopup(`<b>Selected Position</b><br>Lat: ${cLat.toFixed(4)}, Lng: ${cLng.toFixed(4)}`);
+          }
+          if (circleInstanceRef.current) {
+            circleInstanceRef.current.setLatLng([cLat, cLng]);
+          }
+        }
+      } catch (err) {
+        console.warn('Map update warning:', err);
       }
     }
   }, [coords?.lat, coords?.lng]);
@@ -210,13 +225,13 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
   // Update dynamic circle radius in real-time when slider moves
   useEffect(() => {
     if (circleInstanceRef.current) {
-      circleInstanceRef.current.setRadius(radiusKm * 1000);
-      if (mapInstanceRef.current) {
-        try {
+      try {
+        circleInstanceRef.current.setRadius(radiusKm * 1000);
+        if (mapInstanceRef.current && mapInstanceRef.current._container) {
           mapInstanceRef.current.fitBounds(circleInstanceRef.current.getBounds(), { padding: [20, 20] });
-        } catch {
-          // ignore map fitBounds exception if unmounted
         }
+      } catch {
+        // ignore map fitBounds exception if unmounted
       }
     }
   }, [radiusKm]);
@@ -276,46 +291,39 @@ const getInitialStepFromUser = (user) => {
   );
   if (!isLocationSaved) return 1;
 
-  // Step 2: Document Upload
+  // Step 2: Select Category
+  const isCategorySelected = Boolean(
+    user.isCategorySelected ||
+    (user.categories && user.categories.length > 0) ||
+    user.category
+  );
+  if (!isCategorySelected) return 2;
+
+  // Step 3: Select Skills
+  const isSkillsSelected = Boolean(
+    user.isSkillsSelected ||
+    user.isSkillsUpdated ||
+    (user.skills && user.skills.length > 0)
+  );
+  if (!isSkillsSelected) return 3;
+
+  // Step 4: Service Area & Radius
+  const isServiceAreaSet = Boolean(
+    user.isServiceAreaSet ||
+    (user.localities && user.localities.length > 0)
+  );
+  if (!isServiceAreaSet) return 4;
+
+  // Step 5: Document Upload (LAST STEP)
   const isDocsUploaded = Boolean(
     user.isDocumentsUploaded ||
     (user.documents?.aadhaarFront && user.documents?.aadhaarBack) ||
     user.documents?.aadhaarDoc ||
     user.documents?.panDoc
   );
-  if (!isDocsUploaded) return 2;
+  if (!isDocsUploaded) return 5;
 
-  // Step 3: Select Categories
-  const isCategorySelected = Boolean(
-    user.isCategorySelected ||
-    (user.categories && user.categories.length > 0) ||
-    user.category
-  );
-  if (!isCategorySelected) return 3;
-
-  // Step 4: Select Skills
-  const isSkillsSelected = Boolean(
-    user.isSkillsSelected ||
-    user.isSkillsUpdated ||
-    (user.skills && user.skills.length > 0)
-  );
-  if (!isSkillsSelected) return 4;
-
-  // Step 5: Service Area & Radius
-  const isServiceAreaSet = Boolean(
-    user.isServiceAreaSet ||
-    (user.localities && user.localities.length > 0)
-  );
-  if (!isServiceAreaSet) return 5;
-
-  // Step 6: Working Hours
-  const isWorkingHoursSet = Boolean(
-    user.isWorkingHoursSet ||
-    (user.workingHours && user.workingHours.length > 0)
-  );
-  if (!isWorkingHoursSet) return 6;
-
-  return 6;
+  return 5;
 };
 
 const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) => {
@@ -337,7 +345,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     const savedStep = localStorage.getItem('partner_onboarding_step');
     if (savedUserId === currentUser?._id && savedStep && !isNaN(Number(savedStep))) {
       const parsed = Number(savedStep);
-      if (parsed >= 1 && parsed <= 6) return parsed;
+      if (parsed >= 1 && parsed <= 5) return parsed;
     }
     return getInitialStepFromUser(currentUser);
   });
@@ -417,33 +425,24 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
   const [activeGenericDoc, setActiveGenericDoc] = useState('panDoc');
   const [showGenericModal, setShowGenericModal] = useState(false);
 
-  // Category State (Supports Multi-Selection by Category ObjectId)
-  const [selectedCategories, setSelectedCategories] = useState(
-    currentUser?.categories?.length ? currentUser.categories : (currentUser?.category ? [currentUser.category] : [])
-  );
+  // Category State (Single-Selection by Category ObjectId)
+  const [selectedCategories, setSelectedCategories] = useState(() => {
+    if (currentUser?.categories?.length) return [currentUser.categories[0]];
+    if (currentUser?.category) return [currentUser.category];
+    return [];
+  });
   const [category, setCategory] = useState(currentUser?.category || '');
   const [categoriesList, setCategoriesList] = useState([]);
   const [searchCatQuery, setSearchCatQuery] = useState('');
 
-  // Toggle category ObjectId selection
-  const handleToggleCategory = (catObj) => {
+  // Single-selection category handler
+  const handleSelectCategory = (catObj) => {
     const catId = catObj._id || catObj.id || catObj.name;
-    if (selectedCategories.includes(catId)) {
-      const updated = selectedCategories.filter((id) => id !== catId);
-      setSelectedCategories(updated);
-      if (category === catId) {
-        setCategory(updated[0] || '');
-      }
-    } else {
-      const updated = [...selectedCategories, catId];
-      setSelectedCategories(updated);
-      if (!category) {
-        setCategory(catId);
-      }
-    }
+    setSelectedCategories([catId]);
+    setCategory(catId);
   };
 
-  // Skills & Experience State (Dynamic Skills based on Selected Categories)
+  // Skills & Experience State (Dynamic Skills based on Selected Category)
   const [experience, setExperience] = useState(currentUser?.experience || '3-5 Years');
   const [skills, setSkills] = useState(() => {
     if (Array.isArray(currentUser?.skills)) {
@@ -458,9 +457,9 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
   const [certificateTitle, setCertificateTitle] = useState('');
   const [certifications, setCertifications] = useState(currentUser?.certifications || []);
 
-  // Fetch Dynamic Skills for Selected Categories from Super Admin API using Category IDs
+  // Fetch Dynamic Skills for Selected Category from Super Admin API using Category ID
   useEffect(() => {
-    if (step !== 4) return;
+    if (step !== 3) return;
     const loadCategorySkills = async () => {
       setLoadingSkills(true);
       try {
@@ -493,7 +492,9 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     loadCategorySkills();
   }, [step, selectedCategories, category, currentUser]);
 
-  // Service Area S  // Helper to resolve human-readable city name from ObjectId or object
+  const [detectedCity, setDetectedCity] = useState('');
+
+  // Helper to resolve human-readable city name from ObjectId or object
   const getCityName = (cityVal) => {
     if (!cityVal) return 'Delhi NCR';
     if (typeof cityVal === 'object' && cityVal?.name) return cityVal.name;
@@ -502,7 +503,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     return typeof cityVal === 'string' && !cityVal.match(/^[0-9a-fA-F]{24}$/) ? cityVal : 'Delhi NCR';
   };
 
-  const displayCityName = getCityName(currentUser?.assignedCity || currentUser?.city);
+  const displayCityName = detectedCity || getCityName(currentUser?.assignedCity || currentUser?.city);
   const workCity = displayCityName;
 
   // Service Area State
@@ -531,12 +532,12 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     setLoadingNearbyLocs(true);
 
     const rDeg = radiusKm / 111;
-    const numPoints = Math.min(12, Math.max(2, Math.round(radiusKm / 2)));
+    const numPoints = Math.min(12, Math.max(3, Math.round(radiusKm / 2)));
     const offsets = [{ lat: cLat, lng: cLng }];
 
     for (let i = 1; i < numPoints; i++) {
       const angle = (i * 2 * Math.PI) / (numPoints - 1);
-      const dist = (0.35 + (i % 3) * 0.25) * rDeg;
+      const dist = (0.2 + (i % 3) * 0.25) * rDeg;
       const dLat = dist * Math.cos(angle);
       const dLng = dist * Math.sin(angle);
       offsets.push({ lat: cLat + dLat, lng: cLng + dLng });
@@ -558,12 +559,18 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
             addr.neighbourhood ||
             addr.residential ||
             addr.subdistrict ||
+            addr.quarter ||
             addr.town ||
             addr.city_district ||
             addr.village ||
-            addr.county;
+            addr.county ||
+            addr.road;
           if (name) {
-            const formatted = `${name} (${displayCityName})`;
+            const localCity = addr.city || addr.town || addr.district || addr.county || addr.state_district || '';
+            const formatted = (localCity && localCity.toLowerCase() !== name.toLowerCase())
+              ? `${name} (${localCity})`
+              : name;
+
             if (!locNames.includes(formatted)) {
               locNames.push(formatted);
             }
@@ -574,10 +581,10 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
       if (locNames.length > 0) {
         setDynamicNearbyLocalities(locNames);
         setSelectedLocalities((prev) => {
-          const cleanPrev = displayCityName === 'Delhi NCR'
-            ? prev
-            : prev.filter((p) => !p.includes('Delhi NCR') && !REAL_LOCALITIES_BY_CITY['Delhi NCR'].includes(p));
-          return Array.from(new Set([...locNames, ...cleanPrev]));
+          const customAdded = prev.filter(
+            (p) => !REAL_LOCALITIES_BY_CITY['Bengaluru']?.includes(p) && !REAL_LOCALITIES_BY_CITY['Delhi NCR']?.includes(p)
+          );
+          return Array.from(new Set([...locNames, ...customAdded]));
         });
       }
       setLoadingNearbyLocs(false);
@@ -585,9 +592,9 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
   };
 
   useEffect(() => {
-    if (step !== 5) return;
+    if (step !== 4) return;
     const coordsObj = deviceCoords || currentUser?.locationCoordinates;
-    if (coordsObj?.lat && coordsObj?.lng && !dynamicNearbyLocalities.length) {
+    if (coordsObj?.lat && coordsObj?.lng) {
       const timer = setTimeout(() => {
         fetchLocalitiesForRadius(coordsObj.lat, coordsObj.lng, workRadius);
       }, 0);
@@ -713,12 +720,16 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
         } else {
           setDeviceAddress(`Pinned Location (${rLat}, ${rLng})`);
         }
+        if (data?.address) {
+          const cityFromGeo = data.address.city || data.address.town || data.address.district || data.address.county || data.address.state_district;
+          if (cityFromGeo) setDetectedCity(cityFromGeo);
+        }
       })
       .catch(() => {
         setDeviceAddress(`Pinned Location (${rLat}, ${rLng})`);
       });
 
-    if (step === 5) {
+    if (step === 4) {
       fetchLocalitiesForRadius(rLat, rLng, workRadius);
     }
 
@@ -752,7 +763,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
       const coordsObj = { lat, lng };
       setDeviceCoords(coordsObj);
 
-      let detectedAddr = `${workCity} (Location: ${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+      let detectedAddr = `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
       try {
         const res = await fetch(
           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
@@ -760,6 +771,10 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
         const data = await res.json();
         if (data?.display_name) {
           detectedAddr = data.display_name;
+        }
+        if (data?.address) {
+          const cityFromGeo = data.address.city || data.address.town || data.address.district || data.address.county || data.address.state_district;
+          if (cityFromGeo) setDetectedCity(cityFromGeo);
         }
       } catch (e) {
         console.warn('Reverse geocoding warning:', e);
@@ -780,6 +795,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
         const ipRes = await fetch('https://ipapi.co/json/').then((r) => r.json());
         if (ipRes && ipRes.latitude && ipRes.longitude) {
           await handleLocationSuccess(Number(ipRes.latitude), Number(ipRes.longitude), 'IP Geolocation');
+          setSuccessMsg('📍 Location estimated via IP. Tap map to pin your exact location manually, or allow GPS in browser.');
           return;
         }
       } catch (ipErr) {
@@ -789,6 +805,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
       // Fallback Tier 2: Use Selected Work City Default Coordinates
       const defaultCoords = CITY_COORDINATES[workCity] || CITY_COORDINATES['Delhi NCR'] || { lat: 28.6139, lng: 77.2090 };
       await handleLocationSuccess(defaultCoords.lat, defaultCoords.lng, 'City Center');
+      setSuccessMsg('📍 Default city center set. Tap map to pin your exact location manually.');
     };
 
     // Safety Timeout: 8 seconds for watchPosition to lock on
@@ -832,7 +849,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     }
   };
 
-  // STEP 1 Submit: Save Location to Database on Continue Click & Move to Document Upload Page
+  // STEP 1 Submit: Save Location to Database on Continue Click & Move to Select Category Page
   const handleStep1LocationSubmit = async () => {
     setError('');
     const targetLat = deviceCoords?.lat || currentUser?.locationCoordinates?.lat;
@@ -851,18 +868,72 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
         address: targetAddr,
         city: workCity,
       });
-      setStep(2); // Move to Document Upload Page!
-      setSubStep('list');
+      setStep(2); // Move to Step 2: Select Category Page!
     } catch (err) {
       console.error('Failed to save location to DB:', err);
       setError(err.message || 'Failed to save location to database. Please try again.');
     }
   };
 
-  // STEP 2: Submit All Attached Documents in Single FormData Request to R2
-  const handleStep2DocsSubmit = async () => {
+  // STEP 2: Submit Single Selected Service Category
+  const handleStep2CategorySubmit = async () => {
     setError('');
     setSuccessMsg('');
+
+    if (!selectedCategories.length && !category) {
+      setError('Please select a service category to proceed');
+      return;
+    }
+
+    try {
+      const selectedId = selectedCategories[0] || category;
+      await saveOnboardingCategory({ category: selectedId });
+      setStep(3); // Go to Step 3: Skills & Experience Page!
+    } catch (err) {
+      setError(err.message || 'Failed to save service category');
+    }
+  };
+
+  // STEP 3: Submit Skills & Experience
+  const handleStep3SkillsSubmit = async () => {
+    setError('');
+    setSuccessMsg('');
+    try {
+      const validSkillIds = skills.filter((s) => typeof s === 'string' && Boolean(s.match(/^[0-9a-fA-F]{24}$/)));
+      await saveOnboardingSkills({ experience, skills: validSkillIds, certifications });
+      setStep(4); // Go to Step 4: Service Area Page!
+    } catch (err) {
+      setError(err.message || 'Failed to save skills and experience');
+    }
+  };
+
+  // STEP 4: Submit Service Area
+  const handleStep4AreaSubmit = async () => {
+    setError('');
+    setSuccessMsg('');
+    try {
+      await saveOnboardingServiceArea({ workRadius, localities: selectedLocalities });
+      setStep(5); // Go to Step 5: Document Upload Page (LAST STEP)!
+      setSubStep('list');
+    } catch (err) {
+      setError(err.message || 'Failed to save service area');
+    }
+  };
+
+  // STEP 5: Submit All Attached Documents in Single FormData Request & Complete Onboarding!
+  const handleStep5DocsSubmit = async () => {
+    setError('');
+    setSuccessMsg('');
+
+    const hasAadhaarFront = Boolean(documents.aadhaarFront || documentFiles.aadhaarFront);
+    const hasAadhaarBack = Boolean(documents.aadhaarBack || documentFiles.aadhaarBack);
+
+    if (!hasAadhaarFront || !hasAadhaarBack) {
+      const msg = 'Aadhaar Card is required! Please upload both Front Side and Back Side of your Aadhaar Card before completing onboarding.';
+      setError(msg);
+      toast.error('Aadhaar Card (Front & Back) is required!');
+      return;
+    }
 
     try {
       const keys = Object.keys(documentFiles);
@@ -874,71 +945,12 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
           }
         });
 
-        setSuccessMsg('Uploading all attached documents to Cloudflare R2 storage... ⏳');
+        setSuccessMsg('Uploading attached documents... ⏳');
         await saveOnboardingDocuments(formData);
       } else {
         await saveOnboardingDocuments({});
       }
 
-      setSuccessMsg('✅ Documents saved successfully! Proceeding to Category Selection...');
-      setStep(3); // Go to Select Service Category Page!
-      setSubStep('list');
-    } catch (err) {
-      console.error('Batch Document Upload Error:', err);
-      setError(err.response?.data?.message || err.message || 'Failed to upload documents');
-    }
-  };
-
-  // STEP 3: Submit Selected Service Category ObjectIds (categories array)
-  const handleStep3CategorySubmit = async () => {
-    setError('');
-    setSuccessMsg('');
-
-    if (!selectedCategories.length && !category) {
-      setError('Please select at least one service category to proceed');
-      return;
-    }
-
-    try {
-      const categoriesPayload = selectedCategories.length > 0 ? selectedCategories : [category];
-      await saveOnboardingCategory({ categories: categoriesPayload });
-      setStep(4); // Go to Step 4: Skills & Experience Page!
-    } catch (err) {
-      setError(err.message || 'Failed to save service categories');
-    }
-  };
-
-  // STEP 4: Submit Skills & Experience
-  const handleStep4SkillsSubmit = async () => {
-    setError('');
-    setSuccessMsg('');
-    try {
-      const validSkillIds = skills.filter((s) => typeof s === 'string' && Boolean(s.match(/^[0-9a-fA-F]{24}$/)));
-      await saveOnboardingSkills({ experience, skills: validSkillIds, certifications });
-      setStep(5); // Go to Step 5: Service Area Page!
-    } catch (err) {
-      setError(err.message || 'Failed to save skills and experience');
-    }
-  };
-
-  // STEP 5: Submit Service Area
-  const handleStep5AreaSubmit = async () => {
-    setError('');
-    setSuccessMsg('');
-    try {
-      await saveOnboardingServiceArea({ workRadius, localities: selectedLocalities });
-      setStep(6); // Go to Step 6: Working Hours Page!
-    } catch (err) {
-      setError(err.message || 'Failed to save service area');
-    }
-  };
-
-  // STEP 6: Submit Working Hours & Direct Dashboard Entry!
-  const handleStep6Submit = async () => {
-    setError('');
-    setSuccessMsg('');
-    try {
-      await saveOnboardingWorkingHours({ workingHours });
       setSuccessMsg('🎉 Onboarding Complete! Redirecting to Partner Dashboard...');
       setTimeout(() => {
         if (onFinishOnboarding) {
@@ -946,7 +958,8 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
         }
       }, 800);
     } catch (err) {
-      setError(err.message || 'Failed to save working hours');
+      console.error('Batch Document Upload Error:', err);
+      setError(err.response?.data?.message || err.message || 'Failed to upload documents');
     }
   };
 
@@ -1097,11 +1110,10 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
           <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
             {[
               { id: 1, label: '1. Location' },
-              { id: 2, label: '2. Docs' },
-              { id: 3, label: '3. Category' },
-              { id: 4, label: '4. Skills' },
-              { id: 5, label: '5. Area' },
-              { id: 6, label: '6. Hours' },
+              { id: 2, label: '2. Category' },
+              { id: 3, label: '3. Skills' },
+              { id: 4, label: '4. Area' },
+              { id: 5, label: '5. Docs' },
             ].map((s) => (
               <button
                 key={s.id}
@@ -1135,7 +1147,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
           <div style={{ height: '6px', width: '100%', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
             <div style={{
               height: '100%',
-              width: `${(step / 6) * 100}%`,
+              width: `${(step / 5) * 100}%`,
               background: 'linear-gradient(90deg, #16a34a 0%, #059669 100%)',
               transition: 'width 0.3s ease',
             }}></div>
@@ -1290,13 +1302,377 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
         )}
 
         {/* ============================================================ */}
-        {/* STEP 2A: UPLOAD DOCUMENTS LIST PAGE (upload-documents) */}
+        {/* STEP 2: SELECT SERVICE CATEGORY PAGE (SINGLE SELECT ONLY) */}
         {/* ============================================================ */}
-        {step === 2 && subStep === 'list' && (
+        {step === 2 && (
+          <div style={{ padding: '18px 24px 28px 24px' }}>
+            <div style={{ margin: '0 0 16px 0' }}>
+              <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+                Select Category
+              </h2>
+              <p style={{ color: '#64748b', fontSize: '0.82rem', marginTop: '4px', margin: 0 }}>
+                Select your primary service category
+              </p>
+            </div>
+
+            {/* Search Input */}
+            <div style={{ display: 'flex', alignItems: 'center', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '8px 12px', marginBottom: '16px' }}>
+              <Search size={16} color="#64748b" style={{ marginRight: '8px' }} />
+              <input
+                type="text"
+                placeholder="Search service categories..."
+                value={searchCatQuery}
+                onChange={(e) => setSearchCatQuery(e.target.value)}
+                style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '0.88rem' }}
+              />
+            </div>
+
+            {/* Super Admin Active Category Cards Grid (Single-Select Only) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '22px', maxHeight: '320px', overflowY: 'auto' }}>
+              {(categoriesList.length > 0 ? categoriesList : [
+                { _id: 'cat_ac_repair', name: 'AC & Appliance Repair' },
+                { _id: 'cat_cleaning', name: 'Cleaning & Pest Control' },
+                { _id: 'cat_plumbing', name: 'Plumbing, Electrical & Carpentry' },
+                { _id: 'cat_women_salon', name: 'Salon & Beauty for Women' },
+                { _id: 'cat_men_salon', name: "Men's Salon & Grooming" },
+                { _id: 'cat_painting', name: 'Home Painting & Decor' },
+              ]).filter((c) => c.name.toLowerCase().includes(searchCatQuery.toLowerCase())).map((cat) => {
+                const catIdentifier = cat._id || cat.id || cat.name;
+                const isSelected = selectedCategories[0] === catIdentifier || selectedCategories[0] === cat.name || category === catIdentifier || category === cat.name;
+                return (
+                  <div
+                    key={catIdentifier}
+                    onClick={() => handleSelectCategory(cat)}
+                    style={{
+                      position: 'relative',
+                      padding: '14px 12px',
+                      borderRadius: '16px',
+                      border: isSelected ? '2px solid #16a34a' : '1.5px solid #e2e8f0',
+                      background: isSelected ? '#f0fdf4' : '#ffffff',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.2s',
+                      boxShadow: isSelected ? '0 4px 12px rgba(22, 163, 74, 0.15)' : 'none',
+                    }}
+                  >
+                    <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: isSelected ? '#dcfce7' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px auto' }}>
+                      <Grid size={20} color={isSelected ? '#16a34a' : '#64748b'} />
+                    </div>
+                    <div style={{ fontSize: '0.84rem', fontWeight: '700', color: isSelected ? '#15803d' : '#0f172a', lineHeight: '1.3' }}>
+                      {cat.name}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                style={{ flex: 1, padding: '14px', borderRadius: '14px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                <ArrowLeft size={16} /> Back
+              </button>
+              <button
+                type="button"
+                onClick={handleStep2CategorySubmit}
+                disabled={isLoggingIn}
+                style={{ flex: 1.5, padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.94rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue <ArrowRight size={16} /></>}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* STEP 3: SKILLS & EXPERIENCE PAGE */}
+        {/* ============================================================ */}
+        {step === 3 && (
+          <div style={{ padding: '18px 24px 28px 24px' }}>
+            <div style={{ margin: '0 0 16px 0' }}>
+              <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+                Skills & Experience
+              </h2>
+              <p style={{ color: '#64748b', fontSize: '0.82rem', marginTop: '4px', margin: 0 }}>
+                Highlight experience level & skills for {category || 'selected category'}
+              </p>
+            </div>
+
+            {/* Years of Experience */}
+            <div style={{ marginBottom: '18px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                Years of Experience
+              </label>
+              <select
+                value={experience}
+                onChange={(e) => setExperience(e.target.value)}
+                style={{ width: '100%', padding: '11px 14px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '0.92rem', background: '#ffffff', outline: 'none' }}
+              >
+                <option value="1-2 Years">1-2 Years</option>
+                <option value="3-5 Years">3-5 Years</option>
+                <option value="5-8 Years">5-8 Years</option>
+                <option value="8+ Years">8+ Years Experienced Expert</option>
+              </select>
+            </div>
+
+            {/* Select Your Special Skills (Dynamic Category Skills from Super Admin API) */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155' }}>
+                  Select Your Special Skills
+                </label>
+                {loadingSkills && <span style={{ fontSize: '0.75rem', color: '#16a34a' }}>Loading category skills... ⏳</span>}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {categorySkills.map((sk) => {
+                  const skillId = sk._id || sk.id || sk;
+                  const skillName = sk.name || sk;
+                  const isSelected = skills.includes(skillId);
+                  return (
+                    <button
+                      key={skillId}
+                      type="button"
+                      onClick={() => handleToggleSkill(skillId)}
+                      style={{
+                        padding: '8px 14px',
+                        borderRadius: '20px',
+                        border: isSelected ? '2px solid #16a34a' : '1px solid #cbd5e1',
+                        background: isSelected ? '#16a34a' : '#ffffff',
+                        color: isSelected ? '#ffffff' : '#475569',
+                        fontWeight: '700',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: isSelected ? '0 4px 10px rgba(22, 163, 74, 0.2)' : 'none',
+                      }}
+                    >
+                      {isSelected && <Check size={14} color="#ffffff" />}
+                      {skillName}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Certifications (Optional) */}
+            <div style={{ marginBottom: '22px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                Certifications (Optional)
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  placeholder="+ Add Professional Certificate"
+                  value={certificateTitle}
+                  onChange={(e) => setCertificateTitle(e.target.value)}
+                  style={{ flex: 1, padding: '10px 12px', borderRadius: '12px', border: '1.5px dashed #bbf7d0', background: '#f0fdf4', fontSize: '0.86rem', outline: 'none' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (certificateTitle.trim()) {
+                      setCertifications([...certifications, certificateTitle.trim()]);
+                      setCertificateTitle('');
+                    }
+                  }}
+                  style={{ padding: '10px 14px', borderRadius: '12px', background: '#16a34a', color: '#ffffff', border: 'none', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer' }}
+                >
+                  <Plus size={16} /> Add
+                </button>
+              </div>
+              {certifications.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                  {certifications.map((cert, idx) => (
+                    <span key={idx} style={{ background: '#f1f5f9', color: '#334155', padding: '4px 10px', borderRadius: '12px', fontSize: '0.76rem', fontWeight: '600' }}>
+                      🎓 {cert}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                style={{ flex: 1, padding: '14px', borderRadius: '14px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                <ArrowLeft size={16} /> Back
+              </button>
+              <button
+                type="button"
+                onClick={handleStep3SkillsSubmit}
+                disabled={isLoggingIn}
+                style={{ flex: 1.5, padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.94rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue <ArrowRight size={16} /></>}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* STEP 4: SERVICE AREA SELECTION PAGE */}
+        {/* ============================================================ */}
+        {step === 4 && (
+          <div style={{ padding: '18px 24px 28px 24px' }}>
+            <div style={{ margin: '0 0 16px 0' }}>
+              <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+                Service Area
+              </h2>
+              <p style={{ color: '#64748b', fontSize: '0.82rem', marginTop: '4px', margin: 0 }}>
+                Set your operating radius in {workCity}
+              </p>
+            </div>
+
+            {/* Interactive Leaflet Map with Real-time Dynamic Circle Radius Overlay centered on Current Position */}
+            <InteractiveServiceMap
+              city={workCity}
+              radiusKm={workRadius}
+              coords={deviceCoords || currentUser?.locationCoordinates}
+              onSelectLocation={handleManualMapSelectLocation}
+            />
+
+            {/* Work Radius Slider */}
+            <div style={{ marginBottom: '22px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', fontWeight: '700', color: '#334155', marginBottom: '8px' }}>
+                <span>Select Work Radius</span>
+                <span style={{ color: '#16a34a' }}>{workRadius} km</span>
+              </div>
+              <input
+                type="range"
+                min="2"
+                max="25"
+                value={workRadius}
+                onChange={(e) => {
+                  const newRad = Number(e.target.value);
+                  setWorkRadius(newRad);
+                  const coordsObj = deviceCoords || currentUser?.locationCoordinates;
+                  if (coordsObj?.lat && coordsObj?.lng) {
+                    fetchLocalitiesForRadius(coordsObj.lat, coordsObj.lng, newRad);
+                  }
+                }}
+                style={{ width: '100%', accentColor: '#16a34a', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }}>
+                <span>2 km</span>
+                <span>12 km</span>
+                <span>25 km</span>
+              </div>
+            </div>
+
+            {/* Available Localities (Customise) Real Data */}
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155', margin: 0 }}>
+                  Available Localities (Customise)
+                </label>
+                <span style={{ fontSize: '0.72rem', color: '#16a34a', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {loadingNearbyLocs ? (
+                    <>
+                      <Loader2 size={12} className="spin" /> Updating radius localities...
+                    </>
+                  ) : (
+                    <>📍 {dynamicNearbyLocalities.length} localities in {workRadius} km radius</>
+                  )}
+                </span>
+              </div>
+
+              {/* Add Custom Locality Input */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                <input
+                  type="text"
+                  placeholder="+ Add custom nearby locality..."
+                  value={customLocalityInput}
+                  onChange={(e) => setCustomLocalityInput(e.target.value)}
+                  style={{ flex: 1, padding: '8px 12px', borderRadius: '10px', border: '1.5px dashed #bbf7d0', background: '#f0fdf4', fontSize: '0.84rem', outline: 'none' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (customLocalityInput.trim()) {
+                      const newLoc = customLocalityInput.trim();
+                      if (!selectedLocalities.includes(newLoc)) {
+                        setSelectedLocalities([newLoc, ...selectedLocalities]);
+                      }
+                      setCustomLocalityInput('');
+                    }
+                  }}
+                  style={{ padding: '8px 12px', borderRadius: '10px', background: '#16a34a', color: '#ffffff', border: 'none', fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer' }}
+                >
+                  + Add
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
+                {Array.from(new Set([
+                  ...dynamicNearbyLocalities,
+                  ...selectedLocalities,
+                  ...(dynamicNearbyLocalities.length === 0 ? (REAL_LOCALITIES_BY_CITY[displayCityName] || []) : []),
+                ]))
+                  .map((loc) => {
+                  const isChecked = selectedLocalities.includes(loc);
+                  const isNearby = dynamicNearbyLocalities.includes(loc);
+                  return (
+                    <div
+                      key={loc}
+                      onClick={() => handleToggleLocality(loc)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        border: isChecked ? '1.5px solid #16a34a' : '1px solid #e2e8f0',
+                        background: isChecked ? '#f0fdf4' : '#f8fafc',
+                        cursor: 'pointer',
+                        fontSize: '0.84rem',
+                        fontWeight: '600',
+                        color: isChecked ? '#15803d' : '#334155',
+                      }}
+                    >
+                      <span>
+                        📍 {loc} {isNearby && <span style={{ marginLeft: '6px', fontSize: '0.7rem', background: '#dcfce7', color: '#15803d', padding: '2px 6px', borderRadius: '6px', fontWeight: '700' }}>Your Location</span>}
+                      </span>
+                      <input type="checkbox" checked={isChecked} onChange={() => { }} style={{ accentColor: '#16a34a' }} />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
+              <button
+                type="button"
+                onClick={() => setStep(3)}
+                style={{ flex: 1, padding: '14px', borderRadius: '14px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                <ArrowLeft size={16} /> Back
+              </button>
+              <button
+                type="button"
+                onClick={handleStep4AreaSubmit}
+                disabled={isLoggingIn}
+                style={{ flex: 1.5, padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.94rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue <ArrowRight size={16} /></>}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* STEP 5A: UPLOAD DOCUMENTS LIST PAGE (LAST STEP BEFORE DONE) */}
+        {/* ============================================================ */}
+        {step === 5 && subStep === 'list' && (
           <div style={{ padding: '18px 24px 28px 24px' }}>
             <div style={{ margin: '0 0 16px 0' }}>
               <span style={{ fontSize: '0.72rem', fontWeight: '800', color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                IDENTITY VERIFICATION
+                IDENTITY VERIFICATION (LAST STEP)
               </span>
               <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', margin: '2px 0 0 0' }}>
                 Upload Documents
@@ -1309,13 +1685,15 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '22px' }}>
 
               {/* 1. Aadhaar Card (Required) */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', border: (documents.aadhaarFront && documents.aadhaarBack) ? '1.5px solid #16a34a' : '1.5px solid #e2e8f0', background: (documents.aadhaarFront && documents.aadhaarBack) ? '#f0fdf4' : '#f8fafc' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', border: (documents.aadhaarFront && documents.aadhaarBack) ? '1.5px solid #16a34a' : '1.5px solid #cbd5e1', background: (documents.aadhaarFront && documents.aadhaarBack) ? '#f0fdf4' : '#ffffff' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: (documents.aadhaarFront && documents.aadhaarBack) ? '#dcfce7' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <ShieldCheck size={20} color={(documents.aadhaarFront && documents.aadhaarBack) ? '#16a34a' : '#64748b'} />
+                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: (documents.aadhaarFront && documents.aadhaarBack) ? '#dcfce7' : '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ShieldCheck size={20} color={(documents.aadhaarFront && documents.aadhaarBack) ? '#16a34a' : '#ef4444'} />
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>Aadhaar Card (Required)</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>
+                      Aadhaar Card (Front & Back) <span style={{ color: '#ef4444', fontWeight: '800' }}>* Required</span>
+                    </div>
                     <div style={{ fontSize: '0.74rem', color: '#64748b' }}>JPEG or PNG up to 5MB</div>
                   </div>
                 </div>
@@ -1324,7 +1702,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                   onClick={() => setSubStep('aadhaar')}
                   style={{ padding: '6px 14px', borderRadius: '20px', border: (documents.aadhaarFront && documents.aadhaarBack) ? 'none' : '1px solid #16a34a', background: (documents.aadhaarFront && documents.aadhaarBack) ? '#16a34a' : '#ffffff', color: (documents.aadhaarFront && documents.aadhaarBack) ? '#ffffff' : '#16a34a', fontWeight: '700', fontSize: '0.78rem', cursor: 'pointer' }}
                 >
-                  {(documents.aadhaarFront && documents.aadhaarBack) ? 'Uploaded ✓' : 'Upload'}
+                  {(documents.aadhaarFront && documents.aadhaarBack) ? 'Uploaded ✓' : 'Upload *'}
                 </button>
               </div>
 
@@ -1335,7 +1713,9 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                     <FileText size={20} color={documents.drivingLicenseDoc ? '#16a34a' : '#64748b'} />
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>Driving License</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>
+                      Driving License <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '500' }}>(Optional)</span>
+                    </div>
                     <div style={{ fontSize: '0.74rem', color: '#64748b' }}>JPEG or PNG up to 5MB</div>
                   </div>
                 </div>
@@ -1355,7 +1735,9 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                     <CreditCard size={20} color={documents.panDoc ? '#16a34a' : '#64748b'} />
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>PAN Card</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>
+                      PAN Card <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '500' }}>(Optional)</span>
+                    </div>
                     <div style={{ fontSize: '0.74rem', color: '#64748b' }}>Required for tax reporting</div>
                   </div>
                 </div>
@@ -1375,7 +1757,9 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                     <User size={20} color={documents.passportPhoto ? '#16a34a' : '#64748b'} />
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>Passport Size Photo</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>
+                      Passport Size Photo <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '500' }}>(Optional)</span>
+                    </div>
                     <div style={{ fontSize: '0.74rem', color: '#64748b' }}>Clear face photo for ID Card</div>
                   </div>
                 </div>
@@ -1395,7 +1779,9 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                     <Building size={20} color={documents.bankPassbookDoc ? '#16a34a' : '#64748b'} />
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>Bank Passbook / Cheque</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>
+                      Bank Passbook / Cheque <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '500' }}>(Optional)</span>
+                    </div>
                     <div style={{ fontSize: '0.74rem', color: '#64748b' }}>For directly transferring payouts</div>
                   </div>
                 </div>
@@ -1494,27 +1880,27 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
             <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
               <button
                 type="button"
-                onClick={() => setStep(1)}
+                onClick={() => setStep(4)}
                 style={{ flex: 1, padding: '14px', borderRadius: '14px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
                 <ArrowLeft size={16} /> Back
               </button>
               <button
                 type="button"
-                onClick={handleStep2DocsSubmit}
+                onClick={handleStep5DocsSubmit}
                 disabled={isLoggingIn}
                 style={{ flex: 1.5, padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.94rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
-                {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue <ArrowRight size={16} /></>}
+                {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Submit & Complete 🎉</>}
               </button>
             </div>
           </div>
         )}
 
         {/* ============================================================ */}
-        {/* STEP 2B: UPLOAD AADHAAR CARD PAGE (upload-aadhaar-card) */}
+        {/* STEP 5B: UPLOAD AADHAAR CARD PAGE (upload-aadhaar-card) */}
         {/* ============================================================ */}
-        {step === 2 && subStep === 'aadhaar' && (
+        {step === 5 && subStep === 'aadhaar' && (
           <div style={{ padding: '18px 24px 28px 24px' }}>
             <div style={{ margin: '0 0 16px 0' }}>
               <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
@@ -1625,482 +2011,6 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
           </div>
         )}
 
-        {/* ============================================================ */}
-        {/* STEP 3: SELECT SERVICE CATEGORY PAGE */}
-        {/* ============================================================ */}
-        {step === 3 && (
-          <div style={{ padding: '18px 24px 28px 24px' }}>
-            <div style={{ margin: '0 0 16px 0' }}>
-              <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
-                Select Categories
-              </h2>
-              <p style={{ color: '#64748b', fontSize: '0.82rem', marginTop: '4px', margin: 0 }}>
-                Select one or more active categories ({selectedCategories.length} selected)
-              </p>
-            </div>
-
-            {/* Search Input */}
-            <div style={{ display: 'flex', alignItems: 'center', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '8px 12px', marginBottom: '16px' }}>
-              <Search size={16} color="#64748b" style={{ marginRight: '8px' }} />
-              <input
-                type="text"
-                placeholder="Search service categories..."
-                value={searchCatQuery}
-                onChange={(e) => setSearchCatQuery(e.target.value)}
-                style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '0.88rem' }}
-              />
-            </div>
-
-            {/* Super Admin Active Category Cards Grid (Multi-Select by ObjectId) */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '22px', maxHeight: '320px', overflowY: 'auto' }}>
-              {(categoriesList.length > 0 ? categoriesList : [
-                { _id: 'cat_ac_repair', name: 'AC & Appliance Repair' },
-                { _id: 'cat_cleaning', name: 'Cleaning & Pest Control' },
-                { _id: 'cat_plumbing', name: 'Plumbing, Electrical & Carpentry' },
-                { _id: 'cat_women_salon', name: 'Salon & Beauty for Women' },
-                { _id: 'cat_men_salon', name: "Men's Salon & Grooming" },
-                { _id: 'cat_painting', name: 'Home Painting & Decor' },
-              ]).filter((c) => c.name.toLowerCase().includes(searchCatQuery.toLowerCase())).map((cat) => {
-                const catIdentifier = cat._id || cat.id || cat.name;
-                const isSelected = selectedCategories.includes(catIdentifier) || selectedCategories.includes(cat.name) || category === catIdentifier || category === cat.name;
-                return (
-                  <div
-                    key={catIdentifier}
-                    onClick={() => handleToggleCategory(cat)}
-                    style={{
-                      position: 'relative',
-                      padding: '14px 12px',
-                      borderRadius: '16px',
-                      border: isSelected ? '2px solid #16a34a' : '1.5px solid #e2e8f0',
-                      background: isSelected ? '#f0fdf4' : '#ffffff',
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      transition: 'all 0.2s',
-                      boxShadow: isSelected ? '0 4px 12px rgba(22, 163, 74, 0.15)' : 'none',
-                    }}
-                  >
-                    <div style={{
-                      position: 'absolute',
-                      top: '8px',
-                      right: '8px',
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      background: isSelected ? '#16a34a' : '#e2e8f0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.2s',
-                    }}>
-                      <Check size={12} color={isSelected ? '#ffffff' : '#94a3b8'} />
-                    </div>
-
-                    <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: isSelected ? '#dcfce7' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px auto' }}>
-                      <Grid size={20} color={isSelected ? '#16a34a' : '#64748b'} />
-                    </div>
-                    <div style={{ fontSize: '0.84rem', fontWeight: '700', color: isSelected ? '#15803d' : '#0f172a', lineHeight: '1.3' }}>
-                      {cat.name}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
-              <button
-                type="button"
-                onClick={() => setStep(2)}
-                style={{ flex: 1, padding: '14px', borderRadius: '14px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              >
-                <ArrowLeft size={16} /> Back
-              </button>
-              <button
-                type="button"
-                onClick={handleStep3CategorySubmit}
-                disabled={isLoggingIn}
-                style={{ flex: 1.5, padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.94rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              >
-                {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue <ArrowRight size={16} /></>}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================ */}
-        {/* STEP 4: SKILLS & EXPERIENCE PAGE */}
-        {/* ============================================================ */}
-        {step === 4 && (
-          <div style={{ padding: '18px 24px 28px 24px' }}>
-            <div style={{ margin: '0 0 16px 0' }}>
-              <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
-                Skills & Experience
-              </h2>
-              <p style={{ color: '#64748b', fontSize: '0.82rem', marginTop: '4px', margin: 0 }}>
-                Highlight experience level & skills for {category || 'selected category'}
-              </p>
-            </div>
-
-            {/* Years of Experience */}
-            <div style={{ marginBottom: '18px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
-                Years of Experience
-              </label>
-              <select
-                value={experience}
-                onChange={(e) => setExperience(e.target.value)}
-                style={{ width: '100%', padding: '11px 14px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '0.92rem', background: '#ffffff', outline: 'none' }}
-              >
-                <option value="1-2 Years">1-2 Years</option>
-                <option value="3-5 Years">3-5 Years</option>
-                <option value="5-8 Years">5-8 Years</option>
-                <option value="8+ Years">8+ Years Experienced Expert</option>
-              </select>
-            </div>
-
-            {/* Select Your Special Skills (Dynamic Category Skills from Super Admin API) */}
-            <div style={{ marginBottom: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155' }}>
-                  Select Your Special Skills
-                </label>
-                {loadingSkills && <span style={{ fontSize: '0.75rem', color: '#16a34a' }}>Loading category skills... ⏳</span>}
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {categorySkills.map((sk) => {
-                  const skillId = sk._id || sk.id || sk;
-                  const skillName = sk.name || sk;
-                  const isSelected = skills.includes(skillId);
-                  return (
-                    <button
-                      key={skillId}
-                      type="button"
-                      onClick={() => handleToggleSkill(skillId)}
-                      style={{
-                        padding: '8px 14px',
-                        borderRadius: '20px',
-                        border: isSelected ? '2px solid #16a34a' : '1px solid #cbd5e1',
-                        background: isSelected ? '#16a34a' : '#ffffff',
-                        color: isSelected ? '#ffffff' : '#475569',
-                        fontWeight: '700',
-                        fontSize: '0.8rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        boxShadow: isSelected ? '0 4px 10px rgba(22, 163, 74, 0.2)' : 'none',
-                      }}
-                    >
-                      {isSelected && <Check size={14} color="#ffffff" />}
-                      {skillName}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Certifications (Optional) */}
-            <div style={{ marginBottom: '22px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
-                Certifications (Optional)
-              </label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="text"
-                  placeholder="+ Add Professional Certificate"
-                  value={certificateTitle}
-                  onChange={(e) => setCertificateTitle(e.target.value)}
-                  style={{ flex: 1, padding: '10px 12px', borderRadius: '12px', border: '1.5px dashed #bbf7d0', background: '#f0fdf4', fontSize: '0.86rem', outline: 'none' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (certificateTitle.trim()) {
-                      setCertifications([...certifications, certificateTitle.trim()]);
-                      setCertificateTitle('');
-                    }
-                  }}
-                  style={{ padding: '10px 14px', borderRadius: '12px', background: '#16a34a', color: '#ffffff', border: 'none', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer' }}
-                >
-                  <Plus size={16} /> Add
-                </button>
-              </div>
-              {certifications.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
-                  {certifications.map((cert, idx) => (
-                    <span key={idx} style={{ background: '#f1f5f9', color: '#334155', padding: '4px 10px', borderRadius: '12px', fontSize: '0.76rem', fontWeight: '600' }}>
-                      🎓 {cert}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
-              <button
-                type="button"
-                onClick={() => setStep(3)}
-                style={{ flex: 1, padding: '14px', borderRadius: '14px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              >
-                <ArrowLeft size={16} /> Back
-              </button>
-              <button
-                type="button"
-                onClick={handleStep4SkillsSubmit}
-                disabled={isLoggingIn}
-                style={{ flex: 1.5, padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.94rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              >
-                {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue <ArrowRight size={16} /></>}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================ */}
-        {/* STEP 5: SERVICE AREA SELECTION PAGE */}
-        {/* ============================================================ */}
-        {step === 5 && (
-          <div style={{ padding: '18px 24px 28px 24px' }}>
-            <div style={{ margin: '0 0 16px 0' }}>
-              <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
-                Service Area
-              </h2>
-              <p style={{ color: '#64748b', fontSize: '0.82rem', marginTop: '4px', margin: 0 }}>
-                Set your operating radius in {workCity}
-              </p>
-            </div>
-
-            {/* Interactive Leaflet Map with Real-time Dynamic Circle Radius Overlay centered on Current Position */}
-            <InteractiveServiceMap
-              city={workCity}
-              radiusKm={workRadius}
-              coords={deviceCoords || currentUser?.locationCoordinates}
-              onSelectLocation={handleManualMapSelectLocation}
-            />
-
-            {/* Work Radius Slider */}
-            <div style={{ marginBottom: '22px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', fontWeight: '700', color: '#334155', marginBottom: '8px' }}>
-                <span>Select Work Radius</span>
-                <span style={{ color: '#16a34a' }}>{workRadius} km</span>
-              </div>
-              <input
-                type="range"
-                min="2"
-                max="25"
-                value={workRadius}
-                onChange={(e) => {
-                  const newRad = Number(e.target.value);
-                  setWorkRadius(newRad);
-                  const coordsObj = deviceCoords || currentUser?.locationCoordinates;
-                  if (coordsObj?.lat && coordsObj?.lng) {
-                    fetchLocalitiesForRadius(coordsObj.lat, coordsObj.lng, newRad);
-                  }
-                }}
-                style={{ width: '100%', accentColor: '#16a34a', cursor: 'pointer' }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }}>
-                <span>2 km</span>
-                <span>12 km</span>
-                <span>25 km</span>
-              </div>
-            </div>
-
-            {/* Available Localities (Customise) Real Data */}
-            <div style={{ marginBottom: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155', margin: 0 }}>
-                  Available Localities (Customise)
-                </label>
-                <span style={{ fontSize: '0.72rem', color: '#16a34a', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  {loadingNearbyLocs ? (
-                    <>
-                      <Loader2 size={12} className="spin" /> Updating radius localities...
-                    </>
-                  ) : (
-                    <>📍 {dynamicNearbyLocalities.length} localities in {workRadius} km radius</>
-                  )}
-                </span>
-              </div>
-
-              {/* Add Custom Locality Input */}
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-                <input
-                  type="text"
-                  placeholder="+ Add custom nearby locality..."
-                  value={customLocalityInput}
-                  onChange={(e) => setCustomLocalityInput(e.target.value)}
-                  style={{ flex: 1, padding: '8px 12px', borderRadius: '10px', border: '1.5px dashed #bbf7d0', background: '#f0fdf4', fontSize: '0.84rem', outline: 'none' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (customLocalityInput.trim()) {
-                      const newLoc = customLocalityInput.trim();
-                      if (!selectedLocalities.includes(newLoc)) {
-                        setSelectedLocalities([newLoc, ...selectedLocalities]);
-                      }
-                      setCustomLocalityInput('');
-                    }
-                  }}
-                  style={{ padding: '8px 12px', borderRadius: '10px', background: '#16a34a', color: '#ffffff', border: 'none', fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer' }}
-                >
-                  + Add
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
-                {Array.from(new Set([
-                  ...dynamicNearbyLocalities,
-                  ...selectedLocalities,
-                  ...(REAL_LOCALITIES_BY_CITY[displayCityName] || []),
-                ]))
-                  .filter((loc) => displayCityName === 'Delhi NCR' || (!loc.includes('Delhi NCR') && !REAL_LOCALITIES_BY_CITY['Delhi NCR'].includes(loc)))
-                  .map((loc) => {
-                  const isChecked = selectedLocalities.includes(loc);
-                  const isNearby = dynamicNearbyLocalities.includes(loc);
-                  return (
-                    <div
-                      key={loc}
-                      onClick={() => handleToggleLocality(loc)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 14px',
-                        borderRadius: '12px',
-                        border: isChecked ? '1.5px solid #16a34a' : '1px solid #e2e8f0',
-                        background: isChecked ? '#f0fdf4' : '#f8fafc',
-                        cursor: 'pointer',
-                        fontSize: '0.84rem',
-                        fontWeight: '600',
-                        color: isChecked ? '#15803d' : '#334155',
-                      }}
-                    >
-                      <span>
-                        📍 {loc} {isNearby && <span style={{ marginLeft: '6px', fontSize: '0.7rem', background: '#dcfce7', color: '#15803d', padding: '2px 6px', borderRadius: '6px', fontWeight: '700' }}>Your Location</span>}
-                      </span>
-                      <input type="checkbox" checked={isChecked} onChange={() => { }} style={{ accentColor: '#16a34a' }} />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
-              <button
-                type="button"
-                onClick={() => setStep(4)}
-                style={{ flex: 1, padding: '14px', borderRadius: '14px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              >
-                <ArrowLeft size={16} /> Back
-              </button>
-              <button
-                type="button"
-                onClick={handleStep5AreaSubmit}
-                disabled={isLoggingIn}
-                style={{ flex: 1.5, padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.94rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              >
-                {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue <ArrowRight size={16} /></>}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================ */}
-        {/* STEP 6: WORKING HOURS SETUP PAGE */}
-        {/* ============================================================ */}
-        {step === 6 && (
-          <div style={{ padding: '18px 24px 28px 24px' }}>
-            <div style={{ margin: '0 0 14px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
-                  Working Hours
-                </h2>
-                <p style={{ color: '#64748b', fontSize: '0.82rem', marginTop: '2px', margin: 0 }}>
-                  Set Weekly Schedule
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleApplyHoursToAll}
-                style={{ background: '#dcfce7', border: 'none', color: '#15803d', padding: '6px 12px', borderRadius: '10px', fontSize: '0.76rem', fontWeight: '700', cursor: 'pointer' }}
-              >
-                Apply to All
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '22px', maxHeight: '280px', overflowY: 'auto' }}>
-              {workingHours.map((sch, idx) => (
-                <div
-                  key={sch.day}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 12px',
-                    borderRadius: '12px',
-                    border: sch.isOpen ? '1.5px solid #bbf7d0' : '1px solid #e2e8f0',
-                    background: sch.isOpen ? '#f0fdf4' : '#f8fafc',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <input
-                      type="checkbox"
-                      checked={sch.isOpen}
-                      onChange={() => handleToggleDayOpen(idx)}
-                      style={{ width: '18px', height: '18px', accentColor: '#16a34a', cursor: 'pointer' }}
-                    />
-                    <span style={{ fontSize: '0.86rem', fontWeight: '700', color: sch.isOpen ? '#0f172a' : '#94a3b8' }}>
-                      {sch.day}
-                    </span>
-                  </div>
-
-                  {sch.isOpen ? (
-                    <div style={{ fontSize: '0.78rem', fontWeight: '700', color: '#16a34a', background: '#ffffff', padding: '4px 10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-                      {sch.openTime} to {sch.closeTime}
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: '0.76rem', color: '#94a3b8', fontStyle: 'italic' }}>Off Day</span>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
-              <button
-                type="button"
-                onClick={() => setStep(5)}
-                style={{ flex: 1, padding: '14px', borderRadius: '14px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              >
-                <ArrowLeft size={16} /> Back
-              </button>
-              <button
-                type="button"
-                onClick={handleStep6Submit}
-                disabled={isLoggingIn}
-                style={{
-                  flex: 1.5,
-                  padding: '14px',
-                  borderRadius: '14px',
-                  background: '#16a34a',
-                  color: '#ffffff',
-                  border: 'none',
-                  fontSize: '0.94rem',
-                  fontWeight: '800',
-                  cursor: 'pointer',
-                  boxShadow: '0 8px 20px rgba(22, 163, 74, 0.35)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                }}
-              >
-                {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Save & Complete 🎉</>}
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* EDIT PROFILE DETAILS MODAL */}
         {showEditProfileModal && (
           <div style={{
@@ -2137,7 +2047,9 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
 
               <form onSubmit={handleSaveProfileEdit}>
                 <div style={{ marginBottom: '14px' }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Full Name</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                    Full Name <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
                   <input
                     type="text"
                     value={editName}
@@ -2149,7 +2061,9 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                 </div>
 
                 <div style={{ marginBottom: '14px' }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Email Address</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                    Email Address <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
                   <input
                     type="email"
                     value={editEmail}
@@ -2162,20 +2076,26 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Date of Birth</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                      Date of Birth <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
                     <input
                       type="date"
                       value={editDob}
                       onChange={(e) => setEditDob(e.target.value)}
                       style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '0.86rem', outline: 'none' }}
+                      required
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Gender</label>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                      Gender <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
                     <select
                       value={editGender}
                       onChange={(e) => setEditGender(e.target.value)}
                       style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '0.86rem', outline: 'none', background: '#ffffff' }}
+                      required
                     >
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
@@ -2185,7 +2105,9 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                 </div>
 
                 <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>Assigned City</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                    Assigned City <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
                   <select
                     value={editCity}
                     onChange={(e) => setEditCity(e.target.value)}
