@@ -26,6 +26,8 @@ export const authService = {
   saveOnboardingSkills: (data, config = {}) => axiosInstance.post('/partner/auth/onboarding/skills', data, config),
   saveOnboardingServiceArea: (data, config = {}) => axiosInstance.post('/partner/auth/onboarding/service-area', data, config),
   saveOnboardingWorkingHours: (data, config = {}) => axiosInstance.post('/partner/auth/onboarding/working-hours', data, config),
+  addCertification: (data, config = {}) => axiosInstance.post('/partner/auth/certifications', data, config),
+  deleteCertification: (certId) => axiosInstance.delete(`/partner/auth/certifications/${certId}`),
   partnerLogout: () => axiosInstance.post('/partner/auth/logout'),
   getKycStatus: () => axiosInstance.get('/partner/auth/kyc-status'),
 

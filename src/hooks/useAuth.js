@@ -158,6 +158,24 @@ export const useAuth = () => {
     },
   });
 
+  const addCertificationMutation = useMutation({
+    mutationFn: (data) => authService.addCertification(data),
+    onSuccess: (res) => {
+      const user = res.data?.user || res.data;
+      if (user) updateUser(user);
+      toast.success('Certificate uploaded & saved to database!');
+    },
+  });
+
+  const deleteCertificationMutation = useMutation({
+    mutationFn: (certId) => authService.deleteCertification(certId),
+    onSuccess: (res) => {
+      const user = res.data?.user || res.data;
+      if (user) updateUser(user);
+      toast.success('Certificate removed from database!');
+    },
+  });
+
   const cityAdminLoginMutation = useMutation({
     mutationFn: (data) => authService.cityAdminLogin(data),
     onSuccess: (res) => {
@@ -201,6 +219,8 @@ export const useAuth = () => {
     saveOnboardingSkills: saveOnboardingSkillsMutation.mutateAsync,
     saveOnboardingServiceArea: saveOnboardingAreaMutation.mutateAsync,
     saveOnboardingWorkingHours: saveOnboardingHoursMutation.mutateAsync,
+    addCertification: addCertificationMutation.mutateAsync,
+    deleteCertification: deleteCertificationMutation.mutateAsync,
     cityAdminLogin: cityAdminLoginMutation.mutateAsync,
     superAdminLogin: superAdminLoginMutation.mutateAsync,
     isLoggingIn:
@@ -215,6 +235,8 @@ export const useAuth = () => {
       saveOnboardingSkillsMutation.isPending ||
       saveOnboardingAreaMutation.isPending ||
       saveOnboardingHoursMutation.isPending ||
+      addCertificationMutation.isPending ||
+      deleteCertificationMutation.isPending ||
       cityAdminLoginMutation.isPending ||
       superAdminLoginMutation.isPending ||
       otpLoginVerifyMutation.isPending,

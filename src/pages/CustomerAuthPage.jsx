@@ -41,11 +41,15 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
     if (e) e.preventDefault();
     setError('');
     setSuccessMessage('');
-    const target = customTarget || emailOrPhone;
-
-    if (!target || !target.trim()) {
+    const rawTarget = customTarget || emailOrPhone;
+    if (!rawTarget || !rawTarget.trim()) {
       return setError('Please enter a valid Email Address or Mobile Number');
     }
+
+    const cleanTarget = rawTarget.trim();
+    const target = cleanTarget.includes('@')
+      ? cleanTarget
+      : (cleanTarget.replace(/\D/g, '').length >= 10 ? `+91${cleanTarget.replace(/\D/g, '').slice(-10)}` : cleanTarget);
 
     setLoading(true);
     try {

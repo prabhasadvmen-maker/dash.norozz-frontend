@@ -21,6 +21,9 @@ import {
   LogOut,
   User,
   Navigation as NavigationIcon,
+  Award,
+  Trash2,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { catalogService } from '../services/catalog.service.js';
@@ -147,6 +150,9 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
       shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
     });
 
+    let resizeObserver = null;
+    let timer = null;
+
     if (!mapInstanceRef.current) {
       const map = L.map(mapContainerRef.current, {
         center: [activeLat, activeLng],
@@ -156,13 +162,14 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 18,
+        maxZoom: 19,
+        subdomains: ['a', 'b', 'c'],
       }).addTo(map);
 
       const circle = L.circle([activeLat, activeLng], {
         color: '#16a34a',
         fillColor: '#22c55e',
-        fillOpacity: 0.25,
+        fillOpacity: 0.22,
         weight: 2.5,
         radius: radiusKm * 1000,
       }).addTo(map);
@@ -181,9 +188,29 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
       mapInstanceRef.current = map;
       circleInstanceRef.current = circle;
       markerInstanceRef.current = marker;
+
+      // Force recalculation of container size after DOM layout settles
+      timer = setTimeout(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize();
+        }
+      }, 250);
+
+      if (typeof ResizeObserver !== 'undefined' && mapContainerRef.current) {
+        resizeObserver = new ResizeObserver(() => {
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.invalidateSize();
+          }
+        });
+        resizeObserver.observe(mapContainerRef.current);
+      }
+    } else {
+      mapInstanceRef.current.invalidateSize();
     }
 
     return () => {
+      if (timer) clearTimeout(timer);
+      if (resizeObserver) resizeObserver.disconnect();
       if (mapInstanceRef.current) {
         try {
           mapInstanceRef.current.off();
@@ -237,43 +264,54 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
   }, [radiusKm]);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '210px', borderRadius: '18px', overflow: 'hidden', border: '2px solid #bbf7d0', boxShadow: '0 4px 14px rgba(22, 163, 74, 0.12)', marginBottom: '18px' }}>
+    <div style={{ position: 'relative', width: '100%', height: '230px', borderRadius: '18px', overflow: 'hidden', border: '2px solid #bbf7d0', boxShadow: '0 4px 14px rgba(22, 163, 74, 0.12)', marginBottom: '18px' }}>
       <div ref={mapContainerRef} style={{ width: '100%', height: '100%', zIndex: 1, cursor: 'crosshair' }} />
       <div style={{
         position: 'absolute',
-        top: '12px',
-        left: '12px',
-        background: 'rgba(15, 23, 42, 0.75)',
-        color: '#ffffff',
-        backdropFilter: 'blur(6px)',
-        padding: '5px 10px',
-        borderRadius: '20px',
-        fontSize: '0.7rem',
-        fontWeight: '700',
-        zIndex: 10,
-        pointerEvents: 'none',
+        top: '10px',
+        left: '10px',
+        right: '10px',
         display: 'flex',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        gap: '4px'
+        gap: '8px',
+        zIndex: 400,
+        pointerEvents: 'none',
+        flexWrap: 'wrap'
       }}>
-        📍 Tap map to select location manually
-      </div>
-      <div style={{
-        position: 'absolute',
-        top: '12px',
-        right: '12px',
-        background: 'rgba(255, 255, 255, 0.92)',
-        backdropFilter: 'blur(6px)',
-        padding: '6px 12px',
-        borderRadius: '12px',
-        fontSize: '0.78rem',
-        fontWeight: '800',
-        color: '#15803d',
-        border: '1px solid #bbf7d0',
-        zIndex: 1000,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-      }}>
-        📍 Active Coverage: {radiusKm} km
+        <div style={{
+          background: 'rgba(15, 23, 42, 0.85)',
+          color: '#ffffff',
+          backdropFilter: 'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
+          padding: '5px 10px',
+          borderRadius: '20px',
+          fontSize: '0.72rem',
+          fontWeight: '700',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          whiteSpace: 'nowrap',
+          maxWidth: '100%',
+        }}>
+          📍 Tap map to set location pin
+        </div>
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.94)',
+          color: '#15803d',
+          backdropFilter: 'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
+          padding: '5px 10px',
+          borderRadius: '12px',
+          fontSize: '0.75rem',
+          fontWeight: '800',
+          border: '1px solid #bbf7d0',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+          whiteSpace: 'nowrap',
+        }}>
+          📍 Active Coverage: {radiusKm} km
+        </div>
       </div>
     </div>
   );
@@ -334,6 +372,8 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     saveOnboardingSkills,
     saveOnboardingServiceArea,
     saveOnboardingWorkingHours,
+    addCertification,
+    deleteCertification,
     updatePartnerProfile,
     updateUser,
     isLoggingIn,
@@ -454,8 +494,103 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
   });
   const [categorySkills, setCategorySkills] = useState([]);
   const [loadingSkills, setLoadingSkills] = useState(false);
-  const [certificateTitle, setCertificateTitle] = useState('');
   const [certifications, setCertifications] = useState(currentUser?.certifications || []);
+
+  // Certificate Upload Modal State (Matching Add Professional Certificate UI Mockup)
+  const [showCertModal, setShowCertModal] = useState(false);
+  const [certTitle, setCertTitle] = useState('');
+  const [certFile, setCertFile] = useState(null);
+  const [certImagePreview, setCertImagePreview] = useState('');
+  const certFileInputRef = useRef(null);
+
+  const handleCertFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size exceeds 5MB limit. Please upload a smaller image.');
+      return;
+    }
+
+    let processedFile = file;
+    if (file.type?.startsWith('image/')) {
+      processedFile = await compressImage(file);
+    }
+    setCertFile(processedFile);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCertImagePreview(reader.result);
+    };
+    reader.readAsDataURL(processedFile);
+  };
+
+  const [uploadingCert, setUploadingCert] = useState(false);
+
+  const handleSaveCertificateModal = async () => {
+    if (!certImagePreview && !certTitle.trim() && !certFile) {
+      toast.error('Please upload a certificate document photo or enter a certificate title');
+      return;
+    }
+
+    setUploadingCert(true);
+    try {
+      let res;
+      if (certFile) {
+        const formData = new FormData();
+        formData.append('certificateFile', certFile);
+        if (certTitle.trim()) {
+          formData.append('title', certTitle.trim());
+        }
+        res = await addCertification(formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      } else {
+        res = await addCertification({
+          title: certTitle.trim() || 'Professional Certificate',
+          image: certImagePreview,
+        });
+      }
+
+      const updatedUser = res.data?.user || res.user;
+      if (updatedUser?.certifications) {
+        setCertifications(updatedUser.certifications);
+      } else if (res.data?.certification || res.certification) {
+        const savedCert = res.data?.certification || res.certification;
+        setCertifications((prev) => [...prev, savedCert]);
+      }
+
+      setCertTitle('');
+      setCertFile(null);
+      setCertImagePreview('');
+      setShowCertModal(false);
+      toast.success('📜 Certificate uploaded & saved to database!');
+    } catch (err) {
+      console.error('Certificate upload error:', err);
+      toast.error(err.message || 'Failed to upload certificate');
+    } finally {
+      setUploadingCert(false);
+    }
+  };
+
+  const handleRemoveCertificate = async (indexToRemove) => {
+    const certItem = certifications[indexToRemove];
+    const certId = typeof certItem === 'object' ? (certItem._id || certItem.id || indexToRemove) : indexToRemove;
+
+    try {
+      const res = await deleteCertification(certId);
+      const updatedUser = res.data?.user || res.user;
+      if (updatedUser?.certifications) {
+        setCertifications(updatedUser.certifications);
+      } else {
+        setCertifications((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+      }
+      toast.success('Certificate deleted successfully from database');
+    } catch (err) {
+      console.warn('Backend certificate delete fallback:', err);
+      setCertifications((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+      toast.success('Certificate removed');
+    }
+  };
 
   // Fetch Dynamic Skills for Selected Category from Super Admin API using Category ID
   useEffect(() => {
@@ -1463,34 +1598,98 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
                 Certifications (Optional)
               </label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="text"
-                  placeholder="+ Add Professional Certificate"
-                  value={certificateTitle}
-                  onChange={(e) => setCertificateTitle(e.target.value)}
-                  style={{ flex: 1, padding: '10px 12px', borderRadius: '12px', border: '1.5px dashed #bbf7d0', background: '#f0fdf4', fontSize: '0.86rem', outline: 'none' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (certificateTitle.trim()) {
-                      setCertifications([...certifications, certificateTitle.trim()]);
-                      setCertificateTitle('');
-                    }
-                  }}
-                  style={{ padding: '10px 14px', borderRadius: '12px', background: '#16a34a', color: '#ffffff', border: 'none', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer' }}
-                >
-                  <Plus size={16} /> Add
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCertTitle('');
+                  setCertFile(null);
+                  setCertImagePreview('');
+                  setShowCertModal(true);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  borderRadius: '14px',
+                  border: '2px dashed #bbf7d0',
+                  background: '#f0fdf4',
+                  color: '#16a34a',
+                  fontWeight: '800',
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 2px 8px rgba(22, 163, 74, 0.08)',
+                }}
+              >
+                <Plus size={18} color="#16a34a" /> Add Professional Certificate
+              </button>
+
+              {/* Display Added Certifications List */}
               {certifications.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
-                  {certifications.map((cert, idx) => (
-                    <span key={idx} style={{ background: '#f1f5f9', color: '#334155', padding: '4px 10px', borderRadius: '12px', fontSize: '0.76rem', fontWeight: '600' }}>
-                      🎓 {cert}
-                    </span>
-                  ))}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
+                  {certifications.map((cert, idx) => {
+                    const title = typeof cert === 'object' ? (cert.title || cert.name || 'Professional Certificate') : cert;
+                    const imgUrl = typeof cert === 'object' ? (cert.image || cert.url) : null;
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          background: '#f8fafc',
+                          border: '1.5px solid #e2e8f0',
+                          borderRadius: '14px',
+                          padding: '10px 14px',
+                          gap: '12px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', overflow: 'hidden' }}>
+                          {imgUrl ? (
+                            <img
+                              src={imgUrl}
+                              alt={title}
+                              style={{ width: '46px', height: '46px', borderRadius: '10px', objectFit: 'cover', border: '1px solid #cbd5e1' }}
+                            />
+                          ) : (
+                            <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Award size={22} />
+                            </div>
+                          )}
+                          <div style={{ overflow: 'hidden' }}>
+                            <div style={{ fontSize: '0.86rem', fontWeight: '800', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {title}
+                            </div>
+                            <div style={{ fontSize: '0.74rem', color: '#16a34a', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                              <CheckCircle2 size={12} /> Certificate Attached
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCertificate(idx)}
+                          style={{
+                            background: '#fee2e2',
+                            color: '#ef4444',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '32px',
+                            height: '32px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -2142,6 +2341,173 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* ADD PROFESSIONAL CERTIFICATE MODAL (Screen 3 in User Mockup) */}
+        {showCertModal && (
+          <div className="modal-overlay" onClick={() => setShowCertModal(false)} style={{ zIndex: 3000 }}>
+            <div
+              className="modal-content"
+              onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: '480px', width: '92%', padding: '24px', borderRadius: '24px', background: '#ffffff' }}
+            >
+              {/* Modal Header Bar with Back Arrow */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCertModal(false)}
+                  style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                >
+                  <ArrowLeft size={18} color="#0f172a" />
+                </button>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+                  Add Professional Certificate
+                </h3>
+              </div>
+
+              {/* Green Progress Line Indicator */}
+              <div style={{ height: '4px', width: '100%', background: '#16a34a', borderRadius: '4px', marginBottom: '14px' }} />
+
+              <p style={{ color: '#64748b', fontSize: '0.82rem', marginTop: 0, marginBottom: '18px', lineHeight: '1.4' }}>
+                Upload your professional certificates for verification and credibility.
+              </p>
+
+              {/* Certificate Title Field */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                  Certificate Name / Title (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. AC Repair Master Certification"
+                  value={certTitle}
+                  onChange={(e) => setCertTitle(e.target.value)}
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', background: '#f8fafc' }}
+                />
+              </div>
+
+              {/* Certificate Dropzone / Photo Box */}
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                  Certificate Document / Photo
+                </label>
+
+                {certImagePreview ? (
+                  <div style={{ position: 'relative', width: '100%', height: '190px', borderRadius: '16px', overflow: 'hidden', border: '2px solid #bbf7d0', background: '#0f172a' }}>
+                    <img src={certImagePreview} alt="Certificate preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    <div style={{ position: 'absolute', bottom: '10px', right: '10px', display: 'flex', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => certFileInputRef.current?.click()}
+                        style={{ background: '#16a34a', color: '#ffffff', border: 'none', padding: '6px 12px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: '700', cursor: 'pointer' }}
+                      >
+                        Change Photo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCertFile(null);
+                          setCertImagePreview('');
+                        }}
+                        style={{ background: '#ef4444', color: '#ffffff', border: 'none', padding: '6px 12px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: '700', cursor: 'pointer' }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => certFileInputRef.current?.click()}
+                    style={{
+                      border: '2px dashed #86efac',
+                      background: '#f0fdf4',
+                      borderRadius: '16px',
+                      padding: '28px 16px',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '52px',
+                        height: '52px',
+                        borderRadius: '50%',
+                        background: '#dcfce7',
+                        color: '#16a34a',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 10px auto',
+                        border: '1.5px solid #bbf7d0',
+                      }}
+                    >
+                      <Upload size={24} color="#16a34a" />
+                    </div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: '800', color: '#16a34a' }}>
+                      Tap to upload certificate
+                    </div>
+                    <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '4px' }}>
+                      JPG, PNG or PDF (max 5MB)
+                    </div>
+                  </div>
+                )}
+
+                <input
+                  ref={certFileInputRef}
+                  type="file"
+                  accept="image/*,.pdf"
+                  style={{ display: 'none' }}
+                  onChange={handleCertFileSelect}
+                />
+              </div>
+
+              {/* Guidelines Section (Exact Match to Mockup) */}
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px', marginBottom: '22px' }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: '800', color: '#334155', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  📋 Guidelines
+                </div>
+                <ul style={{ margin: 0, paddingLeft: '18px', color: '#64748b', fontSize: '0.78rem', lineHeight: '1.6' }}>
+                  <li>Ensure the certificate is clearly legible</li>
+                  <li>Upload only valid and recognized certificates</li>
+                  <li>File size should be under 5MB</li>
+                </ul>
+              </div>
+
+              {/* Submit / Continue Button */}
+              <button
+                type="button"
+                onClick={handleSaveCertificateModal}
+                disabled={uploadingCert}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  borderRadius: '14px',
+                  background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontWeight: '800',
+                  fontSize: '0.95rem',
+                  cursor: uploadingCert ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 14px rgba(22, 163, 74, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  opacity: uploadingCert ? 0.75 : 1,
+                }}
+              >
+                {uploadingCert ? (
+                  <>
+                    <Loader2 size={18} className="spin" color="#ffffff" />
+                    Uploading Certificate...
+                  </>
+                ) : (
+                  'Continue'
+                )}
+              </button>
             </div>
           </div>
         )}

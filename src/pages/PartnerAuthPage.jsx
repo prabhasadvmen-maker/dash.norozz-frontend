@@ -110,7 +110,7 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
         const list = res.data?.data || res.data || [];
         if (Array.isArray(list) && list.length > 0) {
           setActiveCitiesList(list);
-          if (!workCity) setWorkCity(list[0]._id);
+          if (!workCity) setWorkCity(list[0].name || list[0]._id);
         }
       })
       .catch((err) => console.warn('Active cities fetch warning:', err));
@@ -225,16 +225,19 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
   // Check where partner should be directed after OTP / Profile creation based on server nextStep
   const handleEvaluatePartnerNextStep = (userObj, token, resData = {}) => {
     const nextStep = resData?.nextStep || resData?.data?.nextStep;
-    const isKycSubmitted = userObj?.isKycSubmitted === true;
+    const isProfileCompleted = Boolean(
+      userObj.name &&
+      userObj.name.trim() !== '' &&
+      !userObj.name.startsWith('Partner ') &&
+      userObj.email &&
+      userObj.email.trim() !== '' &&
+      !userObj.email.endsWith('@norozz.com')
+    );
 
-    if (nextStep === 'CREATE_PROFILE' || resData?.onboardingStatus?.isProfileCompleted === false) {
+    if (nextStep === 'CREATE_PROFILE' || !isProfileCompleted) {
       setStep('create-profile');
-    } else if (nextStep === 'DONE' || nextStep === 'COMPLETED') {
-      login(userObj, token);
-    } else if (nextStep === 'PENDING_APPROVAL' || (isKycSubmitted && userObj.kycStatus === 'pending')) {
-      setStep('approval-pending');
     } else {
-      // Need onboarding steps (e.g. UPLOAD_LOCATION, UPLOAD_DOCUMENTS, SELECT_CATEGORY, etc.) -> log in to render PartnerOnboardingPage
+      // Log in partner user so App.jsx renders PartnerOnboardingPage for missing steps (Location, Category, Skills, Area, Docs)
       login(userObj, token);
     }
   };
@@ -245,14 +248,15 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
     setError('');
     setSuccessMsg('');
 
-    const cleanPhone = phone.trim().replace(/\D/g, '');
-    if (!cleanPhone || cleanPhone.length < 10) {
+    const cleanPhoneDigits = phone.trim().replace(/\D/g, '');
+    if (!cleanPhoneDigits || cleanPhoneDigits.length < 10) {
       setError('Please enter a valid 10-digit mobile number.');
       return;
     }
 
     try {
-      const formattedPhone = cleanPhone.length === 10 ? `+91${cleanPhone}` : `+${cleanPhone}`;
+      const base10 = cleanPhoneDigits.slice(-10);
+      const formattedPhone = `+91${base10}`;
       const res = await requestPartnerOtp({ phone: formattedPhone });
       const generatedOtp = res.data?.otp || res.otp;
       if (generatedOtp) {
@@ -281,8 +285,9 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
       return;
     }
 
-    const cleanPhone = phone.trim().replace(/\D/g, '');
-    const formattedPhone = cleanPhone.length === 10 ? `+91${cleanPhone}` : `+${cleanPhone}`;
+    const cleanPhoneDigits = phone.trim().replace(/\D/g, '');
+    const base10 = cleanPhoneDigits.slice(-10);
+    const formattedPhone = `+91${base10}`;
 
     try {
       const res = await verifyPartnerOtp({ phone: formattedPhone, otp: otpCode });
@@ -924,7 +929,7 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
                 >
                   {activeCitiesList.length > 0 ? (
                     activeCitiesList.map((c) => (
-                      <option key={c._id} value={c._id}>
+                      <option key={c._id} value={c.name || c._id}>
                         {c.name} {c.state ? `(${c.state})` : ''}
                       </option>
                     ))

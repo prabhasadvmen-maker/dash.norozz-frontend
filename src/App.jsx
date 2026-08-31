@@ -78,9 +78,24 @@ function App() {
         );
       }
 
+      // Check exact completion of all 5 onboarding steps: Location, Category, Skills, Service Area, Documents
+      const isLocationSaved = Boolean(currentUser.isLocationSaved || currentUser.locationCoordinates?.lat || (currentUser.address && currentUser.assignedCity));
+      const isCategorySelected = Boolean(currentUser.isCategorySelected || (currentUser.categories && currentUser.categories.length > 0) || (currentUser.category && currentUser.category.trim() !== ''));
+      const isSkillsUpdated = Boolean(currentUser.isSkillsUpdated || (currentUser.skills && currentUser.skills.length > 0));
+      const isServiceAreaSet = Boolean(currentUser.isServiceAreaSet || (currentUser.localities && currentUser.localities.length > 0));
+      const isDocumentsUploaded = Boolean(currentUser.isDocumentsUploaded || (currentUser.documents?.aadhaarFront && currentUser.documents?.aadhaarBack) || currentUser.documents?.aadhaarDoc || currentUser.documents?.panDoc);
+
+      const isAllOnboardingCompleted = Boolean(
+        isLocationSaved &&
+        isCategorySelected &&
+        isSkillsUpdated &&
+        isServiceAreaSet &&
+        isDocumentsUploaded
+      );
+
       const isKycDone = Boolean(
-        (currentUser.isKycSubmitted === true || currentUser.kycStatus === 'approved') &&
-        (currentUser.isDocumentsUploaded === true || (currentUser.documents?.aadhaarFront && currentUser.documents?.aadhaarBack))
+        currentUser.kycStatus === 'approved' ||
+        (currentUser.isKycSubmitted === true && isAllOnboardingCompleted)
       );
 
       if (!isKycDone && !skipOnboarding) {
