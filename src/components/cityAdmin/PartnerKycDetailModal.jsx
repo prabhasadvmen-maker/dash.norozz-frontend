@@ -604,7 +604,39 @@ const PartnerKycDetailModal = ({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.85rem' }}>
                   <div><span style={{ color: '#64748b', fontWeight: '600' }}>Primary Trade Category:</span> <strong style={{ color: '#2563eb' }}>{getDisplayCategory(partner)}</strong></div>
                   <div><span style={{ color: '#64748b', fontWeight: '600' }}>Years of Experience:</span> <strong>{partner.experience || '3-5 Years'}</strong></div>
-                  <div><span style={{ color: '#64748b', fontWeight: '600' }}>Certifications:</span> <strong>{partner.certifications?.length ? partner.certifications.join(', ') : 'Govt. Skill India Certified'}</strong></div>
+                  <div>
+                  <span style={{ color: '#64748b', fontWeight: '600' }}>Certifications:</span>{' '}
+                  {partner.certifications?.length ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
+                      {partner.certifications.map((c, idx) => {
+                        const title = typeof c === 'object' ? (c.title || c.name || 'Certificate') : c;
+                        const img = typeof c === 'object' ? (c.image || c.url) : null;
+                        return (
+                          <span
+                            key={idx}
+                            onClick={() => img && setActiveDocPreview({ title, url: img })}
+                            style={{
+                              background: '#ffffff',
+                              border: '1px solid #cbd5e1',
+                              borderRadius: '10px',
+                              padding: '4px 10px',
+                              fontSize: '0.8rem',
+                              fontWeight: '700',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              cursor: img ? 'pointer' : 'default',
+                            }}
+                          >
+                            {img ? <Award size={14} color="#16a34a" /> : '🎓'} {title} {img && '👁️'}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <strong>Govt. Skill India Certified</strong>
+                  )}
+                </div>
                   <div><span style={{ color: '#64748b', fontWeight: '600' }}>Rating Rating:</span> <strong style={{ color: '#d97706' }}>⭐ {partner.averageRating || 5.0} / 5.0</strong></div>
                 </div>
               </div>

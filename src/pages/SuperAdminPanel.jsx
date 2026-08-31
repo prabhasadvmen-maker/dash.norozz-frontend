@@ -32,7 +32,8 @@ import {
   Star,
   ShieldCheck,
   Eye,
-  Gift
+  Gift,
+  Trash2
 } from 'lucide-react';
 
 const SuperAdminPanel = ({ currentUser, onLogout }) => {
