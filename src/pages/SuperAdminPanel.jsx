@@ -32,7 +32,8 @@ import {
   Star,
   ShieldCheck,
   Eye,
-  Gift
+  Gift,
+  Trash2
 } from 'lucide-react';
 
 const SuperAdminPanel = ({ currentUser, onLogout }) => {
@@ -401,7 +402,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f4f6f8', color: '#0f172a' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#f4f6f8', color: '#0f172a' }}>
       
       {/* Super Admin Dark Green Sticky Full-Height Sidebar */}
       <SuperAdminSidebar
@@ -412,7 +413,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
       />
 
       {/* Main Right Column Container */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflow: 'hidden' }}>
 
         {/* Super Admin Top Header */}
         <SuperAdminNavbar
@@ -426,7 +427,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
         />
 
         {/* Content View Area */}
-        <main style={{ flex: 1, padding: '32px 36px', overflowX: 'hidden', maxWidth: '1600px', width: '100%', margin: '0 auto' }}>
+        <main style={{ flex: 1, padding: '32px 36px', overflowY: 'auto', overflowX: 'hidden', maxWidth: '1600px', width: '100%', margin: '0 auto' }}>
           
           {/* Page Header */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>

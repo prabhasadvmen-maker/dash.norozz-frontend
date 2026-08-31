@@ -689,63 +689,64 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '1100px' }}>
       
-      {/* 1. TOP HERO PROFILE CARD */}
+      {/* 1. TOP ULTRA-COMPACT INDUSTRIAL HERO PROFILE CARD */}
       <div
         style={{
-          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0284c7 100%)',
-          borderRadius: '24px',
-          padding: '32px 36px',
+          background: 'linear-gradient(135deg, #09331E 0%, #064e3b 50%, #0f172a 100%)',
+          borderRadius: '16px',
+          padding: '14px 20px',
           color: '#ffffff',
-          boxShadow: '0 20px 40px rgba(15, 23, 42, 0.25)',
+          boxShadow: '0 8px 24px rgba(9, 51, 30, 0.18)',
           position: 'relative',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          border: '1px solid rgba(16, 185, 129, 0.25)'
         }}
       >
         <div
           style={{
             position: 'absolute',
-            top: '-50px',
-            right: '-50px',
-            width: '220px',
-            height: '220px',
+            top: '-30px',
+            right: '-30px',
+            width: '140px',
+            height: '140px',
             borderRadius: '50%',
-            background: 'rgba(255, 255, 255, 0.05)',
+            background: 'rgba(16, 185, 129, 0.08)',
             pointerEvents: 'none'
           }}
         />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '28px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
           
           {/* Avatar Image */}
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
             {user.profileImage ? (
               <img
                 src={user.profileImage}
                 alt={user.name || 'Partner Profile'}
                 style={{
-                  width: '96px',
-                  height: '96px',
+                  width: '56px',
+                  height: '56px',
                   borderRadius: '50%',
                   objectFit: 'cover',
-                  border: '4px solid rgba(255, 255, 255, 0.3)',
-                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)'
+                  border: '2.5px solid #10b981',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
                 }}
               />
             ) : (
               <div
                 style={{
-                  width: '96px',
-                  height: '96px',
+                  width: '56px',
+                  height: '56px',
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #16a34a, #059669)',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '2.4rem',
+                  fontSize: '1.4rem',
                   fontWeight: '900',
                   color: '#ffffff',
-                  border: '4px solid rgba(255, 255, 255, 0.3)',
-                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)'
+                  border: '2.5px solid #34d399',
+                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
                 }}
               >
                 {(user.name || 'P')[0].toUpperCase()}
@@ -754,69 +755,69 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
             <span
               style={{
                 position: 'absolute',
-                bottom: '4px',
-                right: '4px',
-                width: '18px',
-                height: '18px',
+                bottom: '2px',
+                right: '2px',
+                width: '14px',
+                height: '14px',
                 borderRadius: '50%',
-                background: '#22c55e',
-                border: '3px solid #0f172a'
+                background: '#10b981',
+                border: '2px solid #064e3b'
               }}
             />
           </div>
 
           {/* User Details */}
-          <div style={{ flex: 1, minWidth: '260px' }}>
+          <div style={{ flex: 1, minWidth: '240px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <h1 style={{ fontSize: '1.8rem', fontWeight: '900', margin: 0, letterSpacing: '-0.5px' }}>
+              <h1 style={{ fontSize: '1.45rem', fontWeight: '900', margin: 0, letterSpacing: '-0.3px', color: '#ffffff' }}>
                 {user.name || 'Technician Partner'}
               </h1>
 
               <span
                 style={{
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  fontSize: '0.75rem',
+                  padding: '3px 10px',
+                  borderRadius: '9999px',
+                  fontSize: '0.72rem',
                   fontWeight: '800',
-                  letterSpacing: '0.5px',
+                  letterSpacing: '0.4px',
                   textTransform: 'uppercase',
-                  background: isApproved ? 'rgba(34, 197, 94, 0.2)' : 'rgba(234, 179, 8, 0.2)',
-                  color: isApproved ? '#4ade80' : '#fde047',
-                  border: isApproved ? '1px solid rgba(74, 222, 128, 0.4)' : '1px solid rgba(253, 224, 71, 0.4)',
+                  background: isApproved ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                  color: isApproved ? '#6ee7b7' : '#fde047',
+                  border: isApproved ? '1px solid rgba(110, 231, 183, 0.4)' : '1px solid rgba(253, 224, 71, 0.4)',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  gap: '5px'
                 }}
               >
-                {isApproved ? <CheckCircle2 size={13} /> : <Clock3 size={13} />}
+                {isApproved ? <CheckCircle2 size={12} /> : <Clock3 size={12} />}
                 {isApproved ? 'KYC Approved' : 'KYC Pending Verification'}
               </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '14px', flexWrap: 'wrap', fontSize: '0.9rem', opacity: 0.9 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 255, 255, 0.1)', padding: '4px 10px', borderRadius: '8px' }}>
-                <span style={{ fontSize: '0.8rem', opacity: 0.7, fontWeight: '700' }}>ID:</span>
-                <span style={{ fontWeight: '800', letterSpacing: '0.5px' }}>{user.userId || 'NRZ-P-600653'}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', flexWrap: 'wrap', fontSize: '0.82rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 255, 255, 0.08)', padding: '3px 10px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                <span style={{ fontSize: '0.72rem', opacity: 0.7, fontWeight: '700' }}>ID:</span>
+                <span style={{ fontWeight: '800', letterSpacing: '0.5px', color: '#6ee7b7' }}>{user.userId || 'NRZ-P-309983'}</span>
                 <button
                   type="button"
                   onClick={handleCopyUserId}
-                  style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer', opacity: 0.8, padding: 0, marginLeft: '4px' }}
+                  style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer', opacity: 0.8, padding: 0, marginLeft: '2px' }}
                   title="Copy Partner ID"
                 >
-                  {copiedId ? <Check size={14} color="#4ade80" /> : <Copy size={14} />}
+                  {copiedId ? <Check size={13} color="#4ade80" /> : <Copy size={13} />}
                 </button>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Phone size={15} color="#38bdf8" />
-                <span style={{ fontWeight: '600' }}>{user.phone || '+91 8726600653'}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#a7f3d0' }}>
+                <Phone size={13} color="#34d399" />
+                <span style={{ fontWeight: '700' }}>{user.phone || '+919918309983'}</span>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                 {resolvedCategoryNames.map((catName, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(56, 189, 248, 0.15)', padding: '4px 12px', borderRadius: '20px', color: '#7dd3fc', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
-                    <Briefcase size={14} />
-                    <span style={{ fontWeight: '700', fontSize: '0.82rem' }}>{catName}</span>
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.15)', padding: '3px 10px', borderRadius: '9999px', color: '#6ee7b7', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                    <Briefcase size={12} />
+                    <span style={{ fontWeight: '800', fontSize: '0.76rem' }}>{catName}</span>
                   </div>
                 ))}
               </div>

@@ -87,7 +87,7 @@ const CityAdminPanel = ({ currentUser, onLogout }) => {
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc', color: '#0f172a' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#f8fafc', color: '#0f172a' }}>
       
       {/* 9-Item City Admin Sidebar */}
       <DedicatedCitySidebar
@@ -101,7 +101,7 @@ const CityAdminPanel = ({ currentUser, onLogout }) => {
       />
 
       {/* Main Right Column Container */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflow: 'hidden' }}>
 
         {/* City Admin Header (Scoped to Assigned City) */}
         <DedicatedCityNavbar
@@ -114,8 +114,8 @@ const CityAdminPanel = ({ currentUser, onLogout }) => {
           assignedCity={assignedCity}
         />
 
-        {/* Content View Area */}
-        <main style={{ flex: 1, padding: '28px 32px', overflowX: 'hidden' }}>
+        {/* Content View Area - Dedicated Scrollable View */}
+        <main style={{ flex: 1, padding: '28px 32px', overflowY: 'auto', overflowX: 'hidden' }}>
           
           {/* View Title */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>

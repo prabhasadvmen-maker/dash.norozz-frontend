@@ -86,48 +86,81 @@ const CityBookingDispatch = ({ assignedCity = 'Delhi NCR' }) => {
                 </td>
               </tr>
             ) : (
-              bookings.map((o) => {
-                const partnerName = o.partner?.name ? `${o.partner.name} (${o.partner.category || 'Specialist'})` : (o.partner?.agencyName || 'Unassigned');
+              bookings.map((o, idx) => {
+                let partnerName = 'Unassigned';
+                if (o.partner) {
+                  if (typeof o.partner === 'object') {
+                    partnerName = o.partner.name || o.partner.agencyName || 'Verified Technician';
+                  } else if (typeof o.partner === 'string' && !o.partner.match(/^[0-9a-fA-F]{24}$/)) {
+                    partnerName = o.partner;
+                  } else {
+                    const foundP = partners.find((p) => String(p._id) === String(o.partner));
+                    partnerName = foundP?.name || foundP?.agencyName || 'Assigned Technician';
+                  }
+                }
+
                 return (
-                  <tr key={o._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                    <td style={{ padding: '14px', fontWeight: '800', color: '#2563eb', fontSize: '0.85rem' }}>
+                  <tr key={o._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    {/* 1. SR NO. */}
+                    <td style={{ padding: '12px 8px', fontWeight: '700', color: '#64748b', fontSize: '0.8rem', textAlign: 'center' }}>
+                      {idx + 1}
+                    </td>
+
+                    {/* 2. BOOKING REF */}
+                    <td style={{ padding: '12px 10px', fontWeight: '800', color: '#2563eb', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
                       {o.bookingNumber || o._id.substring(0, 8).toUpperCase()}
                     </td>
-                    <td style={{ padding: '14px', fontWeight: '700', fontSize: '0.88rem', color: 'var(--text-primary)' }}>
-                      {o.customer?.name || 'Ananya Deshmukh'}
+
+                    {/* 3. CUSTOMER */}
+                    <td style={{ padding: '12px 10px', fontWeight: '700', fontSize: '0.85rem', color: '#0f172a', whiteSpace: 'nowrap' }}>
+                      {o.customer?.name || 'Customer'}
                     </td>
-                    <td style={{ padding: '14px', fontWeight: '700', fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+
+                    {/* 4. SERVICE REQUEST */}
+                    <td style={{ padding: '12px 10px', fontWeight: '700', fontSize: '0.85rem', color: '#0f172a', maxWdith: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {o.packageName || o.packageSnapshot?.title || (typeof o.service === 'object' ? o.service?.name : o.serviceName || 'Service Package')}
                     </td>
-                    <td style={{ padding: '14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+
+                    {/* 5. LOCALITY */}
+                    <td style={{ padding: '12px 10px', fontSize: '0.8rem', color: '#475569', whiteSpace: 'nowrap' }}>
                       <MapPin size={12} color="#2563eb" style={{ display: 'inline', marginRight: '4px' }} />
                       {o.address?.city || assignedCity}
                     </td>
-                    <td style={{ padding: '14px', fontSize: '0.82rem', fontWeight: '700', color: partnerName === 'Unassigned' ? '#ef4444' : 'var(--text-primary)' }}>
+
+                    {/* 6. TECHNICIAN */}
+                    <td style={{ padding: '12px 10px', fontSize: '0.82rem', fontWeight: '700', color: partnerName === 'Unassigned' ? '#ef4444' : '#059669', whiteSpace: 'nowrap' }}>
                       {partnerName}
                     </td>
-                    <td style={{ padding: '14px', fontWeight: '800', color: '#10b981', fontSize: '0.9rem' }}>
+
+                    {/* 7. AMOUNT */}
+                    <td style={{ padding: '12px 10px', fontWeight: '800', color: '#10b981', fontSize: '0.88rem', whiteSpace: 'nowrap' }}>
                       ₹{o.totalAmount || o.financialSnapshot?.customerPayable || o.amount || 599}
                     </td>
-                    <td style={{ padding: '14px' }}>
-                      <span className={`badge ${o.status === 'Pending' ? 'badge-warning' : o.status === 'Assigned' ? 'badge-purple' : 'badge-blue'}`}>
+
+                    {/* 8. STATUS */}
+                    <td style={{ padding: '12px 10px', whiteSpace: 'nowrap' }}>
+                      <span className={`badge ${['Pending', 'pending'].includes(o.status) ? 'badge-warning' : ['Assigned', 'assigned'].includes(o.status) ? 'badge-purple' : 'badge-blue'}`}>
                         {o.status.toUpperCase()}
                       </span>
                     </td>
-                    <td style={{ padding: '14px' }}>
-                      <div style={{ display: 'flex', gap: '6px' }}>
+
+                    {/* 9. ACTION */}
+                    <td style={{ padding: '12px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                         <button
+                          type="button"
                           onClick={() => handleOpenAssign(o)}
                           className="btn btn-primary btn-sm"
-                          style={{ padding: '6px 10px', fontSize: '0.78rem' }}
+                          style={{ padding: '5px 9px', fontSize: '0.76rem' }}
                         >
-                          <UserCheck size={14} /> Assign
+                          <UserCheck size={13} /> Assign
                         </button>
 
                         <button
+                          type="button"
                           onClick={() => handleOpenCancel(o)}
                           className="btn btn-danger btn-sm"
-                          style={{ padding: '6px 8px', fontSize: '0.75rem' }}
+                          style={{ padding: '5px 7px', fontSize: '0.74rem' }}
                           title="Cancel Booking"
                         >
                           <XCircle size={12} />

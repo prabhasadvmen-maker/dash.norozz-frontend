@@ -36,7 +36,7 @@ const CitySidebar = ({ activeTab, setActiveTab, onLogout, selectedCity }) => {
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'space-between',
-      minHeight: 'calc(100vh - 74px)',
+      minHeight: '100vh',
       flexShrink: 0,
       boxShadow: 'var(--shadow-sm)'
     }}>

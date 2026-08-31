@@ -22,7 +22,9 @@ const SuperAdminNavbar = ({
     <header style={{
       background: '#ffffff',
       borderBottom: '1px solid #e5e7eb',
-      padding: '12px 28px',
+      padding: '0 24px',
+      height: '60px',
+      boxSizing: 'border-box',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',

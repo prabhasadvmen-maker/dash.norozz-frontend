@@ -289,7 +289,7 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
   const walletBalance = dashboard?.walletBalance ?? dashboard?.wallet?.balance ?? currentUser?.walletBalance ?? 0;
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 60px)', background: 'var(--bg-primary)', paddingBottom: '0px' }}>
+    <div style={{ minHeight: '100vh', background: '#f8fafc', color: '#0f172a' }}>
       
       {/* Mobile-First Header */}
       <DedicatedCustomerNavbar

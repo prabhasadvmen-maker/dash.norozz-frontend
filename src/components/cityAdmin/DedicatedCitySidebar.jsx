@@ -41,9 +41,9 @@ const DedicatedCitySidebar = ({
       minWidth: sidebarWidth,
       background: 'linear-gradient(180deg, #09331E 0%, #062616 100%)',
       color: '#ffffff',
-      height: 'calc(100vh - 74px)',
+      height: '100vh',
       position: 'sticky',
-      top: '74px',
+      top: 0,
       overflowY: 'auto',
       display: 'flex',
       flexDirection: 'column',
@@ -54,13 +54,22 @@ const DedicatedCitySidebar = ({
       boxShadow: '4px 0 24px rgba(0, 0, 0, 0.12)',
       zIndex: 40
     }}>
-      {/* 1. Brand Header */}
-      <div style={{ padding: collapsed ? '16px 10px 12px 10px' : '20px 16px 12px 16px', flexShrink: 0 }}>
+      {/* 1. Brand Header - 60px height matching Navbar */}
+      <div style={{
+        height: '60px',
+        padding: collapsed ? '0 10px' : '0 14px',
+        display: 'flex',
+        alignItems: 'center',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        boxSizing: 'border-box',
+        flexShrink: 0
+      }}>
         <div style={{
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
-          padding: collapsed ? '8px 4px' : '6px 10px',
+          width: '100%',
+          padding: collapsed ? '6px 4px' : '6px 10px',
           background: 'rgba(255, 255, 255, 0.05)',
           borderRadius: '14px',
           border: '1px solid rgba(255, 255, 255, 0.08)'

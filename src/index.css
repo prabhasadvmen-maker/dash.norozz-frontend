@@ -94,23 +94,26 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Industrial Scrollbar */
+/* Custom Industrial & High-Visibility Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 10px;
+  background: #94a3b8;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-emerald);
+  background: #10b981;
+  background-clip: content-box;
 }
 
 /* Gradient Text Utility */

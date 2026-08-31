@@ -29,6 +29,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const { dashboard, todayBookings, updateAvailability, refetchAll } = usePartner(activeTab);
   const [refreshing, setRefreshing] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   // Online / Offline Status State
   const [isOnline, setIsOnline] = useState(currentUser?.isOnline ?? true);
@@ -222,35 +223,38 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#f8fafc', color: '#0f172a' }}>
       
-      {/* Header with Live KYC Status Badge & Online Toggle */}
-      <DedicatedPartnerNavbar
-        currentUser={currentUser}
-        cityName={resolvedCityName}
-        categoryNames={resolvedCategoryNames}
+      {/* Dynamic Partner Sidebar */}
+      <DedicatedPartnerSidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
         onLogout={onLogout}
-        onRefresh={handleRefresh}
-        refreshing={refreshing}
         kycStatus={kycStatus}
-        isOnline={isOnline}
-        onToggleOnlineClick={handleOpenOnlineModal}
+        currentUser={currentUser}
+        collapsed={collapsed}
       />
 
-      {/* Main Layout */}
-      <div style={{ display: 'flex', minHeight: 'calc(100vh - 74px)' }}>
-        
-        {/* Dynamic Partner Sidebar */}
-        <DedicatedPartnerSidebar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          onLogout={onLogout}
-          kycStatus={kycStatus}
+      {/* Main Right Column Container */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflow: 'hidden' }}>
+
+        {/* Header with Live KYC Status Badge & Online Toggle */}
+        <DedicatedPartnerNavbar
           currentUser={currentUser}
+          cityName={resolvedCityName}
+          categoryNames={resolvedCategoryNames}
+          onLogout={onLogout}
+          onRefresh={handleRefresh}
+          refreshing={refreshing}
+          kycStatus={kycStatus}
+          isOnline={isOnline}
+          onToggleOnlineClick={handleOpenOnlineModal}
+          collapsed={collapsed}
+          setCollapsed={setCollapsed}
         />
 
         {/* Main Content View */}
-        <main style={{ flex: 1, padding: '28px 32px', overflowX: 'hidden' }}>
+        <main style={{ flex: 1, padding: '28px 32px', overflowY: 'auto', overflowX: 'hidden' }}>
           
           {/* View Title Header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
