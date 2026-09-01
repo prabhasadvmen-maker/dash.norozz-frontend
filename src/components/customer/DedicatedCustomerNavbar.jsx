@@ -533,6 +533,7 @@ const DedicatedCustomerNavbar = ({
                   </div>
                 </div>
 
+                {/* 1. My Bookings */}
                 <button
                   type="button"
                   onClick={() => handleTabClick('bookings')}
@@ -557,9 +558,38 @@ const DedicatedCustomerNavbar = ({
                   <CalendarCheck size={16} color="#10b981" /> My Bookings
                 </button>
 
+                {/* 2. My Wallet */}
                 <button
                   type="button"
-                  onClick={() => handleTabClick('profile')}
+                  onClick={() => handleTabClick('wallet')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#0f172a',
+                    fontWeight: '600',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Wallet size={16} color="#059669" /> My Wallet & Rewards
+                  </div>
+                  <span style={{ fontSize: '0.7rem', fontWeight: '800', color: '#059669', background: '#ecfdf5', padding: '1px 6px', borderRadius: '6px' }}>₹{currentUser?.walletBalance || 0}</span>
+                </button>
+
+                {/* 3. Customer Profile */}
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('profile', 'overview')}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -581,6 +611,110 @@ const DedicatedCustomerNavbar = ({
                   <User size={16} color="#2563eb" /> Customer Profile
                 </button>
 
+                {/* 4. Saved Addresses */}
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('profile', 'addresses')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#0f172a',
+                    fontWeight: '600',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <MapPin size={16} color="#ef4444" /> Saved Addresses
+                </button>
+
+                {/* 5. Refer & Earn */}
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('profile', 'referral')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#0f172a',
+                    fontWeight: '600',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Gift size={16} color="#c026d3" /> Refer & Earn
+                  </div>
+                  <span style={{ fontSize: '0.68rem', fontWeight: '800', color: '#c026d3', background: '#fdf4ff', padding: '1px 6px', borderRadius: '6px' }}>₹500</span>
+                </button>
+
+                {/* 6. Help & Support */}
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('profile', 'support')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#0f172a',
+                    fontWeight: '600',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <Headphones size={16} color="#0284c7" /> Help & Support
+                </button>
+
+                {/* 7. Settings */}
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('profile', 'settings')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#0f172a',
+                    fontWeight: '600',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <Settings size={16} color="#64748b" /> Settings
+                </button>
+
+                {/* 8. Sign Out & Logout */}
                 <button
                   type="button"
                   onClick={() => {

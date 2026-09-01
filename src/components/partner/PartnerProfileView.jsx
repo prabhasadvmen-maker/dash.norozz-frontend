@@ -273,13 +273,15 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
   useEffect(() => {
     partnerService.getWallet()
       .then((res) => {
-        if (res.data?.data) setWalletData(res.data.data);
+        const val = res.data?.data || res.data;
+        if (val) setWalletData(val);
       })
       .catch((err) => console.error('Failed to fetch wallet:', err));
 
     partnerService.getEarnings()
       .then((res) => {
-        if (res.data?.data) setEarningsData(res.data.data);
+        const val = res.data?.data || res.data;
+        if (val) setEarningsData(val);
       })
       .catch((err) => console.error('Failed to fetch earnings analytics:', err));
   }, [activeSubTab]);
