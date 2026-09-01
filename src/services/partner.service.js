@@ -26,4 +26,8 @@ export const partnerService = {
   sendChatMessage: (data) => axiosInstance.post('/partner/chat', data),
   claimJobOffer: (id) => axiosInstance.post(`/partner/bookings/${id}/accept-job`),
   acceptBooking: (id) => axiosInstance.patch(`/bookings/${id}/accept`),
+  getServicePackages: (serviceId) => axiosInstance.get(`/partner/services/${serviceId}/packages`),
+  addExtraService: (bookingId, data) => axiosInstance.post(`/partner/bookings/${bookingId}/add-extra-service`, data),
+  getPayableAmount: (bookingId) => axiosInstance.get(`/partner/bookings/${bookingId}/payable-amount`),
+  verifyExtraPayment: (bookingId, data) => axiosInstance.post(`/partner/bookings/${bookingId}/verify-extra-payment`, data),
 };

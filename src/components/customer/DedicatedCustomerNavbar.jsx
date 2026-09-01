@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { catalogService } from '../../services/catalog.service.js';
 import {
   Search,
   MapPin,
@@ -16,8 +17,11 @@ import {
   Gift,
   Headphones,
   Settings,
-  ShieldCheck
+  ShieldCheck,
+  Loader2,
+  Star
 } from 'lucide-react';
+import LanguageSelector from '../common/LanguageSelector.jsx';
 
 const DedicatedCustomerNavbar = ({
   currentUser,
@@ -25,13 +29,22 @@ const DedicatedCustomerNavbar = ({
   selectedCity = 'Bodeli',
   onCitySelect,
   activeTab = 'home',
-  onNavigateTab
+  onNavigateTab,
+  onSelectService,
+  onBookService,
 }) => {
   const [cityDropdownOpen, setCityDropdownOpen] = useState(false);
   const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const cities = ['Bodeli', 'Delhi NCR', 'Mumbai', 'Bengaluru', 'Hyderabad', 'Pune', 'Kolkata'];
+
+  // Search State & Live Query Handler
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchContainerRef = useRef(null);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -40,10 +53,44 @@ const DedicatedCustomerNavbar = ({
         setAccountDropdownOpen(false);
         setCityDropdownOpen(false);
       }
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setSearchOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => window.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Live API Search Debounce
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (!query) {
+      setSearchResults([]);
+      setSearchOpen(false);
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchOpen(true);
+
+    const timer = setTimeout(() => {
+      catalogService
+        .getServices({ search: query })
+        .then((res) => {
+          const list = res.data?.data || res.data || [];
+          setSearchResults(Array.isArray(list) ? list : []);
+        })
+        .catch((err) => {
+          console.warn('Live search fetch error:', err);
+          setSearchResults([]);
+        })
+        .finally(() => {
+          setIsSearching(false);
+        });
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const handleTabClick = (tab, subTab) => {
     if (onNavigateTab) onNavigateTab(tab, subTab);
@@ -211,46 +258,186 @@ const DedicatedCustomerNavbar = ({
           </div>
         </div>
 
-        {/* Center: Search Bar */}
-        <div style={{ flex: 1, maxWidth: '440px', position: 'relative' }}>
-          <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
+        {/* Center: Search Bar with Live Floating Results Dropdown */}
+        <div ref={searchContainerRef} style={{ flex: 1, maxWidth: '460px', position: 'relative' }}>
+          <Search size={16} color={searchOpen ? '#2563eb' : '#94a3b8'} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', zIndex: 2 }} />
           <input
             type="text"
-            placeholder="Search for AC repair, Deep Cleaning, Plumbing..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => { if (searchQuery.trim()) setSearchOpen(true); }}
+            placeholder="Search for Driver, AC repair, Cleaning, Plumbing..."
             style={{
               width: '100%',
               paddingLeft: '42px',
-              paddingRight: '60px',
-              paddingTop: '8px',
-              paddingBottom: '8px',
+              paddingRight: searchQuery ? '38px' : '16px',
+              paddingTop: '9px',
+              paddingBottom: '9px',
               background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '9999px',
-              fontSize: '0.84rem',
+              border: searchOpen ? '1px solid #2563eb' : '1px solid #e2e8f0',
+              borderRadius: '24px',
+              fontSize: '0.86rem',
+              fontWeight: '600',
               outline: 'none',
               color: '#0f172a',
-              fontWeight: '500'
+              boxShadow: searchOpen ? '0 0 0 3px rgba(37, 99, 235, 0.15)' : 'none',
+              transition: 'all 0.2s ease'
             }}
           />
-          <span style={{
-            position: 'absolute',
-            right: '12px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            fontSize: '0.68rem',
-            fontWeight: '700',
-            background: '#e2e8f0',
-            color: '#64748b',
-            padding: '2px 6px',
-            borderRadius: '6px'
-          }}>
-            Ctrl K
-          </span>
+
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => { setSearchQuery(''); setSearchOpen(false); }}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: '#cbd5e1',
+                border: 'none',
+                borderRadius: '50%',
+                width: '20px',
+                height: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: '#ffffff',
+                zIndex: 2
+              }}
+            >
+              <X size={12} />
+            </button>
+          )}
+
+          {/* Floating Search Results Dropdown Popup */}
+          {searchOpen && (
+            <div style={{
+              position: 'absolute',
+              top: '115%',
+              left: 0,
+              right: 0,
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '16px',
+              boxShadow: '0 14px 40px rgba(0, 0, 0, 0.18)',
+              maxHeight: '420px',
+              overflowY: 'auto',
+              zIndex: 1000,
+              padding: '12px'
+            }}>
+              {isSearching ? (
+                <div style={{ padding: '24px 16px', textAlign: 'center', color: '#64748b', fontSize: '0.84rem' }}>
+                  <Loader2 size={22} className="spin" style={{ margin: '0 auto 8px auto', color: '#2563eb' }} />
+                  <div style={{ fontWeight: '700' }}>Searching for "{searchQuery}"...</div>
+                </div>
+              ) : searchResults.length > 0 ? (
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', paddingLeft: '4px' }}>
+                    MATCHING SERVICES ({searchResults.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {searchResults.map((srv) => {
+                      const title = srv.name || srv.title;
+                      const price = srv.finalPrice ? `₹${srv.finalPrice}` : (srv.price ? `₹${srv.price}` : '₹499');
+                      const catName = typeof srv.category === 'object' ? srv.category?.name : (srv.category || 'Service');
+                      const imageSrc = srv.thumbnail || srv.image || null;
+
+                      return (
+                        <div
+                          key={srv._id}
+                          onClick={() => {
+                            setSearchOpen(false);
+                            setSearchQuery('');
+                            if (onSelectService) onSelectService(srv);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 12px',
+                            borderRadius: '12px',
+                            background: '#f8fafc',
+                            border: '1px solid #f1f5f9',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#bfdbfe'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#f1f5f9'; }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              width: '42px',
+                              height: '42px',
+                              borderRadius: '10px',
+                              background: imageSrc ? `url(${imageSrc}) center/cover no-repeat` : 'linear-gradient(135deg, #2563eb, #7c3aed)',
+                              flexShrink: 0
+                            }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '0.88rem', fontWeight: '800', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {title}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.74rem', color: '#64748b', marginTop: '2px' }}>
+                                <span className="badge badge-purple" style={{ fontSize: '0.62rem', padding: '1px 6px' }}>{catName}</span>
+                                <span>• {srv.duration || '45 mins'}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0, marginLeft: '12px' }}>
+                            <div style={{ textAlign: 'right' }}>
+                              <span style={{ fontSize: '0.92rem', fontWeight: '900', color: '#0f172a' }}>{price}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSearchOpen(false);
+                                setSearchQuery('');
+                                if (onBookService) onBookService(srv);
+                                else if (onSelectService) onSelectService(srv);
+                              }}
+                              style={{
+                                padding: '6px 12px',
+                                background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '8px',
+                                fontSize: '0.78rem',
+                                fontWeight: '800',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Book
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: '20px 12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.5rem', marginBottom: '6px' }}>🔍</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: '800', color: '#0f172a' }}>
+                    No services found for "{searchQuery}"
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '4px' }}>
+                    Try searching for Driver, AC Service, Home Cleaning, Plumbing, or Salon
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Right: Notifications & Clickable Account Dropdown */}
+        {/* Right: Language Selector, Notifications & Account Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           
+          {/* Sarvam AI Language Selector Dropdown */}
+          <LanguageSelector compact />
+
           {/* Notification Bell Button */}
           <button
             type="button"

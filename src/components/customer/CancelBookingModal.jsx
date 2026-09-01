@@ -17,14 +17,17 @@ const CancelBookingModal = ({ isOpen, booking, onClose, onSuccess }) => {
     'Other reasons',
   ];
 
-  const refundAmount = booking.amount || booking.totalAmount || 366;
+  const platformFee = booking.financialSnapshot?.customerPlatformFee || 50;
+  const totalPaid = booking.amount || booking.totalAmount || 549;
+  const packageAmount = booking.financialSnapshot?.servicePrice || (booking.packageSnapshot?.finalPrice || Math.max(0, totalPaid - platformFee));
+  const refundAmount = packageAmount;
 
   const handleConfirmCancel = async () => {
     setLoading(true);
     try {
       const fullReason = `${selectedReason}${additionalComments.trim() ? ': ' + additionalComments.trim() : ''}`;
       await bookingService.cancelBooking(booking._id, fullReason);
-      toast.success('Booking cancelled successfully. Refund initiated!');
+      toast.success(`Booking cancelled. ₹${refundAmount} credited to your wallet!`);
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
@@ -45,7 +48,7 @@ const CancelBookingModal = ({ isOpen, booking, onClose, onSuccess }) => {
         backdropFilter: 'blur(8px)',
         display: 'flex',
         alignItems: 'center',
-        justify: 'center',
+        justifyContent: 'center',
         padding: '16px',
       }}
     >
@@ -76,7 +79,7 @@ const CancelBookingModal = ({ isOpen, booking, onClose, onSuccess }) => {
                 background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                 display: 'flex',
                 alignItems: 'center',
-                justify: 'center',
+                justifyContent: 'center',
                 color: '#ffffff',
                 fontWeight: '800',
                 fontSize: '1.1rem',
@@ -102,7 +105,7 @@ const CancelBookingModal = ({ isOpen, booking, onClose, onSuccess }) => {
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              justify: 'center',
+              justifyContent: 'center',
             }}
           >
             <X size={18} />
@@ -129,7 +132,7 @@ const CancelBookingModal = ({ isOpen, booking, onClose, onSuccess }) => {
               background: 'rgba(245, 158, 11, 0.15)',
               display: 'flex',
               alignItems: 'center',
-              justify: 'center',
+              justifyContent: 'center',
               color: '#f59e0b',
               flexShrink: 0,
             }}
@@ -161,12 +164,12 @@ const CancelBookingModal = ({ isOpen, booking, onClose, onSuccess }) => {
                   key={reason}
                   onClick={() => setSelectedReason(reason)}
                   style={{
-                    padding: '14px 16px',
+                    padding: '14px 18px',
                     borderRadius: '16px',
-                    background: isSelected ? 'rgba(16, 185, 129, 0.06)' : 'rgba(255, 255, 255, 0.03)',
+                    background: isSelected ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.03)',
                     border: isSelected ? '1.5px solid #10b981' : '1px solid rgba(255, 255, 255, 0.08)',
                     display: 'flex',
-                    justify: 'space-between',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
@@ -178,17 +181,18 @@ const CancelBookingModal = ({ isOpen, booking, onClose, onSuccess }) => {
 
                   <div
                     style={{
-                      width: '20px',
-                      height: '20px',
+                      width: '22px',
+                      height: '22px',
                       borderRadius: '50%',
                       border: isSelected ? '2px solid #10b981' : '2px solid #475569',
                       display: 'flex',
                       alignItems: 'center',
-                      justify: 'center',
+                      justifyContent: 'center',
                       background: isSelected ? '#10b981' : 'transparent',
+                      flexShrink: 0,
                     }}
                   >
-                    {isSelected && <Check size={12} strokeWidth={3} color="#ffffff" />}
+                    {isSelected && <Check size={13} strokeWidth={3} color="#ffffff" />}
                   </div>
                 </div>
               );
@@ -205,15 +209,15 @@ const CancelBookingModal = ({ isOpen, booking, onClose, onSuccess }) => {
             rows={3}
             value={additionalComments}
             onChange={(e) => setAdditionalComments(e.target.value)}
-            placeholder="e.g. My cleaner of choice is not available during this time slot."
+            placeholder="e.g. Changed my mind regarding time slot."
             style={{
               width: '100%',
               padding: '12px 14px',
               borderRadius: '16px',
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid rgba(16, 185, 129, 0.4)',
+              background: '#0f172a',
+              border: '1px solid #10b981',
               color: '#ffffff',
-              fontSize: '0.85rem',
+              fontSize: '0.88rem',
               outline: 'none',
               resize: 'none',
               boxSizing: 'border-box',
@@ -221,22 +225,27 @@ const CancelBookingModal = ({ isOpen, booking, onClose, onSuccess }) => {
           />
         </div>
 
-        {/* REFUND AMOUNT BREAKDOWN BOX MATCHING FIGMA SCREEN 2 */}
+        {/* REFUND AMOUNT BREAKDOWN BOX */}
         <div
           style={{
             padding: '16px 18px',
             borderRadius: '18px',
-            background: 'rgba(16, 185, 129, 0.04)',
-            border: '1px solid rgba(16, 185, 129, 0.3)',
+            background: 'rgba(16, 185, 129, 0.06)',
+            border: '1.5px solid rgba(16, 185, 129, 0.35)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.95rem', fontWeight: '800', color: '#ffffff' }}>Refund Amount</span>
-            <span style={{ fontSize: '1.25rem', fontWeight: '900', color: '#34d399' }}>₹{refundAmount}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <span style={{ fontSize: '0.95rem', fontWeight: '800', color: '#ffffff' }}>Package Refund Amount</span>
+            <span style={{ fontSize: '1.35rem', fontWeight: '900', color: '#34d399' }}>₹{refundAmount}</span>
           </div>
 
-          <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '6px', lineHeight: 1.4 }}>
-            *The refund will reflect back to your payment method within 2-3 business days.
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', color: '#94a3b8' }}>
+            <span>Platform Fee (Non-refundable)</span>
+            <span style={{ color: '#ef4444', fontWeight: '700' }}>₹{platformFee}</span>
+          </div>
+
+          <div style={{ fontSize: '0.75rem', color: '#a7f3d0', marginTop: '8px', lineHeight: 1.4, borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '6px', fontWeight: '600' }}>
+            *₹{refundAmount} package amount will be credited instantly to your NOROZZ Wallet.
           </div>
         </div>
 
@@ -275,12 +284,12 @@ const CancelBookingModal = ({ isOpen, booking, onClose, onSuccess }) => {
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              justify: 'center',
+              justifyContent: 'center',
               gap: '6px',
               boxShadow: '0 6px 20px rgba(239, 68, 68, 0.35)',
             }}
           >
-            {loading ? <Loader2 size={18} className="animate-spin" /> : 'Confirm Cancel'}
+            {loading ? <Loader2 size={18} className="spin" /> : 'Confirm Cancel'}
           </button>
         </div>
       </div>

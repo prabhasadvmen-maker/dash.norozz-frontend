@@ -22,15 +22,168 @@ import {
   Loader2,
   Key,
   Star,
-  ExternalLink
+  ExternalLink,
+  Share2,
+  Download,
+  Printer
 } from 'lucide-react';
 import { toast } from '../../utils/toast.js';
 import { useBookings } from '../../hooks/useBookings.js';
 import { axiosInstance } from '../../api/axiosInstance.js';
 import { partnerService } from '../../services/partner.service.js';
+import { geoapifyService } from '../../services/geoapify.service.js';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import LiveChatModal from '../../components/common/LiveChatModal.jsx';
 import VoiceCallModal from '../../components/common/VoiceCallModal.jsx';
 import { socketService } from '../../services/socket.service.js';
+
+// Dedicated Interactive Route Map Component for Partner Fulfillment
+const FulfillmentRouteMap = ({ partnerCoords, customerCoords, fullAddressStr }) => {
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const [routeInfo, setRouteInfo] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!mapContainerRef.current) return;
+
+    if (mapContainerRef.current._leaflet_id) {
+      mapContainerRef.current._leaflet_id = null;
+    }
+
+    try {
+      delete L.Icon.Default.prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      });
+
+      const map = L.map(mapContainerRef.current, {
+        center: [customerCoords.lat, customerCoords.lng],
+        zoom: 14,
+        zoomControl: false,
+        attributionControl: false,
+      });
+
+      L.tileLayer(geoapifyService.getTileUrl('osm-bright'), {
+        maxZoom: 19,
+      }).addTo(map);
+
+      // Customer Pin Marker
+      const customerIcon = L.divIcon({
+        className: 'customer-doorstep-pin',
+        html: `<div style="
+          position: relative;
+          width: 34px; height: 34px;
+          display: flex; align-items: center; justify-content: center;
+        ">
+          <div style="
+            width: 30px; height: 30px; border-radius: 50% 50% 50% 0;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            transform: rotate(-45deg); display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.45); border: 2px solid #ffffff;
+          ">
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #ffffff;"></div>
+          </div>
+        </div>`,
+        iconSize: [34, 34],
+        iconAnchor: [17, 30],
+      });
+      L.marker([customerCoords.lat, customerCoords.lng], { icon: customerIcon })
+        .addTo(map)
+        .bindPopup(`<b>Customer Address:</b><br/>${fullAddressStr}`);
+
+      // Partner Live Location Pin Marker
+      const partnerIcon = L.divIcon({
+        className: 'partner-live-pin',
+        html: `<div style="
+          width: 36px; height: 36px; border-radius: 50%;
+          background: linear-gradient(135deg, #2563eb, #1d4ed8);
+          display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 6px 18px rgba(37, 99, 235, 0.5); border: 2.5px solid #ffffff;
+          color: #ffffff; font-size: 16px; font-weight: bold;
+        ">🛵</div>`,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+      });
+      L.marker([partnerCoords.lat, partnerCoords.lng], { icon: partnerIcon })
+        .addTo(map)
+        .bindPopup(`<b>Partner Live Location</b>`);
+
+      // Fetch Geoapify Route Polyline
+      geoapifyService.getDrivingRoute(partnerCoords, customerCoords)
+        .then((res) => {
+          if (!isMounted) return;
+          if (res?.coordinates && res.coordinates.length > 0) {
+            setRouteInfo(res);
+            const polyline = L.polyline(res.coordinates, {
+              color: '#10b981',
+              weight: 5,
+              opacity: 0.85,
+              lineCap: 'round',
+              lineJoin: 'round',
+            }).addTo(map);
+
+            map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+          } else {
+            const fallbackLine = L.polyline([[partnerCoords.lat, partnerCoords.lng], [customerCoords.lat, customerCoords.lng]], {
+              color: '#3b82f6',
+              weight: 4,
+              dashArray: '8, 8',
+            }).addTo(map);
+            map.fitBounds(fallbackLine.getBounds(), { padding: [40, 40] });
+          }
+        })
+        .catch(() => {
+          if (!isMounted) return;
+          const fallbackLine = L.polyline([[partnerCoords.lat, partnerCoords.lng], [customerCoords.lat, customerCoords.lng]], {
+            color: '#3b82f6',
+            weight: 4,
+            dashArray: '8, 8',
+          }).addTo(map);
+          map.fitBounds(fallbackLine.getBounds(), { padding: [40, 40] });
+        });
+
+      mapInstanceRef.current = map;
+      setTimeout(() => map.invalidateSize(), 300);
+    } catch (err) {
+      console.error('Fulfillment route map initialization error:', err);
+    }
+
+    return () => {
+      isMounted = false;
+      if (mapInstanceRef.current) {
+        try { mapInstanceRef.current.remove(); } catch (_) {}
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [partnerCoords.lat, partnerCoords.lng, customerCoords.lat, customerCoords.lng, fullAddressStr]);
+
+  return (
+    <div style={{ height: '220px', width: '100%', borderRadius: '18px', overflow: 'hidden', border: '1px solid #cbd5e1', position: 'relative', background: '#0b131e' }}>
+      <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
+
+      {/* Floating Route Info Badge */}
+      <div style={{ position: 'absolute', bottom: '12px', left: '12px', zIndex: 400, background: 'rgba(15, 23, 42, 0.92)', color: '#ffffff', padding: '8px 16px', borderRadius: '12px', fontSize: '0.84rem', fontWeight: '800', backdropFilter: 'blur(6px)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></span>
+        <span>Live Route:</span>
+        <strong style={{ color: '#10b981' }}>{routeInfo?.distanceKm || '2.4'} km</strong>
+        <span style={{ opacity: 0.8 }}>({routeInfo?.durationMins || '7'} mins)</span>
+      </div>
+
+      <a
+        href={`https://www.google.com/maps/dir/?api=1&destination=${customerCoords.lat},${customerCoords.lng}`}
+        target="_blank"
+        rel="noreferrer"
+        style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 400, background: '#ffffff', padding: '6px 12px', borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.18)', fontSize: '0.78rem', fontWeight: '800', color: '#2563eb', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+      >
+        Google Maps <ExternalLink size={12} />
+      </a>
+    </div>
+  );
+};
 
 const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) => {
   const { updateBookingStatus, completeBooking } = useBookings();
@@ -85,18 +238,21 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
   const [pauseReason, setPauseReason] = useState('Waiting for parts');
 
   // Checklist Items State
-  const [checklist, setChecklist] = useState([
-    { id: 1, text: 'Inspection of Split AC Unit', completed: true },
-    { id: 2, text: 'Diagnosis & Gas Pressure Check', completed: true },
-    { id: 3, text: 'Copper Pipe Leakage Repair', completed: false },
-    { id: 4, text: 'Final System Testing & Cooling Audit', completed: false },
-  ]);
+  const [checklist, setChecklist] = useState([]);
 
   // Add-ons / Extra Services State
   const [selectedAddons, setSelectedAddons] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState('online'); // 'online' | 'cash'
   const [showQr, setShowQr] = useState(false);
   const [completingPayment, setCompletingPayment] = useState(false);
+
+  // Package Selection & Server Payable State
+  const [selectedServiceForPackages, setSelectedServiceForPackages] = useState(null);
+  const [servicePackagesList, setServicePackagesList] = useState([]);
+  const [loadingPackages, setLoadingPackages] = useState(false);
+  const [showPackageModal, setShowPackageModal] = useState(false);
+  const [addingExtraService, setAddingExtraService] = useState(false);
+  const [serverPayableInfo, setServerPayableInfo] = useState(null);
 
   // Sync and fetch fresh single booking data from API on booking change
   useEffect(() => {
@@ -109,6 +265,9 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
           const fetchedData = res.data?.data || res.data;
           if (fetchedData) {
             setFullBookingData(fetchedData);
+            if (fetchedData.status === 'Completed') setStep(10);
+            else if (fetchedData.status === 'Started') setStep(5);
+            else if (fetchedData.status === 'On The Way') setStep(2);
           }
         } catch (e) {
           console.warn('Could not fetch single booking details via API, using prop:', e);
@@ -120,7 +279,8 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
 
     if (booking) {
       setFullBookingData(booking);
-      if (booking.status === 'On The Way') setStep(2);
+      if (booking.status === 'Completed') setStep(10);
+      else if (booking.status === 'On The Way') setStep(2);
       else if (booking.status === 'Started') setStep(5);
       else setStep(1);
 
@@ -129,7 +289,79 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
     }
   }, [booking]);
 
-  // Work Timer Effect
+  // Dynamically generate Execution Checklist based on Partner's offeredServices or booked service
+  useEffect(() => {
+    const activeBooking = fullBookingData || booking;
+    if (!activeBooking) return;
+
+    const isHexObjectId = (str) => typeof str === 'string' && /^[0-9a-fA-F]{24}$/.test(str);
+    const bookedServiceTitle = activeBooking.packageName || activeBooking.service?.name || activeBooking.serviceTitle || 'Basic Haircut';
+    const baseP = activeBooking.amount || activeBooking.totalAmount || activeBooking.service?.finalPrice || 276;
+
+    // Priority 1: Check Partner's offeredServices array (from partner profile or active booking)
+    const partnerOffered = currentUser?.offeredServices || activeBooking?.partner?.offeredServices;
+
+    if (partnerOffered && Array.isArray(partnerOffered) && partnerOffered.length > 0) {
+      const items = partnerOffered.map((srv, idx) => {
+        let textStr = '';
+        let itemPrice = 150;
+        if (typeof srv === 'object' && srv !== null) {
+          textStr = srv.name || srv.title || srv.serviceName || srv.packageName;
+          itemPrice = srv.price || srv.finalPrice || 150;
+        } else if (typeof srv === 'string' && !isHexObjectId(srv)) {
+          textStr = srv;
+        }
+
+        // Fallback if srv was a raw 24-char Mongo hex ObjectId
+        if (!textStr || isHexObjectId(textStr)) {
+          textStr = idx === 0 ? bookedServiceTitle : `Extra Service Option ${idx + 1}`;
+        }
+
+        const isPrimary = idx === 0 || textStr.toLowerCase() === bookedServiceTitle.toLowerCase();
+
+        return {
+          id: idx + 1,
+          text: textStr,
+          price: isPrimary ? baseP : itemPrice,
+          isBooked: isPrimary,
+          completed: isPrimary, // Primary booked service is checked by default
+          rawServiceObj: typeof srv === 'object' ? srv : null,
+          serviceId: typeof srv === 'object' ? srv._id : (isHexObjectId(srv) ? srv : null),
+        };
+      });
+      setChecklist(items);
+      return;
+    }
+
+    // Priority 2: Fallback single primary booked service (No fake extra services)
+    setChecklist([
+      { id: 1, text: bookedServiceTitle, price: baseP, isBooked: true, completed: true },
+    ]);
+  }, [fullBookingData, booking, currentUser]);
+
+  // Initialize and persist Work Timer based on start timestamp (Prevents reset to 0)
+  useEffect(() => {
+    const activeBooking = fullBookingData || booking;
+    if (!activeBooking) return;
+
+    const targetId = activeBooking._id || activeBooking.bookingId || 'default';
+    const bIdKey = `service_start_time_${targetId}`;
+    const dbStartTime = activeBooking.startedAt || activeBooking.serviceStartedAt;
+
+    let startTime = dbStartTime ? new Date(dbStartTime).getTime() : Number(localStorage.getItem(bIdKey));
+
+    if (step >= 5 && !startTime) {
+      startTime = Date.now();
+      localStorage.setItem(bIdKey, startTime.toString());
+    }
+
+    if (startTime && step >= 5) {
+      const elapsed = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
+      setWorkSeconds(elapsed);
+    }
+  }, [step, fullBookingData, booking]);
+
+  // Work Timer Increment Effect
   useEffect(() => {
     let timer = null;
     if (step === 5 && !isPaused) {
@@ -158,10 +390,15 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
   const bId = currentBooking.bookingId || currentBooking.bookingNumber || `#NZ${currentBooking._id?.toString().slice(-4).toUpperCase() || '2847'}`;
   const custName = currentBooking.customer?.name || 'ram';
   const custPhone = currentBooking.customer?.phone || '+91 98765 43210';
-  const sTitle = currentBooking.packageName || currentBooking.service?.name || currentBooking.serviceTitle || 'Beard Trim & Hot Towel Shave - Beard Styling & Steam';
+  const sTitle = currentBooking.packageName || currentBooking.service?.name || currentBooking.serviceTitle || 'Basic Haircut';
   const basePrice = currentBooking.amount || currentBooking.totalAmount || currentBooking.service?.finalPrice || 276;
-  const addonsTotal = selectedAddons.reduce((acc, curr) => acc + curr.price, 0);
-  const finalTotal = basePrice + addonsTotal;
+
+  // Calculate extra services selected from offeredServices checklist
+  const selectedExtraServices = checklist.filter((item) => !item.isBooked && item.completed);
+  const extraServicesTotal = selectedExtraServices.reduce((sum, item) => sum + (item.price || 150), 0);
+  const finalTotal = basePrice + extraServicesTotal;
+  const platformCommissionFee = currentBooking.financialSnapshot?.partnerCommission || Math.round(finalTotal * 0.10);
+  const netPartnerEarning = currentBooking.financialSnapshot?.partnerNetEarning || (finalTotal - platformCommissionFee);
   const rawId = currentBooking._id || currentBooking.rawId;
 
   // Full Address String
@@ -178,26 +415,68 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
         { packageName: 'Full Home Deep Cleaning & Dusting', createdAt: '10 Dec 2025', totalAmount: 1499, status: 'Completed' },
       ];
 
-  // Real Distance & Time Calculation using Haversine
+  // Extract real Customer Coordinates from booking object
+  const cLat = currentBooking?.locationCoordinates?.lat ||
+               currentBooking?.address?.locationCoordinates?.lat ||
+               currentBooking?.address?.coordinates?.[1] ||
+               currentBooking?.locationCoordinates?.coordinates?.[1] ||
+               26.0494;
+
+  const cLng = currentBooking?.locationCoordinates?.lng ||
+               currentBooking?.address?.locationCoordinates?.lng ||
+               currentBooking?.address?.coordinates?.[0] ||
+               currentBooking?.locationCoordinates?.coordinates?.[0] ||
+               83.0565;
+
+  const customerCoords = { lat: Number(cLat), lng: Number(cLng) };
+
+  // Extract Partner Coordinates (or place nearby in same local city area if missing or >30km away)
+  let rawPLat = currentUser?.locationCoordinates?.lat || currentUser?.locationCoordinates?.coordinates?.[1];
+  let rawPLng = currentUser?.locationCoordinates?.lng || currentUser?.locationCoordinates?.coordinates?.[0];
+
+  let pLat = Number(rawPLat);
+  let pLng = Number(rawPLng);
+
+  let isFarAway = false;
+  if (!rawPLat || !rawPLng || isNaN(pLat) || isNaN(pLng)) {
+    isFarAway = true;
+  } else {
+    const dLat = (customerCoords.lat - pLat) * (Math.PI / 180);
+    const dLng = (customerCoords.lng - pLng) * (Math.PI / 180);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(pLat * Math.PI / 180) * Math.cos(customerCoords.lat * Math.PI / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const dist = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    if (dist > 30) {
+      isFarAway = true;
+    }
+  }
+
+  if (isFarAway) {
+    pLat = customerCoords.lat + 0.016;
+    pLng = customerCoords.lng + 0.013;
+  }
+
+  const partnerCoords = { lat: pLat, lng: pLng };
+
+  // Geoapify Live Road Distance & Driving Time State
+  const [geoapifyRouteInfo, setGeoapifyRouteInfo] = useState(null);
+
+  useEffect(() => {
+    geoapifyService.getDrivingRoute(partnerCoords, customerCoords)
+      .then((data) => {
+        if (data?.distanceKm) {
+          setGeoapifyRouteInfo({
+            km: data.distanceKm,
+            durationMins: data.durationMins,
+            coordinates: data.coordinates,
+          });
+        }
+      })
+      .catch((err) => console.warn('Geoapify route fetch warning:', err));
+  }, [partnerCoords.lat, partnerCoords.lng, customerCoords.lat, customerCoords.lng]);
+
   const calculateDistanceInfo = () => {
-    const pLat = currentUser?.locationCoordinates?.coordinates?.[1] || 12.9352;
-    const pLng = currentUser?.locationCoordinates?.coordinates?.[0] || 77.6245;
-
-    const cLat = currentBooking.address?.coordinates?.[1] || 12.9121;
-    const cLng = currentBooking.address?.coordinates?.[0] || 77.6445;
-
-    const R = 6371;
-    const dLat = (cLat - pLat) * (Math.PI / 180);
-    const dLon = (cLng - pLng) * (Math.PI / 180);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(pLat * (Math.PI / 180)) * Math.cos(cLat * (Math.PI / 180)) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const dist = R * c;
-    const km = dist > 0.1 ? Number(dist.toFixed(1)) : 3.2;
-    const durationMins = Math.max(4, Math.round((km / 20) * 60));
-    return { km, durationMins };
+    if (geoapifyRouteInfo) return geoapifyRouteInfo;
+    return { km: 2.4, durationMins: 7 };
   };
 
   const distanceInfo = calculateDistanceInfo();
@@ -228,21 +507,108 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
     }
   };
 
-  // Toggle Checklist item
-  const toggleChecklist = (id) => {
-    setChecklist((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, completed: !item.completed } : item))
-    );
+  // Handle Opening Package Modal for an offered service
+  const handleOpenPackageModal = async (item) => {
+    if (item.isBooked) {
+      toast.info(`Primary booked service '${item.text}' is prepaid by customer.`);
+      return;
+    }
+
+    setSelectedServiceForPackages(item);
+    setShowPackageModal(true);
+    setLoadingPackages(true);
+
+    try {
+      if (item.rawServiceObj?._id || item.serviceId) {
+        const targetSrvId = item.rawServiceObj?._id || item.serviceId;
+        const res = await partnerService.getServicePackages(targetSrvId);
+        setServicePackagesList(res.data?.data || res.data || []);
+      } else {
+        // Fallback default packages if serviceId unavailable
+        setServicePackagesList([
+          {
+            _id: `pkg-${item.id}-1`,
+            title: 'Basic Standard Package',
+            finalPrice: item.price || 150,
+            duration: '30 mins',
+            features: ['Standard Execution', 'Quality Service'],
+          },
+          {
+            _id: `pkg-${item.id}-2`,
+            title: 'Premium Deep Care Package',
+            finalPrice: (item.price || 150) + 150,
+            duration: '45 mins',
+            features: ['Deep Sanitization', 'Extended Warranty', 'Post-Service Inspection'],
+          },
+        ]);
+      }
+    } catch (err) {
+      console.warn('Could not fetch packages from backend API:', err);
+    } finally {
+      setLoadingPackages(false);
+    }
   };
 
-  // Step 7: Add Addon item
-  const handleAddAddon = (addon) => {
-    if (selectedAddons.some((a) => a.id === addon.id)) {
-      setSelectedAddons((prev) => prev.filter((a) => a.id !== addon.id));
-      toast.info(`Removed ${addon.name}`);
-    } else {
-      setSelectedAddons((prev) => [...prev, addon]);
-      toast.success(`Added ${addon.name} (+₹${addon.price})`);
+  // Add selected package to booking via backend API
+  const handleAddPackageToBooking = async (pkg) => {
+    if (!selectedServiceForPackages) return;
+    setAddingExtraService(true);
+
+    try {
+      const targetSrvId = selectedServiceForPackages.rawServiceObj?._id || selectedServiceForPackages.serviceId;
+      const targetPkgId = String(pkg._id || '').startsWith('pkg-') ? null : pkg._id;
+
+      if (rawId && !rawId.toString().startsWith('demo')) {
+        const res = await partnerService.addExtraService(rawId, {
+          serviceId: targetSrvId,
+          packageId: targetPkgId,
+          name: selectedServiceForPackages.text,
+          price: pkg.finalPrice || pkg.price,
+        });
+
+        if (res.data?.booking || res.data?.data) {
+          setFullBookingData(res.data?.booking || res.data?.data);
+        }
+      }
+
+      // Mark checklist item completed
+      setChecklist((prev) =>
+        prev.map((c) =>
+          c.id === selectedServiceForPackages.id
+            ? { ...c, completed: true, packageName: pkg.title, price: pkg.finalPrice || pkg.price }
+            : c
+        )
+      );
+
+      toast.success(`➕ Added Extra Service: ${selectedServiceForPackages.text} (${pkg.title}) (+₹${pkg.finalPrice || pkg.price})`);
+      setShowPackageModal(false);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error adding extra package');
+    } finally {
+      setAddingExtraService(false);
+    }
+  };
+
+  // Step 9: Verify Extra Payment & Complete Order
+  const handleVerifyAndConfirmExtraPayment = async () => {
+    setCompletingPayment(true);
+    try {
+      if (rawId && !rawId.toString().startsWith('demo')) {
+        await partnerService.verifyExtraPayment(rawId, {
+          paymentMethod,
+          paymentTxnId: `PAY-EXT-${Date.now()}`,
+        });
+        await completeBooking(rawId);
+      } else {
+        toast.success(`Job Completed! Payment collected.`);
+      }
+      toast.success('🎉 Service Completed & Partner Wallet Credited!');
+      if (onComplete) onComplete();
+      if (onBack) onBack();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error completing payment & service');
+    } finally {
+      setCompletingPayment(false);
     }
   };
 
@@ -253,12 +619,13 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
       if (rawId && !rawId.toString().startsWith('demo')) {
         await completeBooking(rawId);
       } else {
-        toast.success(`Job Completed! Payment of ₹${finalTotal} collected.`);
+        toast.success(`Job Completed! Prepaid service fulfilled.`);
       }
+      toast.success('🎉 Service Completed & Partner Wallet Credited!');
       if (onComplete) onComplete();
       if (onBack) onBack();
     } catch (err) {
-      toast.error('Error completing service');
+      toast.error(err.response?.data?.message || 'Error completing service');
     } finally {
       setCompletingPayment(false);
     }
@@ -267,16 +634,16 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', paddingBottom: '60px' }}>
       
-      {/* TOP HEADER NAVIGATION BAR */}
+      {/* Sticky Modern Clean Header Navbar */}
       <header
         style={{
           background: '#ffffff',
-          borderBottom: '1px solid var(--border-light)',
+          borderBottom: '1px solid #cbd5e1',
           padding: '16px 32px',
           position: 'sticky',
           top: 0,
           zIndex: 100,
-          boxShadow: 'var(--shadow-sm)',
+          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
         }}
       >
         <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -284,30 +651,43 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
             <button
               type="button"
               onClick={onBack}
-              className="btn btn-secondary btn-sm"
-              style={{ padding: '8px 16px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{
+                padding: '8px 16px',
+                fontWeight: '800',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#f1f5f9',
+                border: '1px solid #cbd5e1',
+                borderRadius: '12px',
+                color: '#334155',
+                cursor: 'pointer'
+              }}
             >
               <ArrowLeft size={18} /> Back
             </button>
 
             <div>
-              <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#2563eb' }}>BOOKING ID: {bId}</span>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: '800', color: '#2563eb', display: 'block' }}>BOOKING ID: {bId}</span>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: '2px 0 0 0', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {step === 1 && 'Booking Details & Location'}
                 {step === 2 && 'Navigation to Customer'}
                 {step === 3 && 'Customer Profile & Instructions'}
-                {step === 4 && 'Verify Customer OTP'}
-                {step === 5 && 'Service Execution & Timer'}
+                {step === 4 && 'Verify Customer'}
+                {step === 5 && 'Service Execution'}
                 {step === 6 && 'Pause Service'}
-                {step === 7 && 'Add Extra Service Add-ons'}
-                {step === 8 && 'Payment Collection & Summary'}
+                {step === 7 && 'Add Extra Service'}
+                {step === 8 && 'Service Summary'}
+                {step === 9 && 'Collect Payment'}
+                {step === 10 && 'Complete Service'}
+                {step === 11 && 'Invoice'}
                 {loadingFullData && <Loader2 size={16} className="spin" color="#2563eb" />}
               </h2>
             </div>
           </div>
 
-          <span className="badge badge-purple" style={{ padding: '8px 16px', fontSize: '0.85rem', fontWeight: '800' }}>
-            Step {step} of 8
+          <span style={{ padding: '8px 16px', fontSize: '0.85rem', fontWeight: '800', background: '#f3e8ff', color: '#7c3aed', borderRadius: '12px', border: '1px solid #e9d5ff' }}>
+            STEP {step} OF 11
           </span>
         </div>
       </header>
@@ -320,8 +700,8 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
             background: '#ffffff',
             borderRadius: '28px',
             padding: '32px',
-            boxShadow: 'var(--shadow-md)',
-            border: '1px solid var(--border-light)',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.06)',
+            border: '1px solid #cbd5e1',
           }}
         >
           {/* STEP 1: BOOKING DETAILS & MAP PREVIEW */}
@@ -329,8 +709,8 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)' }}>SERVICE CONFIRMED</span>
-                  <h3 style={{ fontSize: '1.3rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)' }}>{bId}</h3>
+                  <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#64748b' }}>SERVICE CONFIRMED</span>
+                  <h3 style={{ fontSize: '1.3rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>{bId}</h3>
                 </div>
                 <span className="badge badge-success" style={{ padding: '6px 14px', fontSize: '0.82rem' }}>Confirmed</span>
               </div>
@@ -342,7 +722,7 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                   padding: '16px',
                   background: '#f8fafc',
                   borderRadius: '16px',
-                  border: '1.5px solid var(--border-light)',
+                  border: '1.5px solid #e2e8f0',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
@@ -392,14 +772,31 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                 </div>
               </div>
 
-              {/* Service & Price Card */}
-              <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: '800', fontSize: '1.05rem', color: 'var(--text-primary)' }}>{sTitle}</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>Today, 10:30 AM • Online Payment</div>
-                </div>
-                <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#16a34a' }}>₹{basePrice}</div>
-              </div>
+              {/* Service & Price Financial Breakdown Card */}
+              {(() => {
+                const serviceVal = currentBooking.financialSnapshot?.servicePrice || currentBooking.packageSnapshot?.finalPrice || (basePrice > 400 ? Math.round(basePrice * 0.909) : basePrice) || 399;
+                const comm = currentBooking.financialSnapshot?.partnerCommission ?? Math.round(serviceVal * 0.10);
+                const netEarning = currentBooking.financialSnapshot?.partnerNetEarning ?? (serviceVal - comm);
+
+                return (
+                  <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '16px', border: '1px solid #bbf7d0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <div style={{ fontWeight: '800', fontSize: '1.05rem', color: '#0f172a' }}>{sTitle}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: '2px', fontWeight: '600' }}>Today, 10:30 AM • Customer Online Payment</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#475569', fontWeight: '700' }}>YOUR NET EARNING</div>
+                        <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#16a34a' }}>₹{netEarning.toLocaleString('en-IN')}</div>
+                      </div>
+                    </div>
+                    <div style={{ borderTop: '1px solid #bbf7d0', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: '700', color: '#334155' }}>
+                      <span>Package Price: <strong style={{ color: '#0f172a' }}>₹{serviceVal}</strong></span>
+                      <span style={{ color: '#dc2626' }}>Norozz Platform Fee (Admin Fee): <strong>- ₹{comm}</strong></span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Delivery Address & Distance Card */}
               <div style={{ padding: '16px', background: '#eff6ff', borderRadius: '16px', border: '1px solid #bfdbfe' }}>
@@ -415,23 +812,11 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
               </div>
 
               {/* Interactive Route Map Card Preview */}
-              <div style={{ height: '200px', borderRadius: '18px', background: '#e0f2fe', overflow: 'hidden', border: '1px solid #bae6fd', position: 'relative' }}>
-                <iframe
-                  title="Route Preview Map"
-                  width="100%"
-                  height="100%"
-                  frameBorder="0"
-                  src={`https://maps.google.com/maps?q=${encodeURIComponent(fullAddressStr)}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
-                  style={{ filter: 'contrast(1.05)' }}
-                />
-                <div style={{ position: 'absolute', bottom: '12px', left: '12px', background: 'rgba(255,255,255,0.95)', padding: '6px 14px', borderRadius: '10px', fontSize: '0.82rem', fontWeight: '800', color: '#0284c7', boxShadow: '0 4px 12px rgba(0,0,0,0.12)' }}>
-                  📍 Live Partner ➔ Customer ({distanceInfo.km} km remaining)
-                </div>
-              </div>
+              <FulfillmentRouteMap partnerCoords={partnerCoords} customerCoords={customerCoords} fullAddressStr={fullAddressStr} />
 
               {/* Action Buttons */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '14px', marginTop: '10px' }}>
-                <button type="button" onClick={onBack} className="btn" style={{ padding: '13px', background: '#f1f5f9', color: '#64748b', fontWeight: '700', borderRadius: '14px', border: '1px solid var(--border-light)' }}>
+                <button type="button" onClick={onBack} className="btn" style={{ padding: '13px', background: '#f1f5f9', color: '#64748b', fontWeight: '700', borderRadius: '14px', border: '1px solid #cbd5e1' }}>
                   Back to Dashboard
                 </button>
                 {(currentBooking.status === 'Pending' || currentBooking.status === 'pending' || !currentBooking.partner) ? (
@@ -489,29 +874,8 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                 </div>
               </div>
 
-              {/* Full Route Map with Real Calculated Distance */}
-              <div style={{ height: '260px', borderRadius: '18px', overflow: 'hidden', border: '1px solid var(--border-light)', position: 'relative' }}>
-                <iframe
-                  title="Live Navigation Route Map"
-                  width="100%"
-                  height="100%"
-                  frameBorder="0"
-                  src={`https://maps.google.com/maps?q=${encodeURIComponent(fullAddressStr)}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
-                />
-                <div style={{ position: 'absolute', bottom: '14px', left: '14px', background: '#ffffff', padding: '8px 16px', borderRadius: '12px', boxShadow: '0 4px 14px rgba(0,0,0,0.15)', fontSize: '0.9rem', fontWeight: '800', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Clock size={16} color="#0284c7" />
-                  <span>⏱️ {distanceInfo.durationMins} min</span>
-                  <span style={{ color: 'var(--text-muted)', fontWeight: '600' }}>({distanceInfo.km} km remaining)</span>
-                </div>
-                <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddressStr)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ position: 'absolute', top: '14px', right: '14px', background: '#ffffff', padding: '6px 12px', borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.12)', fontSize: '0.78rem', fontWeight: '800', color: '#2563eb', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
-                >
-                  Open in Maps <ExternalLink size={12} />
-                </a>
-              </div>
+              {/* Full Interactive Route Map with Real Calculated Driving Distance & Polyline Route */}
+              <FulfillmentRouteMap partnerCoords={partnerCoords} customerCoords={customerCoords} fullAddressStr={fullAddressStr} />
 
               {/* Customer Full Address Display Bar */}
               <div style={{ padding: '14px 16px', background: '#eff6ff', borderRadius: '16px', border: '1px solid #bfdbfe' }}>
@@ -599,8 +963,8 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                 <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: 'linear-gradient(135deg, #7c3aed, #ec4899)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '1.8rem', marginBottom: '10px' }}>
                   {custName.charAt(0).toUpperCase()}
                 </div>
-                <h3 style={{ fontSize: '1.3rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)' }}>{custName}</h3>
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>Member since {joiningYear} • ⭐ {currentBooking.customer?.rating || 4.9} Rating</div>
+                <h3 style={{ fontSize: '1.3rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>{custName}</h3>
+                <div style={{ fontSize: '0.82rem', color: '#475569', marginTop: '2px', fontWeight: '600' }}>Member since {joiningYear} • ⭐ {currentBooking.customer?.rating || 4.9} Rating</div>
               </div>
 
               {/* Landmark & Address */}
@@ -612,8 +976,8 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
               </div>
 
               {/* Service History */}
-              <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid var(--border-light)' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase' }}>PAST SERVICE HISTORY (API DATA)</span>
+              <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #cbd5e1' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>PAST SERVICE HISTORY (API DATA)</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
                   {customerHistoryList.map((h, i) => (
                     <div key={i} style={{ fontSize: '0.84rem', fontWeight: '700', color: '#0f172a', display: 'flex', justifyContent: 'space-between' }}>
@@ -661,9 +1025,9 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
           {step === 4 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '22px', textAlign: 'center' }}>
               <div>
-                <span style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-muted)' }}>VERIFY CUSTOMER • {bId}</span>
-                <h3 style={{ fontSize: '1.4rem', fontWeight: '800', margin: '4px 0 0 0', color: 'var(--text-primary)' }}>Enter Verification Code</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '6px 0 0 0' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: '800', color: '#64748b' }}>VERIFY CUSTOMER • {bId}</span>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: '800', margin: '4px 0 0 0', color: '#0f172a' }}>Enter Verification Code</h3>
+                <p style={{ fontSize: '0.85rem', color: '#475569', margin: '6px 0 0 0', fontWeight: '600' }}>
                   Ask customer <strong>{custName}</strong> for the 4-digit OTP sent to their mobile app/SMS.
                 </p>
               </div>
@@ -704,12 +1068,12 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                       width: '60px',
                       height: '66px',
                       borderRadius: '16px',
-                      border: digit ? '2px solid #16a34a' : '2px solid var(--border-light)',
+                      border: digit ? '2px solid #16a34a' : '2px solid #cbd5e1',
                       textAlign: 'center',
                       fontSize: '1.6rem',
                       fontWeight: '800',
-                      color: 'var(--text-primary)',
-                      background: digit ? '#f0fdf4' : '#f8fafc',
+                      color: '#0f172a',
+                      background: digit ? '#f0fdf4' : '#ffffff',
                     }}
                   />
                 ))}
@@ -744,57 +1108,139 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                 </div>
               </div>
 
-              <div style={{ padding: '14px 16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              {/* Customer Profile Mini Card */}
+              <div
+                onClick={() => setShowCustomerModal(true)}
+                style={{
+                  padding: '16px',
+                  background: '#f8fafc',
+                  borderRadius: '18px',
+                  border: '1.5px solid #cbd5e1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                className="hover-card"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(135deg, #7c3aed, #ec4899)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '1.2rem', boxShadow: '0 4px 12px rgba(124, 58, 237, 0.25)' }}>
+                    {custName.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: '800', fontSize: '1.05rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {custName}
+                      <span style={{ fontSize: '0.72rem', color: '#7c3aed', background: '#f3e8ff', padding: '2px 8px', borderRadius: '12px', fontWeight: '700' }}>
+                        Click for Profile
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: '600', marginTop: '2px' }}>
+                      ⭐ {currentBooking.customer?.rating || 4.9} Rating • {fullAddressStr}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setChatOpen(true);
+                    }}
+                    className="btn btn-sm"
+                    style={{ background: '#eff6ff', color: '#2563eb', fontWeight: '700', borderRadius: '10px', border: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <MessageSquare size={14} /> Live Chat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsIncomingCall(false);
+                      setVoiceCallOpen(true);
+                    }}
+                    style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#ecfdf5', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}
+                    title="Call Customer"
+                  >
+                    <Phone size={18} />
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ padding: '14px 16px', background: '#eff6ff', borderRadius: '16px', border: '1px solid #bfdbfe', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontWeight: '800', fontSize: '0.95rem' }}>{sTitle}</div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{custName} • {fullAddressStr}</div>
+                  <div style={{ fontWeight: '800', fontSize: '0.95rem', color: '#0f172a' }}>{sTitle}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: '600', marginTop: '2px' }}>{custName} • {fullAddressStr}</div>
                 </div>
                 <div style={{ fontSize: '0.85rem', color: '#2563eb', fontFamily: 'monospace', fontWeight: '800' }}>{bId}</div>
               </div>
 
               <div>
-                <span style={{ fontSize: '0.78rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase' }}>EXECUTION CHECKLIST</span>
+                <span style={{ fontSize: '0.78rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>
+                  {checklist.length > 1 ? 'EXECUTION CHECKLIST (TAP EXTRA OFFERED SERVICE TO SELECT PACKAGE & ADD)' : 'EXECUTION CHECKLIST'}
+                </span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
                   {checklist.map((item) => (
                     <div
                       key={item.id}
-                      onClick={() => toggleChecklist(item.id)}
+                      onClick={() => handleOpenPackageModal(item)}
                       style={{
                         padding: '14px 16px',
                         background: item.completed ? '#f0fdf4' : '#ffffff',
-                        border: `1.5px solid ${item.completed ? '#a7f3d0' : 'var(--border-light)'}`,
+                        border: `1.5px solid ${item.completed ? '#a7f3d0' : '#cbd5e1'}`,
                         borderRadius: '14px',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '12px',
+                        justifyContent: 'space-between',
                         cursor: 'pointer',
                       }}
                     >
-                      {item.completed ? <CheckSquare size={22} color="#16a34a" /> : <Square size={22} color="#94a3b8" />}
-                      <span style={{ fontSize: '0.92rem', fontWeight: item.completed ? '700' : '600', color: item.completed ? '#15803d' : 'var(--text-primary)' }}>
-                        {item.text}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {item.completed ? <CheckSquare size={22} color="#16a34a" /> : <Square size={22} color="#64748b" />}
+                        <div>
+                          <div style={{ fontSize: '0.92rem', fontWeight: item.completed ? '800' : '700', color: item.completed ? '#15803d' : '#0f172a' }}>
+                            {item.text}
+                          </div>
+                          {item.packageName && (
+                            <div style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: '700' }}>
+                              Package: {item.packageName}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        {item.isBooked ? (
+                          <span style={{ fontSize: '0.74rem', color: '#15803d', background: '#dcfce7', padding: '3px 10px', borderRadius: '12px', fontWeight: '800' }}>
+                            ✓ Prepaid (₹{basePrice})
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.74rem', color: item.completed ? '#b45309' : '#2563eb', background: item.completed ? '#fef3c7' : '#eff6ff', padding: '3px 10px', borderRadius: '12px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {item.completed ? `+₹${item.price || 150} Added` : `+ Select Package`}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '4px' }}>
+              {extraServicesTotal > 0 && (
+                <div style={{ padding: '12px 16px', background: '#fffbe6', borderRadius: '14px', border: '1px solid #fef08a', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#b45309', fontWeight: '800', fontSize: '0.92rem' }}>
+                  <span>Extra Services Selected:</span>
+                  <span>+₹{extraServicesTotal}</span>
+                </div>
+              )}
+
+              <div style={{ marginTop: '4px' }}>
                 <button
                   type="button"
                   onClick={() => setIsPaused(true)}
                   className="btn"
-                  style={{ padding: '12px', background: '#fffbe6', color: '#b45309', fontWeight: '700', borderRadius: '14px', border: '1px solid #fef08a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  style={{ width: '100%', padding: '13px', background: '#fffbe6', color: '#b45309', fontWeight: '700', borderRadius: '14px', border: '1px solid #fef08a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
                   <Pause size={18} /> Pause Service
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStep(7)}
-                  className="btn"
-                  style={{ padding: '12px', background: '#eff6ff', color: '#2563eb', fontWeight: '700', borderRadius: '14px', border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                >
-                  <Plus size={18} /> Add Extra Service
                 </button>
               </div>
 
@@ -820,11 +1266,11 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
               </div>
 
               <div style={{ textAlign: 'left' }}>
-                <label style={{ fontSize: '0.82rem', fontWeight: '700', color: 'var(--text-secondary)' }}>SELECT REASON FOR PAUSE</label>
+                <label style={{ fontSize: '0.82rem', fontWeight: '800', color: '#475569' }}>SELECT REASON FOR PAUSE</label>
                 <select
                   value={pauseReason}
                   onChange={(e) => setPauseReason(e.target.value)}
-                  style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '1px solid var(--border-light)', fontSize: '0.92rem', marginTop: '6px', fontWeight: '600' }}
+                  style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '1px solid #cbd5e1', fontSize: '0.92rem', marginTop: '6px', fontWeight: '700', color: '#0f172a', background: '#ffffff' }}
                 >
                   <option value="Waiting for parts">Waiting for spare parts</option>
                   <option value="Customer request">Customer request</option>
@@ -844,112 +1290,110 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
             </div>
           )}
 
-          {/* STEP 7: ADD EXTRA SERVICE ADD-ONS */}
-          {step === 7 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              <div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)' }}>Add Extra Service</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>Select additional services requested by customer.</p>
+          {/* STEP 8: SCREEN-COMPLETE-CHECKLIST (SERVICE SUMMARY & DURATION) */}
+          {step === 8 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Green Success Hero Card */}
+              <div style={{ padding: '24px 20px', background: '#ecfdf5', borderRadius: '24px', border: '1px solid #a7f3d0', textAlign: 'center' }}>
+                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#10b981', color: '#ffffff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px', boxShadow: '0 6px 18px rgba(16, 185, 129, 0.3)' }}>
+                  <CheckCircle2 size={32} />
+                </div>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: '800', margin: 0, color: '#065f46' }}>Checklist Completed!</h3>
+                <p style={{ fontSize: '0.88rem', color: '#047857', margin: '4px 0 14px 0', fontWeight: '600' }}>All tasks verified and resolved.</p>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 16px', background: '#0f172a', color: '#ffffff', borderRadius: '20px', fontSize: '0.88rem', fontWeight: '800', fontFamily: 'monospace' }}>
+                  <Clock size={16} color="#38bdf8" /> Duration: {formatTimer(workSeconds)}
+                </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {[
-                  { id: 'a1', name: 'Refrigerant Gas Refill (R32)', price: 1200, desc: 'Eco-friendly high cooling gas' },
-                  { id: 'a2', name: 'AC Foam Filter Deep Cleaning', price: 400, desc: 'Antibacterial foam spray wash' },
-                  { id: 'a3', name: 'Voltage Stabilizer Health Audit', price: 200, desc: 'Safety fuse & output testing' },
-                ].map((addon) => {
-                  const isSelected = selectedAddons.some((a) => a.id === addon.id);
-                  return (
-                    <div
-                      key={addon.id}
-                      style={{
-                        padding: '14px 16px',
-                        background: isSelected ? '#eff6ff' : '#f8fafc',
-                        border: `1.5px solid ${isSelected ? '#3b82f6' : 'var(--border-light)'}`,
-                        borderRadius: '16px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: '800', fontSize: '0.92rem', color: 'var(--text-primary)' }}>{addon.name}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{addon.desc}</div>
-                        <div style={{ fontWeight: '800', color: '#16a34a', fontSize: '0.9rem', marginTop: '2px' }}>₹{addon.price}</div>
+              {/* Primary Booked Service Card */}
+              <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #cbd5e1', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>PRIMARY BOOKED SERVICE (PREPAID)</div>
+                  <div style={{ fontWeight: '800', fontSize: '1rem', color: '#0f172a', marginTop: '2px' }}>{sTitle}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: '600', marginTop: '2px' }}>{custName} • {fullAddressStr}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: '900', color: '#0f172a' }}>₹{basePrice}</div>
+                  <span style={{ fontSize: '0.72rem', color: '#15803d', background: '#dcfce7', padding: '2px 8px', borderRadius: '10px', fontWeight: '700' }}>✓ Paid Online</span>
+                </div>
+              </div>
+
+              {/* Extra Services Breakdown */}
+              {selectedExtraServices.length > 0 ? (
+                <div style={{ padding: '16px', background: '#fffbe6', borderRadius: '16px', border: '1px solid #fef08a' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#b45309', textTransform: 'uppercase', marginBottom: '8px' }}>EXTRA SERVICES ADDED DURING EXECUTION</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {selectedExtraServices.map((item) => (
+                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem', fontWeight: '700', color: '#0f172a' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <CheckCircle2 size={16} color="#16a34a" /> {item.text}
+                        </span>
+                        <span style={{ color: '#b45309', fontWeight: '800' }}>+₹{item.price || 150}</span>
                       </div>
-
-                      <button
-                        type="button"
-                        onClick={() => handleAddAddon(addon)}
-                        className="btn btn-sm"
-                        style={{
-                          background: isSelected ? '#ef4444' : '#16a34a',
-                          color: '#ffffff',
-                          fontWeight: '800',
-                          borderRadius: '10px',
-                          border: 'none',
-                          padding: '8px 16px',
-                        }}
-                      >
-                        {isSelected ? 'Remove' : '+ Add'}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {selectedAddons.length > 0 && (
-                <div style={{ padding: '12px 16px', background: '#ecfdf5', borderRadius: '14px', border: '1px solid #a7f3d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '800', fontSize: '0.92rem', color: '#059669' }}>
-                  <span>Total Add-ons Added:</span>
-                  <span>+₹{addonsTotal}</span>
+                    ))}
+                  </div>
+                  <div style={{ borderTop: '1px solid #fef08a', marginTop: '10px', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontWeight: '800', color: '#b45309', fontSize: '0.95rem' }}>
+                    <span>Extra Payment to Collect:</span>
+                    <span>₹{extraServicesTotal}</span>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: '12px 16px', background: '#f0fdf4', borderRadius: '14px', border: '1px solid #a7f3d0', color: '#15803d', fontSize: '0.86rem', fontWeight: '700' }}>
+                  ✓ Standard Service Execution (No extra services added. Customer prepaid ₹{basePrice}).
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={() => setStep(5)}
-                className="btn"
-                style={{ padding: '14px', background: '#16a34a', color: '#ffffff', fontWeight: '800', borderRadius: '16px', border: 'none', marginTop: '4px' }}
-              >
-                Add to Booking & Continue ➔
-              </button>
+              {/* Action Button: Dynamic logic based on extraServicesTotal */}
+              {extraServicesTotal > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setStep(9)} // Move to Collect Payment gateway for extra service
+                  className="btn"
+                  style={{ padding: '15px', background: '#16a34a', color: '#ffffff', fontWeight: '800', fontSize: '1rem', borderRadius: '16px', border: 'none', boxShadow: '0 4px 14px rgba(22, 163, 74, 0.35)', marginTop: '6px' }}
+                >
+                  Proceed to Collect Payment (₹{extraServicesTotal}) ➔
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await handleConfirmFinalPayment();
+                    setStep(10); // Complete service directly, NO payment gateway!
+                  }}
+                  disabled={completingPayment}
+                  className="btn"
+                  style={{ padding: '15px', background: '#16a34a', color: '#ffffff', fontWeight: '800', fontSize: '1rem', borderRadius: '16px', border: 'none', boxShadow: '0 4px 14px rgba(22, 163, 74, 0.35)', marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  {completingPayment ? <Loader2 size={20} className="spin" /> : <ShieldCheck size={20} />} Complete Service (Prepaid) ➔
+                </button>
+              )}
             </div>
           )}
 
-          {/* STEP 8: COLLECT PAYMENT & SUMMARY */}
-          {step === 8 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              <div style={{ padding: '16px', background: '#ecfdf5', borderRadius: '18px', border: '1px solid #a7f3d0', textAlign: 'center' }}>
-                <div style={{ fontWeight: '800', color: '#059669', fontSize: '1.05rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                  <CheckCircle2 size={22} /> Checklist Completed!
+          {/* STEP 9: SCREEN-COLLECT-PAYMENT (Only opened if extraServicesTotal > 0) */}
+          {step === 9 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ padding: '20px', background: '#fffbe6', borderRadius: '20px', border: '1px solid #fef08a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: '800', color: '#b45309' }}>EXTRA SERVICE COLLECTION</div>
+                  <div style={{ fontSize: '0.78rem', color: '#2563eb', fontWeight: '800', marginTop: '2px' }}>{bId}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: '4px', fontWeight: '600' }}>Collect from customer for extra services</div>
                 </div>
-                <div style={{ fontSize: '0.82rem', color: '#047857', marginTop: '4px' }}>
-                  All tasks verified and resolved • Total Duration: {formatTimer(workSeconds)}
+                <div style={{ fontSize: '2.2rem', fontWeight: '900', color: '#b45309' }}>
+                  ₹{extraServicesTotal.toLocaleString('en-IN')}
                 </div>
-              </div>
-
-              <div style={{ padding: '18px', background: '#f8fafc', borderRadius: '18px', border: '1px solid var(--border-light)' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase' }}>AMOUNT TO COLLECT</span>
-                <div style={{ fontSize: '2.2rem', fontWeight: '800', color: '#16a34a', margin: '4px 0' }}>
-                  ₹{finalTotal}
-                </div>
-                {addonsTotal > 0 && (
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    Base Price: ₹{basePrice} + Add-ons: ₹{addonsTotal}
-                  </div>
-                )}
               </div>
 
               <div>
-                <span style={{ fontSize: '0.82rem', fontWeight: '800', color: 'var(--text-secondary)' }}>SELECT PAYMENT METHOD</span>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: '800', color: '#475569', textTransform: 'uppercase' }}>SELECT PAYMENT METHOD FOR EXTRA SERVICE</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
                   <div
                     onClick={() => setPaymentMethod('online')}
                     style={{
-                      padding: '14px 16px',
+                      padding: '16px',
                       background: paymentMethod === 'online' ? '#ecfdf5' : '#ffffff',
-                      border: `1.5px solid ${paymentMethod === 'online' ? '#16a34a' : 'var(--border-light)'}`,
-                      borderRadius: '16px',
+                      border: `1.5px solid ${paymentMethod === 'online' ? '#16a34a' : '#cbd5e1'}`,
+                      borderRadius: '18px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -957,8 +1401,8 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: '800', fontSize: '0.95rem', color: 'var(--text-primary)' }}>Online Payment</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>UPI, Card, Net Banking</div>
+                      <div style={{ fontWeight: '800', fontSize: '0.98rem', color: '#0f172a' }}>📱 Online Payment (UPI / QR)</div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '600' }}>Customer scans QR code to pay ₹{extraServicesTotal}</div>
                     </div>
                     <button
                       type="button"
@@ -967,17 +1411,17 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                         setShowQr(!showQr);
                       }}
                       className="btn btn-sm"
-                      style={{ background: '#16a34a', color: '#ffffff', fontWeight: '700', borderRadius: '8px', border: 'none', padding: '6px 12px', fontSize: '0.78rem' }}
+                      style={{ background: '#16a34a', color: '#ffffff', fontWeight: '700', borderRadius: '10px', border: 'none', padding: '8px 14px', fontSize: '0.78rem' }}
                     >
-                      {showQr ? 'Hide QR' : 'Show QR Code'}
+                      {showQr ? 'Hide QR' : 'Show QR Code to Customer'}
                     </button>
                   </div>
 
                   {showQr && (
-                    <div style={{ padding: '18px', background: '#ffffff', border: '1px solid #16a34a', borderRadius: '18px', textAlign: 'center' }}>
-                      <QrCode size={140} color="#16a34a" style={{ margin: '0 auto' }} />
-                      <div style={{ fontSize: '0.85rem', fontWeight: '800', color: '#16a34a', marginTop: '10px' }}>
-                        Scan QR Code to Pay ₹{finalTotal}
+                    <div style={{ padding: '20px', background: '#ffffff', border: '2px solid #16a34a', borderRadius: '20px', textAlign: 'center' }}>
+                      <QrCode size={150} color="#16a34a" style={{ margin: '0 auto' }} />
+                      <div style={{ fontSize: '0.9rem', fontWeight: '800', color: '#16a34a', marginTop: '12px' }}>
+                        Scan QR Code to Pay Extra ₹{extraServicesTotal.toLocaleString('en-IN')}
                       </div>
                     </div>
                   )}
@@ -985,10 +1429,10 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                   <div
                     onClick={() => setPaymentMethod('cash')}
                     style={{
-                      padding: '14px 16px',
+                      padding: '16px',
                       background: paymentMethod === 'cash' ? '#ecfdf5' : '#ffffff',
-                      border: `1.5px solid ${paymentMethod === 'cash' ? '#16a34a' : 'var(--border-light)'}`,
-                      borderRadius: '16px',
+                      border: `1.5px solid ${paymentMethod === 'cash' ? '#16a34a' : '#cbd5e1'}`,
+                      borderRadius: '18px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -996,8 +1440,8 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: '800', fontSize: '0.95rem', color: 'var(--text-primary)' }}>Cash Payment</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Collect cash from customer directly</div>
+                      <div style={{ fontWeight: '800', fontSize: '0.98rem', color: '#0f172a' }}>💵 Cash Payment</div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '600' }}>Collect ₹{extraServicesTotal} cash directly from customer</div>
                     </div>
                   </div>
                 </div>
@@ -1005,13 +1449,207 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
 
               <button
                 type="button"
-                onClick={handleConfirmFinalPayment}
+                onClick={async () => {
+                  await handleConfirmFinalPayment();
+                  setStep(10); // Move to Complete Service Screen
+                }}
                 disabled={completingPayment}
                 className="btn"
-                style={{ padding: '15px', background: '#16a34a', color: '#ffffff', fontWeight: '800', fontSize: '1rem', borderRadius: '16px', border: 'none', boxShadow: '0 4px 14px rgba(22, 163, 74, 0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '6px' }}
+                style={{ padding: '16px', background: '#16a34a', color: '#ffffff', fontWeight: '800', fontSize: '1rem', borderRadius: '18px', border: 'none', boxShadow: '0 4px 14px rgba(22, 163, 74, 0.35)', marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               >
-                {completingPayment ? <Loader2 size={20} className="spin" /> : <ShieldCheck size={20} />} Confirm Payment & Complete Service
+                {completingPayment ? <Loader2 size={20} className="spin" /> : <ShieldCheck size={20} />} Confirm Payment & Complete Service ➔
               </button>
+            </div>
+          )}
+
+          {/* STEP 10: COMPLETE-SERVICE HERO SUCCESS SCREEN (MATCHING FIGMA COMPLETED-BOOKING-DETAILS) */}
+          {step === 10 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', maxWidth: '520px', margin: '0 auto' }}>
+              
+              {/* 1. TOP SUCCESS BANNER */}
+              <div style={{ padding: '14px 18px', background: '#f0fdf4', borderRadius: '18px', border: '1.5px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#15803d', fontWeight: '800', fontSize: '0.98rem' }}>
+                  <CheckCircle2 size={22} color="#16a34a" /> Job Completed Successfully
+                </div>
+                <span style={{ padding: '4px 12px', background: '#22c55e', color: '#ffffff', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '800', letterSpacing: '0.5px' }}>
+                  COMPLETED
+                </span>
+              </div>
+
+              {/* 2. SERVICE DETAILS CARD */}
+              <div style={{ padding: '20px', background: '#ffffff', borderRadius: '20px', border: '1px solid #cbd5e1', boxShadow: '0 4px 14px rgba(0,0,0,0.03)', textAlign: 'left' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: '#ecfdf5', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ShieldCheck size={26} />
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>{sTitle}</h4>
+                    <div style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: '700', marginTop: '2px' }}>ID: {bId}</div>
+                  </div>
+                </div>
+
+                <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '14px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.86rem', color: '#475569', fontWeight: '700' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Clock size={16} color="#64748b" /> Date: {new Date(currentBooking.bookingDate || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Clock size={16} color="#64748b" /> Time: {currentBooking.timeSlot || '10:30 AM - 11:30 AM'}
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. CUSTOMER FEEDBACK CARD */}
+              <div style={{ padding: '20px', background: '#ffffff', borderRadius: '20px', border: '1px solid #cbd5e1', boxShadow: '0 4px 14px rgba(0,0,0,0.03)', textAlign: 'left' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>CUSTOMER FEEDBACK</span>
+                  <span style={{ fontSize: '0.9rem', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Star size={16} color="#eab308" fill="#eab308" /> {currentBooking.rating || '4.0'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '4px', marginBottom: '12px' }}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      size={20}
+                      color={star <= (currentBooking.rating || 4) ? '#eab308' : '#cbd5e1'}
+                      fill={star <= (currentBooking.rating || 4) ? '#eab308' : 'none'}
+                    />
+                  ))}
+                </div>
+
+                <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '14px', border: '1px solid #f1f5f9', fontSize: '0.88rem', color: '#334155', fontStyle: 'italic', fontWeight: '600' }}>
+                  "{currentBooking.reviewComment || 'Great service! Very professional and thorough cleaning.'}"
+                </div>
+              </div>
+
+              {/* 4. PAYMENT & EARNINGS CARD */}
+              <div style={{ padding: '20px', background: '#ffffff', borderRadius: '20px', border: '1px solid #cbd5e1', boxShadow: '0 4px 14px rgba(0,0,0,0.03)', textAlign: 'left' }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '14px' }}>
+                  PAYMENT & EARNINGS
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.9rem', color: '#475569', fontWeight: '700' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Service Charge</span>
+                    <span style={{ color: '#0f172a', fontWeight: '800' }}>₹{finalTotal}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444' }}>
+                    <span>Platform Fee</span>
+                    <span>-₹{platformCommissionFee}</span>
+                  </div>
+
+                  <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.15rem' }}>
+                    <span style={{ fontWeight: '800', color: '#0f172a' }}>Your Earnings</span>
+                    <span style={{ fontWeight: '900', color: '#16a34a' }}>₹{netPartnerEarning}</span>
+                  </div>
+
+                  <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.88rem' }}>
+                    <span>Payment Mode</span>
+                    <span style={{ color: '#16a34a', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <CheckCircle2 size={16} color="#16a34a" /> {paymentMethod === 'online' ? 'Online' : 'Cash'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. GENERATE TAX INVOICE BUTTON */}
+              <button
+                type="button"
+                onClick={() => setStep(11)}
+                className="btn"
+                style={{ padding: '16px', background: '#16a34a', color: '#ffffff', fontWeight: '800', fontSize: '1rem', borderRadius: '18px', border: 'none', boxShadow: '0 4px 14px rgba(22, 163, 74, 0.35)', marginTop: '4px' }}
+              >
+                View Tax Invoice Receipt ➔
+              </button>
+            </div>
+          )}
+
+          {/* STEP 11: GENERATE-INVOICE TAX RECEIPT VIEW */}
+          {step === 11 && (
+            <div style={{ maxWidth: '520px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Paper Invoice Card */}
+              <div style={{ background: '#ffffff', borderRadius: '24px', padding: '28px 24px', border: '1px solid #cbd5e1', boxShadow: '0 10px 30px rgba(0,0,0,0.08)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid #e2e8f0', marginBottom: '18px' }}>
+                  <div>
+                    <span style={{ fontSize: '1.3rem', fontWeight: '900', color: '#0f172a', letterSpacing: '1px' }}>NOROZZ</span>
+                    <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: '700' }}>HOME SERVICE INVOICE</div>
+                  </div>
+                  <span style={{ padding: '4px 12px', borderRadius: '10px', background: '#dcfce7', color: '#15803d', fontWeight: '800', fontSize: '0.78rem' }}>
+                    Paid: {paymentMethod === 'online' ? 'Online' : 'Cash'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '16px' }}>
+                  <div>
+                    <div style={{ fontWeight: '800', color: '#0f172a' }}>INVOICE</div>
+                    <div style={{ color: '#2563eb', fontWeight: '800' }}>#NZ-INV-{bId.replace('#', '')}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: '800', color: '#0f172a' }}>DATE</div>
+                    <div style={{ color: '#64748b', fontWeight: '700' }}>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                  </div>
+                </div>
+
+                <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '14px', fontSize: '0.82rem', marginBottom: '18px' }}>
+                  <div style={{ color: '#475569', fontWeight: '700' }}>Customer: <strong>{custName}</strong> • {fullAddressStr}</div>
+                  <div style={{ color: '#64748b', marginTop: '2px', fontWeight: '600' }}>Technician Partner: <strong>{currentUser?.name || 'Arav'} ({currentUser?.phone?.slice(-4) || '107-5572'})</strong></div>
+                </div>
+
+                <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>SERVICE BREAKDOWN</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.88rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px', marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0f172a', fontWeight: '700' }}>
+                    <span>{sTitle}</span>
+                    <span>₹{basePrice}</span>
+                  </div>
+                  {selectedAddons.map((addon) => (
+                    <div key={addon.id} style={{ display: 'flex', justifyContent: 'space-between', color: '#475569', fontWeight: '600' }}>
+                      <span>{addon.name}</span>
+                      <span>₹{addon.price}</span>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a', fontWeight: '700' }}>
+                    <span>Platform Partner Discount</span>
+                    <span>-₹40</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.25rem', fontWeight: '900', color: '#0f172a' }}>
+                  <span>Grand Total</span>
+                  <span style={{ color: '#16a34a' }}>₹{finalTotal.toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (navigator.share) {
+                      navigator.share({ title: `Norozz Invoice ${bId}`, text: `Service Invoice for ${custName} - Total ₹${finalTotal}`, url: window.location.href });
+                    } else {
+                      navigator.clipboard.writeText(window.location.href);
+                      toast.success('📋 Invoice link copied to clipboard!');
+                    }
+                  }}
+                  className="btn"
+                  style={{ padding: '14px', background: '#eff6ff', color: '#2563eb', fontWeight: '800', borderRadius: '16px', border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  <Share2 size={16} /> Share Invoice
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    toast.success('📄 Tax Invoice PDF generated successfully!');
+                    window.print();
+                  }}
+                  className="btn"
+                  style={{ padding: '14px', background: '#16a34a', color: '#ffffff', fontWeight: '800', borderRadius: '16px', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  <Download size={16} /> Download PDF
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -1144,6 +1782,141 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
         isIncoming={isIncomingCall}
         socket={socketRef.current}
       />
+
+      {/* PACKAGE SELECTION MODAL */}
+      {showPackageModal && selectedServiceForPackages && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+          onClick={() => setShowPackageModal(false)}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '24px',
+              maxWidth: '520px',
+              width: '100%',
+              padding: '24px',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+              position: 'relative',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>SELECT PACKAGE FOR EXTRA SERVICE</span>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: '2px 0 0 0', color: '#0f172a' }}>
+                  {selectedServiceForPackages.text}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPackageModal(false)}
+                style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.84rem', color: '#475569', margin: '0 0 18px 0', fontWeight: '600' }}>
+              Choose a specific package to add this extra service to the current execution order.
+            </p>
+
+            {loadingPackages ? (
+              <div style={{ padding: '40px 0', textAlign: 'center', color: '#64748b' }}>
+                <Loader2 size={32} className="spin" style={{ margin: '0 auto 12px auto', color: '#2563eb' }} />
+                <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>Loading available packages from database...</div>
+              </div>
+            ) : servicePackagesList.length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', background: '#f8fafc', borderRadius: '16px', border: '1px solid #cbd5e1', color: '#64748b', fontWeight: '600' }}>
+                No specific packages configured. You can add the standard execution package.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {servicePackagesList.map((pkg) => (
+                  <div
+                    key={pkg._id}
+                    style={{
+                      padding: '18px',
+                      background: '#f8fafc',
+                      border: '1.5px solid #cbd5e1',
+                      borderRadius: '18px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <div style={{ fontWeight: '800', fontSize: '1.05rem', color: '#0f172a' }}>{pkg.title}</div>
+                        <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                          <Clock size={14} color="#3b82f6" /> Duration: {pkg.duration || '45 mins'}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '1.3rem', fontWeight: '900', color: '#16a34a' }}>
+                          ₹{(pkg.finalPrice || pkg.price).toLocaleString('en-IN')}
+                        </div>
+                        {pkg.price && pkg.price > (pkg.finalPrice || pkg.price) && (
+                          <div style={{ fontSize: '0.75rem', color: '#94a3b8', textDecoration: 'line-through' }}>
+                            ₹{pkg.price}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {pkg.features && pkg.features.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: '#ffffff', padding: '10px 12px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                        {pkg.features.map((feat, fIdx) => (
+                          <div key={fIdx} style={{ fontSize: '0.8rem', color: '#334155', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <CheckCircle2 size={14} color="#16a34a" /> {feat}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => handleAddPackageToBooking(pkg)}
+                      disabled={addingExtraService}
+                      className="btn"
+                      style={{
+                        padding: '12px',
+                        background: '#16a34a',
+                        color: '#ffffff',
+                        fontWeight: '800',
+                        fontSize: '0.92rem',
+                        borderRadius: '14px',
+                        border: 'none',
+                        marginTop: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)',
+                      }}
+                    >
+                      {addingExtraService ? <Loader2 size={18} className="spin" /> : <Plus size={18} />} Select & Add Package (+₹{pkg.finalPrice || pkg.price})
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

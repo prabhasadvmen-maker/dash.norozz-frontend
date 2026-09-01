@@ -33,6 +33,7 @@ import {
 import { useAuth } from '../hooks/useAuth.js';
 import { catalogService } from '../services/catalog.service.js';
 import { cityService } from '../services/city.service.js';
+import { geoapifyService } from '../services/geoapify.service.js';
 
 const DEFAULT_SCHEDULE = [
   { day: 'Monday', isOpen: true, openTime: '09:00 AM', closeTime: '07:00 PM' },
@@ -94,6 +95,7 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
 
   // Step 3: Profile Details
   const [profileImage, setProfileImage] = useState('');
+  const [profileImageFile, setProfileImageFile] = useState(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [dob, setDob] = useState('1995-08-15');
@@ -326,6 +328,7 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
   const handlePhotoUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      setProfileImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setProfileImage(reader.result);
@@ -334,7 +337,7 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
     }
   };
 
-  // STEP 3: Submit Profile
+  // STEP 3: Submit Profile using FormData (multipart/form-data)
   const handleProfileSubmit = async (e) => {
     e?.preventDefault();
     setError('');
@@ -349,22 +352,26 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
     }
 
     try {
-      const updatePayload = {
-        name: name.trim(),
-        email: email.trim(),
-        dob,
-        gender,
-        assignedCity: workCity,
-        profileImage,
-      };
+      const formData = new FormData();
+      formData.append('name', name.trim());
+      formData.append('email', email.trim());
+      if (dob) formData.append('dob', dob);
+      if (gender) formData.append('gender', gender);
+      if (workCity) formData.append('assignedCity', workCity);
+      if (profileImageFile) {
+        formData.append('profileImage', profileImageFile);
+      } else if (profileImage && !profileImage.startsWith('blob:')) {
+        formData.append('profileImage', profileImage);
+      }
 
-      const res = await updatePartnerProfile(updatePayload);
-      const updatedUser = res.data?.user || res.user || { ...pendingUser, ...updatePayload };
+      const res = await updatePartnerProfile(formData);
+      const updatedUser = res.data?.user || res.user || { ...pendingUser, name: name.trim(), email: email.trim() };
       setPendingUser(updatedUser);
 
       // Log in to trigger PartnerOnboardingPage (Step 1: Allow Location Access)
       login(updatedUser, pendingToken);
     } catch (err) {
+      console.error('Failed to submit partner profile FormData:', err);
       setError(err.message || 'Failed to update profile. Please try again.');
     }
   };
@@ -386,11 +393,8 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
       async (pos) => {
         const { latitude, longitude } = pos.coords;
         try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-          );
-          const data = await res.json();
-          const addr = data.display_name || `${data.address?.suburb || 'Connaught Place'}, ${workCity}`;
+          const data = await geoapifyService.reverseGeocode(latitude, longitude);
+          const addr = data.formatted || `${workCity}`;
           setDetectedAddress(addr);
         } catch (err) {
           setDetectedAddress(`GPS Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)} (${workCity})`);

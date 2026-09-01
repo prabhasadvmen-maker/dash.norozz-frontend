@@ -12,9 +12,8 @@ import {
   Landmark,
   Gift,
   Settings,
-  LogOut,
-  Lock,
   ShieldCheck,
+  Lock,
   Briefcase
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -94,7 +93,7 @@ const DedicatedPartnerSidebar = ({
       zIndex: 40
     }}>
       <div>
-        {/* 1. Brand Header - 60px height matching Navbar */}
+        {/* 1. Brand Header */}
         <div style={{
           height: '60px',
           padding: collapsed ? '0 10px' : '0 14px',

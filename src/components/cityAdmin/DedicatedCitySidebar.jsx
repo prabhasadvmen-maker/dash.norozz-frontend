@@ -9,6 +9,7 @@ import {
   Settings,
   HelpCircle
 } from 'lucide-react';
+import LanguageSelector from '../common/LanguageSelector.jsx';
 
 const DedicatedCitySidebar = ({
   activeTab,
@@ -120,6 +121,11 @@ const DedicatedCitySidebar = ({
             </div>
           )}
         </div>
+        {!collapsed && (
+          <div style={{ marginTop: '10px', padding: '0 4px' }}>
+            <LanguageSelector compact style={{ width: '100%' }} />
+          </div>
+        )}
       </div>
 
       {/* 2. Main Menu Items Scrollable */}

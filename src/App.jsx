@@ -1,6 +1,8 @@
 import React, { useState, lazy, Suspense } from 'react';
 import { useAuthContext } from './contexts/AuthContext.jsx';
 import { ProtectedRoute } from './components/ProtectedRoutes.jsx';
+import { LanguageProvider } from './context/LanguageContext.jsx';
+import LanguageSelector from './components/common/LanguageSelector.jsx';
 import { Crown, Building2, Briefcase, Smartphone, ShieldCheck, Sparkles } from 'lucide-react';
 
 const SuperAdminLoginPage = lazy(() => import('./pages/SuperAdminLoginPage'));
@@ -29,8 +31,8 @@ const PageFallback = () => (
   </div>
 );
 
-function App() {
-  const { currentUser, logout, loading, role } = useAuthContext();
+function AppContent() {
+  const { currentUser, logout, loading, role, updateUser } = useAuthContext();
   const [authView, setAuthView] = useState('customer'); // 'customer' | 'partner' | 'cityAdmin' | 'superAdmin'
   const [skipOnboarding, setSkipOnboarding] = useState(false);
 
@@ -79,11 +81,11 @@ function App() {
       }
 
       // Check exact completion of all 5 onboarding steps: Location, Category, Skills, Service Area, Documents
-      const isLocationSaved = Boolean(currentUser.isLocationSaved || currentUser.locationCoordinates?.lat || (currentUser.address && currentUser.assignedCity));
-      const isCategorySelected = Boolean(currentUser.isCategorySelected || (currentUser.categories && currentUser.categories.length > 0) || (currentUser.category && currentUser.category.trim() !== ''));
+      const isLocationSaved = Boolean(currentUser.isLocationSaved || (currentUser.locationCoordinates?.lat && currentUser.locationCoordinates?.lng));
+      const isCategorySelected = Boolean(currentUser.isCategorySelected || (currentUser.offeredServices && currentUser.offeredServices.length > 0));
       const isSkillsUpdated = Boolean(currentUser.isSkillsUpdated || (currentUser.skills && currentUser.skills.length > 0));
       const isServiceAreaSet = Boolean(currentUser.isServiceAreaSet || (currentUser.localities && currentUser.localities.length > 0));
-      const isDocumentsUploaded = Boolean(currentUser.isDocumentsUploaded || (currentUser.documents?.aadhaarFront && currentUser.documents?.aadhaarBack) || currentUser.documents?.aadhaarDoc || currentUser.documents?.panDoc);
+      const isDocumentsUploaded = Boolean(currentUser.isDocumentsUploaded);
 
       const isAllOnboardingCompleted = Boolean(
         isLocationSaved &&
@@ -115,7 +117,7 @@ function App() {
       return (
         <ProtectedRoute allowedRoles={['partner']}>
           <Suspense fallback={<PageFallback />}>
-            <DedicatedPartnerPanel currentUser={currentUser} onLogout={logout} />
+            <DedicatedPartnerPanel currentUser={currentUser} onLogout={logout} onUpdateUser={updateUser} />
           </Suspense>
         </ProtectedRoute>
       );
@@ -167,33 +169,36 @@ function App() {
             </div>
           </div>
 
-          {/* Portal Switcher Nav Tabs */}
-          <nav className="enterprise-portal-nav">
-            <button
-              onClick={() => setAuthView('customer')}
-              className={`enterprise-nav-btn ${authView === 'customer' ? 'active' : ''}`}
-            >
-              <Smartphone size={15} /> Customer App
-            </button>
-            <button
-              onClick={() => setAuthView('partner')}
-              className={`enterprise-nav-btn ${authView === 'partner' ? 'active' : ''}`}
-            >
-              <Briefcase size={15} /> Partner Portal
-            </button>
-            <button
-              onClick={() => setAuthView('cityAdmin')}
-              className={`enterprise-nav-btn ${authView === 'cityAdmin' ? 'active' : ''}`}
-            >
-              <Building2 size={15} /> City Admin
-            </button>
-            <button
-              onClick={() => setAuthView('superAdmin')}
-              className={`enterprise-nav-btn ${authView === 'superAdmin' ? 'active' : ''}`}
-            >
-              <Crown size={15} /> Super Admin
-            </button>
-          </nav>
+          {/* Portal Switcher Nav Tabs & Language Selector */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <nav className="enterprise-portal-nav">
+              <button
+                onClick={() => setAuthView('customer')}
+                className={`enterprise-nav-btn ${authView === 'customer' ? 'active' : ''}`}
+              >
+                <Smartphone size={15} /> Customer App
+              </button>
+              <button
+                onClick={() => setAuthView('partner')}
+                className={`enterprise-nav-btn ${authView === 'partner' ? 'active' : ''}`}
+              >
+                <Briefcase size={15} /> Partner Portal
+              </button>
+              <button
+                onClick={() => setAuthView('cityAdmin')}
+                className={`enterprise-nav-btn ${authView === 'cityAdmin' ? 'active' : ''}`}
+              >
+                <Building2 size={15} /> City Admin
+              </button>
+              <button
+                onClick={() => setAuthView('superAdmin')}
+                className={`enterprise-nav-btn ${authView === 'superAdmin' ? 'active' : ''}`}
+              >
+                <Crown size={15} /> Super Admin
+              </button>
+            </nav>
+            <LanguageSelector compact />
+          </div>
         </header>
 
         {/* Dynamic Auth View Container */}
@@ -210,6 +215,14 @@ function App() {
         </div>
       </div>
     </Suspense>
+  );
+}
+
+function App() {
+  return (
+    <LanguageProvider>
+      <AppContent />
+    </LanguageProvider>
   );
 }
 

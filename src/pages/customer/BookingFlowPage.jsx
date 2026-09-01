@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import {
   ArrowLeft,
   Calendar,
@@ -16,14 +18,216 @@ import {
   Landmark,
   Building,
   Loader2,
-  Star
+  Star,
+  Navigation,
+  Layers,
+  Compass
 } from 'lucide-react';
 import { useBookings } from '../../hooks/useBookings.js';
 import { useCustomer } from '../../hooks/useCustomer.js';
 import { useAuth } from '../../hooks/useAuth.js';
 import { customerService } from '../../services/customer.service.js';
+import { catalogService } from '../../services/catalog.service.js';
 import { paymentService } from '../../services/payment.service.js';
+import { geoapifyService } from '../../services/geoapify.service.js';
 import { toast } from '../../utils/toast.js';
+
+// Dedicated Leaflet Map Picker Component for Doorstep Address Selection
+const AddressMapPicker = ({ onLocationSelect, onMapReady, onLocateGps, isLocating = false }) => {
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markerInstanceRef = useRef(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!mapContainerRef.current) return;
+
+    // Reset Leaflet DOM ID if re-mounting
+    if (mapContainerRef.current._leaflet_id) {
+      mapContainerRef.current._leaflet_id = null;
+    }
+
+    try {
+      delete L.Icon.Default.prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      });
+
+      const defaultLat = 26.0494; // Nizamabad / Azamgarh coords
+      const defaultLng = 83.0565;
+
+      const map = L.map(mapContainerRef.current, {
+        center: [defaultLat, defaultLng],
+        zoom: 15,
+        zoomControl: false,
+        attributionControl: false,
+      });
+
+      L.tileLayer(geoapifyService.getTileUrl('osm-bright'), {
+        maxZoom: 19,
+        attribution: '&copy; Geoapify &copy; OpenStreetMap',
+      }).addTo(map);
+
+      const customPinIcon = L.divIcon({
+        className: 'custom-doorstep-pin',
+        html: `<div style="
+          position: relative;
+          width: 36px;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        ">
+          <div style="
+            width: 32px;
+            height: 32px;
+            border-radius: 50% 50% 50% 0;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            transform: rotate(-45deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.45), 0 2px 6px rgba(0,0,0,0.5);
+            border: 2px solid #ffffff;
+          ">
+            <div style="
+              width: 12px;
+              height: 12px;
+              border-radius: 50%;
+              background: #ffffff;
+              box-shadow: inset 0 1px 3px rgba(0,0,0,0.25);
+            "></div>
+          </div>
+        </div>`,
+        iconSize: [36, 36],
+        iconAnchor: [18, 32],
+      });
+
+      const marker = L.marker([defaultLat, defaultLng], {
+        draggable: true,
+        icon: customPinIcon,
+      }).addTo(map);
+
+      const updateAddressFromLatLng = async (lat, lng) => {
+        try {
+          const data = await geoapifyService.reverseGeocode(lat, lng);
+          if (data?.formatted && onLocationSelect && isMounted) {
+            onLocationSelect(data.formatted, data.city || 'Doorstep Location', lat, lng);
+          }
+        } catch (err) {
+          console.warn('Map pin geocoding warning:', err);
+        }
+      };
+
+      map.on('click', (e) => {
+        const { lat, lng } = e.latlng;
+        marker.setLatLng([lat, lng]);
+        updateAddressFromLatLng(lat, lng);
+      });
+
+      marker.on('dragend', () => {
+        const { lat, lng } = marker.getLatLng();
+        updateAddressFromLatLng(lat, lng);
+      });
+
+      mapInstanceRef.current = map;
+      markerInstanceRef.current = marker;
+
+      if (onMapReady) {
+        onMapReady(map, marker);
+      }
+
+      setTimeout(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize();
+        }
+      }, 300);
+
+    } catch (err) {
+      console.error('Leaflet Map initialization error:', err);
+    }
+
+    return () => {
+      isMounted = false;
+      if (mapInstanceRef.current) {
+        try {
+          mapInstanceRef.current.remove();
+        } catch (_) {}
+        mapInstanceRef.current = null;
+        markerInstanceRef.current = null;
+      }
+    };
+  }, []);
+
+  return (
+    <div
+      style={{
+        height: '190px',
+        width: '100%',
+        borderRadius: '20px',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        overflow: 'hidden',
+        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
+        position: 'relative',
+        zIndex: 1,
+        background: '#0b131e'
+      }}
+    >
+      <div
+        ref={mapContainerRef}
+        style={{
+          width: '100%',
+          height: '100%',
+          position: 'relative',
+          zIndex: 2
+        }}
+      />
+
+      {/* Floating GPS Location Button on Map View */}
+      {onLocateGps && (
+        <button
+          type="button"
+          onClick={onLocateGps}
+          disabled={isLocating}
+          style={{
+            position: 'absolute',
+            bottom: '12px',
+            right: '12px',
+            zIndex: 400,
+            background: 'rgba(11, 19, 30, 0.92)',
+            border: '1.5px solid #10b981',
+            borderRadius: '12px',
+            padding: '8px 14px',
+            color: '#10b981',
+            fontWeight: '800',
+            fontSize: '0.8rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            cursor: isLocating ? 'wait' : 'pointer',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+          }}
+        >
+          {isLocating ? (
+            <>
+              <Loader2 size={15} className="spin" />
+              <span>Locating GPS...</span>
+            </>
+          ) : (
+            <>
+              <Navigation size={15} fill="#10b981" />
+              <span>Use Current Location</span>
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  );
+};
 
 const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToBookings }) => {
   const { createBooking, payBooking } = useBookings();
@@ -36,11 +240,13 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
   // Package Data (Loaded Live from Backend Service object)
   const [packageList, setPackageList] = useState([]);
   const [selectedPackageIndex, setSelectedPackageIndex] = useState(1);
+  const [selectedPackageId, setSelectedPackageId] = useState(service?.packageId || service?.package?._id || service?.selectedPackage?._id || null);
 
   // Address Data (Loaded Live from Backend Customer Profile)
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [savingAddress, setSavingAddress] = useState(false);
+  const [detectingCurrentLocation, setDetectingCurrentLocation] = useState(false);
 
   // New Address Form State
   const [newAddressLabel, setNewAddressLabel] = useState('Home');
@@ -69,6 +275,20 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
     '07:00 PM'
   ];
 
+  // Platform Fee State
+  const [customerPlatformFeePercent, setCustomerPlatformFeePercent] = useState(5);
+
+  useEffect(() => {
+    customerService.getSystemSettings()
+      .then((res) => {
+        const settingsData = res.data?.data || res.data || {};
+        if (settingsData.customerPlatformFeePercent !== undefined) {
+          setCustomerPlatformFeePercent(Number(settingsData.customerPlatformFeePercent));
+        }
+      })
+      .catch((err) => console.warn('Fetch system settings warning:', err));
+  }, []);
+
   // Coupon State - NO AUTO APPLY
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponCodeInput, setCouponCodeInput] = useState('');
@@ -95,52 +315,113 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
   const [loading, setLoading] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState(null);
 
-  // Initialize Packages from Backend Service data or generate fallback structured packages
+  // Initialize Packages from Backend Service data or Live API call
   useEffect(() => {
-    if (service && service.packages && service.packages.length > 0) {
-      setPackageList(
-        service.packages.map((pkg, idx) => ({
+    const serviceId = service?._id || service?.serviceId;
+
+    const processPackages = (rawList) => {
+      if (!Array.isArray(rawList) || rawList.length === 0) return false;
+
+      const formatted = rawList.map((pkg, idx) => {
+        const pkgPrice = pkg.finalPrice !== undefined ? pkg.finalPrice : (pkg.price || 599);
+        return {
           id: pkg._id || String(idx),
+          _id: pkg._id,
           title: pkg.title || `Package ${idx + 1}`,
-          price: pkg.price || 999,
-          formattedPrice: `₹${(pkg.price || 999).toLocaleString()}`,
-          features: pkg.features && pkg.features.length > 0 ? pkg.features : ['Deep cleaning & sanitization', 'Verified professionals'],
-          isPopular: Boolean(pkg.isPopular)
-        }))
-      );
+          price: pkgPrice,
+          formattedPrice: `₹${pkgPrice.toLocaleString()}`,
+          duration: pkg.duration || service?.duration || '45 mins',
+          features: Array.isArray(pkg.features) && pkg.features.length > 0 ? pkg.features : ['Professional service delivery', '30-day post-service warranty', 'Certified & verified technician'],
+          isPopular: Boolean(pkg.isPopular || pkg.isRecommended)
+        };
+      });
+
+      setPackageList(formatted);
+
+      // Auto-Select Logic: Priority 1 - Match selectedPackageId (if user or previous page selected a package)
+      const targetPackageId = selectedPackageId || service?.packageId || service?.package?._id || service?.selectedPackage?._id;
+      if (targetPackageId) {
+        const foundIdx = formatted.findIndex((p) => String(p.id) === String(targetPackageId) || String(p._id) === String(targetPackageId));
+        if (foundIdx !== -1) {
+          setSelectedPackageIndex(foundIdx);
+          return true;
+        }
+      }
+
+      // Priority 2: Otherwise select recommended/popular or first package
+      const popIdx = formatted.findIndex((p) => p.isPopular);
+      const defaultIdx = popIdx !== -1 ? popIdx : 0;
+      setSelectedPackageIndex(defaultIdx);
+      if (formatted[defaultIdx]) {
+        setSelectedPackageId(formatted[defaultIdx]._id || formatted[defaultIdx].id);
+      }
+      return true;
+    };
+
+    // Priority 1: Check if packages array was passed in service object
+    if (service && Array.isArray(service.packages) && service.packages.length > 0) {
+      const success = processPackages(service.packages);
+      if (success) return;
+    }
+
+    // Priority 2: If serviceId exists, fetch live packages from backend API
+    if (serviceId) {
+      catalogService
+        .getServicePackages(serviceId)
+        .then((res) => {
+          const list = res.data?.data || res.data || [];
+          const activeList = Array.isArray(list) ? list.filter((p) => p.status === 'active') : [];
+          const success = processPackages(activeList);
+          if (!success) createFallbackPackages();
+        })
+        .catch((err) => {
+          console.warn('Fetch packages warning in BookingFlowPage:', err);
+          createFallbackPackages();
+        });
     } else {
-      // Generated backend fallback matching service base price
+      createFallbackPackages();
+    }
+
+    function createFallbackPackages() {
       const basePrice = service?.finalPrice || service?.price || 1499;
-      setPackageList([
+      const serviceName = service?.name || service?.title || 'Service';
+      
+      const fallbacks = [
         {
           id: 'basic',
-          title: 'Basic Clean',
-          price: Math.max(499, Math.round(basePrice * 0.7)),
-          formattedPrice: `₹${Math.max(499, Math.round(basePrice * 0.7)).toLocaleString()}`,
-          features: ['Mopping & deep vacuuming', 'Bathroom dry wiping & cleaning', 'Living room basic dusting'],
+          title: `${serviceName} (Basic)`,
+          price: Math.max(299, Math.round(basePrice * 0.7)),
+          formattedPrice: `₹${Math.max(299, Math.round(basePrice * 0.7)).toLocaleString()}`,
+          features: ['Essential service coverage', 'Verified professional', 'Standard completion update'],
           isPopular: false
         },
         {
           id: 'standard',
-          title: 'Standard Deep Clean',
+          title: `${serviceName} (Standard)`,
           price: basePrice,
           formattedPrice: `₹${basePrice.toLocaleString()}`,
-          features: ['Kitchen chimney + slab degreasing', 'Intense bathroom wall scrubbing', 'Wet mop & mechanised floor scrub', 'Dry upholstery vacuuming'],
+          features: ['Complete deep service & inspection', '30-day post-service warranty', 'High pressure equipment & sterilisation'],
           isPopular: true
         },
         {
-          id: 'ultra',
-          title: 'Ultra Premium Scrub',
-          price: Math.round(basePrice * 1.6),
-          formattedPrice: `₹${Math.round(basePrice * 1.6).toLocaleString()}`,
-          features: ['Complete sanitation & sterilisation', 'Wet safe shampoo dry wash', 'Glass facade & full balcony wash', 'Wall spots scrubbing & spot clean'],
+          id: 'premium',
+          title: `${serviceName} (Premium)`,
+          price: Math.round(basePrice * 1.5),
+          formattedPrice: `₹${Math.round(basePrice * 1.5).toLocaleString()}`,
+          features: ['Comprehensive maximum coverage', 'Senior/experienced technician', 'Priority support & premium treatment'],
           isPopular: false
         }
-      ]);
+      ];
+
+      setPackageList(fallbacks);
+      setSelectedPackageIndex(1);
     }
-  }, [service]);
+  }, [service?._id, service?.serviceId, service?.name]);
 
   // Load Saved Addresses Live from Backend Customer Profile
+  const addressesCount = addresses?.length || 0;
+  const userAddressStr = currentUser?.address || '';
+
   useEffect(() => {
     if (addresses && addresses.length > 0) {
       const formatted = addresses.map((a, idx) => ({
@@ -150,30 +431,31 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
         type: (a.title || '').toLowerCase().includes('office') ? 'office' : 'home'
       }));
       setSavedAddresses(formatted);
-      setSelectedAddressId(formatted[0].id);
-    } else if (currentUser?.address) {
+      setSelectedAddressId((prev) => prev || formatted[0].id);
+    } else if (userAddressStr) {
       const defaultUserAddr = [{
         id: 'user_profile_addr',
         label: 'Home',
-        address: currentUser.address,
+        address: userAddressStr,
         type: 'home'
       }];
-      setSavedAddresses(defaultUserAddr);
-      setSelectedAddressId('user_profile_addr');
-    } else {
-      setSavedAddresses([]);
-      setSelectedAddressId('');
+      setSavedAddresses((prev) => (prev.length > 0 ? prev : defaultUserAddr));
+      setSelectedAddressId((prev) => prev || 'user_profile_addr');
     }
-  }, [addresses, currentUser]);
+  }, [addressesCount, userAddressStr]);
 
   const currentPackage = packageList[selectedPackageIndex] || packageList[1] || packageList[0] || { title: 'Standard Deep Clean', price: 1499, formattedPrice: '₹1,499' };
   const activeAddressObj = savedAddresses.find((a) => a.id === selectedAddressId) || savedAddresses[0] || { address: currentUser?.address || 'Please add delivery address' };
 
-  // Calculations
-  const subtotal = service?.finalPrice || service?.price || currentPackage.price || 799;
-  const platformFee = Math.round(subtotal * 0.05);
+  // Calculations: Selected package price takes HIGHEST priority!
+  const subtotal = currentPackage?.price || service?.finalPrice || service?.price || 799;
+  const platformFee = Math.round(subtotal * (customerPlatformFeePercent / 100));
   const couponDiscountVal = appliedCoupon ? (appliedCoupon.discountAmount ?? (appliedCoupon.discount || 0)) : 0;
   const totalAmount = Math.max(0, subtotal + platformFee - couponDiscountVal);
+
+  // Leaflet Map References for Select Address Step
+  const activeMapRef = useRef(null);
+  const activeMarkerRef = useRef(null);
 
   // Add Address Handler with LIVE Backend Persistence
   const handleAddNewAddress = async () => {
@@ -186,7 +468,7 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
       const fullCombined = `${newFullAddress}${newFloorApt ? ', ' + newFloorApt : ''}${newLandmark ? ' (Near ' + newLandmark + ')' : ''}`;
 
       // Call Backend API to persist address on customer user profile in MongoDB
-      const res = await customerAuthService.addAddress({
+      const res = await customerService.addAddress({
         title: newAddressLabel,
         addressLine: fullCombined,
         city: newCity || 'Delhi NCR',
@@ -225,6 +507,111 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
     } finally {
       setSavingAddress(false);
     }
+  };
+
+  // Live GPS Current Location Detection Handler with Form Auto-Fill
+  const handleDetectCurrentLocation = async () => {
+    if (detectingCurrentLocation) return;
+    setDetectingCurrentLocation(true);
+
+    const applyDetectedAddress = (geoData, fullAddr, city, lat = null, lng = null) => {
+      const newAddrObj = {
+        id: `current_loc_${Date.now()}`,
+        label: newAddressLabel || 'Current Location',
+        address: fullAddr,
+        city: city || 'Delhi NCR',
+        type: 'home',
+        locationCoordinates: lat && lng ? { lat: Number(lat), lng: Number(lng) } : null,
+      };
+
+      setSavedAddresses((prev) => [newAddrObj, ...prev.filter((a) => !a.id.startsWith('current_loc_'))]);
+      setSelectedAddressId(newAddrObj.id);
+
+      // Auto-fill form input fields on Add New Address screen cleanly without pincode/country
+      const isPincode = (str) => /^\d{5,6}$/.test(String(str || '').trim());
+      const isCountryOrState = (str) => /^(india|in|up|uttar pradesh)$/i.test(String(str || '').trim());
+
+      let cleanFull = (fullAddr || '').replace(/,?\s*\d{5,6}/g, '').replace(/,?\s*India$/i, '').trim();
+      if (!cleanFull || cleanFull === 'UP' || cleanFull === 'India') cleanFull = city ? `${city}, UP` : 'Nizamabad, UP';
+
+      setNewFullAddress(cleanFull);
+      if (city) setNewCity(city);
+
+      let bldg = geoData?.addressLine1;
+      if (!bldg || isPincode(bldg) || isCountryOrState(bldg)) {
+        bldg = geoData?.addressLine2 && !isPincode(geoData.addressLine2) && !isCountryOrState(geoData.addressLine2)
+          ? geoData.addressLine2
+          : `${city || 'Doorstep'} Premises`;
+      }
+
+      let lmark = geoData?.addressLine2 && !isCountryOrState(geoData.addressLine2) && !isPincode(geoData.addressLine2)
+        ? `Near ${geoData.addressLine2}`
+        : `Near ${city || 'Main Market'}`;
+
+      setNewFloorApt(bldg);
+      setNewLandmark(lmark);
+
+      if (lat && lng && activeMapRef.current && activeMarkerRef.current) {
+        activeMapRef.current.flyTo([lat, lng], 16);
+        activeMarkerRef.current.setLatLng([lat, lng]);
+      }
+
+      toast.success(`📍 Location detected & address fields auto-filled!`);
+    };
+
+    const tryIpFallback = async () => {
+      try {
+        const ipRes = await fetch('https://ipapi.co/json/').then((r) => r.json());
+        if (ipRes && (ipRes.city || ipRes.region || ipRes.latitude)) {
+          const city = ipRes.city || ipRes.region || 'Delhi NCR';
+          const state = ipRes.region || '';
+          const country = ipRes.country_name || 'India';
+          const fullAddr = `${city}${state ? `, ${state}` : ''}, ${country}`;
+          const lat = Number(ipRes.latitude) || 28.6139;
+          const lng = Number(ipRes.longitude) || 77.2090;
+          applyDetectedAddress({ addressLine1: city, addressLine2: state }, fullAddr, city, lat, lng);
+          return true;
+        }
+      } catch (err) {
+        console.warn('IP geolocation fallback notice:', err);
+      }
+      return false;
+    };
+
+    if (!navigator.geolocation) {
+      const success = await tryIpFallback();
+      if (!success) toast.error('Geolocation is not supported by your browser.');
+      setDetectingCurrentLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          const data = await geoapifyService.reverseGeocode(lat, lng);
+          const formattedAddress = data?.formatted || `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`;
+          const city = data?.city || 'Current Location';
+
+          applyDetectedAddress(data, formattedAddress, city, lat, lng);
+        } catch (err) {
+          console.error('Reverse Geocoding Error:', err);
+          const success = await tryIpFallback();
+          if (!success) toast.error('Failed to resolve address coordinates.');
+        } finally {
+          setDetectingCurrentLocation(false);
+        }
+      },
+      async (err) => {
+        console.warn('GPS location access notice:', err);
+        const success = await tryIpFallback();
+        if (!success) toast.error('Please allow location access to auto-detect your address.');
+        setDetectingCurrentLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
   };
 
   // Live API Coupon Application Handler
@@ -295,10 +682,15 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
         category: service?.category?._id || service?.category || '65f0a0000000000000000001',
         service: service?.serviceId || service?._id || '65f0a0000000000000000002',
         packageId: service?.packageId || service?.package?._id || currentPackage?._id || null,
-        packageName: service?.packageName || `${service?.name || service?.title || 'Home Deep Cleaning'} - ${currentPackage.title}`,
+        packageName: service?.packageName || currentPackage?.title || service?.name || service?.title || 'Standard Service',
+        addressTitle: activeAddressObj.label || 'Home',
         addressLine: activeAddressObj.address,
-        city: currentUser?.city || 'Delhi NCR',
-        pincode: '110001',
+        city: activeAddressObj.city || currentUser?.city || 'Azamgarh',
+        pincode: activeAddressObj.pincode || '110001',
+        locationCoordinates: activeAddressObj.locationCoordinates || {
+          lat: 26.0494,
+          lng: 83.0565
+        },
         bookingDate: new Date(),
         timeSlot: `${selectedDate} • ${selectedTimeSlot}`,
         amount: totalAmount,
@@ -312,17 +704,27 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
 
       if (backendBooking._id) {
         if (isWalletMethod) {
-          // Deduct Wallet Balance via Backend Wallet Pay API
-          const payRes = await paymentService.walletPay({
-            bookingId: backendBooking._id,
-            amount: totalAmount,
-          });
-          const payData = payRes.data?.data || payRes.data || {};
-          const newWalletBal = typeof payData.walletBalance === 'number' ? payData.walletBalance : (currentUser?.walletBalance - totalAmount);
-          if (updateUser) {
-            updateUser({ walletBalance: Math.max(0, newWalletBal) });
+          if (backendBooking.paymentStatus !== 'paid') {
+            try {
+              const payRes = await paymentService.walletPay({
+                bookingId: backendBooking._id,
+                amount: totalAmount,
+              });
+              const payData = payRes.data?.data || payRes.data || {};
+              const newWalletBal = typeof payData.walletBalance === 'number' ? payData.walletBalance : (currentUser?.walletBalance - totalAmount);
+              if (updateUser) {
+                updateUser({ walletBalance: Math.max(0, newWalletBal) });
+              }
+              toast.success(payRes.data?.message || `🎉 ₹${totalAmount} deducted from NOROZZ Wallet!`);
+            } catch (wErr) {
+              console.warn('Wallet pay fallback notice:', wErr);
+            }
+          } else {
+            if (updateUser && typeof currentUser?.walletBalance === 'number') {
+              updateUser({ walletBalance: Math.max(0, currentUser.walletBalance - totalAmount) });
+            }
+            toast.success(`🎉 ₹${totalAmount} paid successfully via NOROZZ Wallet!`);
           }
-          toast.success(payRes.data?.message || `🎉 ₹${totalAmount} deducted from NOROZZ Wallet!`);
         } else {
           try {
             await payBooking({ id: backendBooking._id, paymentMethod: selectedPaymentMethod });
@@ -423,7 +825,10 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
                 return (
                   <div
                     key={pkg.id}
-                    onClick={() => setSelectedPackageIndex(index)}
+                    onClick={() => {
+                      setSelectedPackageIndex(index);
+                      setSelectedPackageId(pkg._id || pkg.id);
+                    }}
                     style={{
                       position: 'relative',
                       background: isSelected ? '#111f30' : '#141d2b',
@@ -502,12 +907,12 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
         )}
 
         {/* ========================================================================= */}
-        {/* STEP 2: SELECT ADDRESS (Full Page View)                                   */}
+        {/* STEP 2: SELECT ADDRESS (Full Page View matching Mockup)                   */}
         {/* ========================================================================= */}
         {currentStep === 'select_address' && (
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
             {/* Header Navbar */}
-            <div style={{ padding: '24px 20px 16px 20px', display: 'flex', alignItems: 'center', gap: '14px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+            <div style={{ padding: '20px 20px 14px 20px', display: 'flex', alignItems: 'center', gap: '14px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
               <button
                 type="button"
                 onClick={() => setCurrentStep('choose_package')}
@@ -526,77 +931,137 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
               >
                 <ArrowLeft size={20} />
               </button>
-              <div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, color: '#ffffff' }}>
-                  Select Address
-                </h2>
-                <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '2px 0 0 0' }}>
-                  Choose doorstep location
-                </p>
-              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, color: '#ffffff' }}>
+                Select Address
+              </h2>
             </div>
 
             <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* Dark Map Graphic */}
-              <div
-                style={{
-                  height: '150px',
-                  borderRadius: '20px',
-                  background: 'radial-gradient(circle at center, #1b2e44 0%, #0f1a28 100%)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
+              {/* Live Interactive Leaflet Map Box */}
+              <AddressMapPicker
+                onLocateGps={handleDetectCurrentLocation}
+                isLocating={detectingCurrentLocation}
+                onLocationSelect={(fullAddr, city, lat, lng) => {
+                  const newAddrObj = {
+                    id: `pin_loc_${Date.now()}`,
+                    label: 'Use Current Location',
+                    address: fullAddr,
+                    city: city || 'Delhi NCR',
+                    type: 'home',
+                    locationCoordinates: lat && lng ? { lat: Number(lat), lng: Number(lng) } : null
+                  };
+                  setSavedAddresses((prev) => [newAddrObj, ...prev.filter((a) => a.id !== newAddrObj.id)]);
+                  setSelectedAddressId(newAddrObj.id);
+                  setNewFullAddress(fullAddr);
+                  if (city) setNewCity(city);
                 }}
-              >
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    opacity: 0.15,
-                    backgroundImage: `linear-gradient(#ffffff 1px, transparent 1px), linear-gradient(90deg, #ffffff 1px, transparent 1px)`,
-                    backgroundSize: '24px 24px'
-                  }}
-                />
+                onMapReady={(map, marker) => {
+                  activeMapRef.current = map;
+                  activeMarkerRef.current = marker;
+                }}
+              />
 
-                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.25)', border: '2px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 20px #10b981' }}>
-                  <div style={{ width: '14px', height: '14px', borderRadius: '50%', background: '#10b981' }} />
-                </div>
-              </div>
-
-              {/* Saved Addresses List */}
+              {/* Saved Addresses Section */}
               <div>
-                <h3 style={{ fontSize: '0.92rem', fontWeight: '700', color: '#94a3b8', marginBottom: '14px' }}>
-                  Saved Addresses ({savedAddresses.length})
+                <h3 style={{ fontSize: '0.98rem', fontWeight: '800', color: '#ffffff', marginBottom: '14px' }}>
+                  Saved Addresses
                 </h3>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {savedAddresses.map((addr) => {
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {/* Primary "Use Current Location" Card Item */}
+                  <div
+                    onClick={handleDetectCurrentLocation}
+                    style={{
+                      background: selectedAddressId?.startsWith('current_loc_') || selectedAddressId === 'use_current_location' ? 'rgba(16, 185, 129, 0.12)' : '#141d2b',
+                      border: selectedAddressId?.startsWith('current_loc_') || selectedAddressId === 'use_current_location' ? '1.5px solid #10b981' : '1px solid rgba(255, 255, 255, 0.08)',
+                      borderRadius: '20px',
+                      padding: '16px 18px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '14px',
+                      cursor: detectingCurrentLocation ? 'wait' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: selectedAddressId?.startsWith('current_loc_') ? '0 4px 20px rgba(16, 185, 129, 0.15)' : 'none'
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '14px',
+                        background: 'rgba(16, 185, 129, 0.18)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#10b981',
+                        flexShrink: 0
+                      }}
+                    >
+                      {detectingCurrentLocation ? <Loader2 size={20} className="spin" /> : <Navigation size={20} color="#10b981" />}
+                    </div>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.98rem', fontWeight: '800', color: '#ffffff', marginBottom: '2px' }}>
+                        Use Current Location
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: '#64748b', lineHeight: 1.35, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {detectingCurrentLocation ? 'Detecting GPS coordinates & address...' : (newFullAddress || currentUser?.address || 'Tap to detect exact GPS location')}
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        width: '22px',
+                        height: '22px',
+                        borderRadius: '50%',
+                        border: (selectedAddressId?.startsWith('current_loc_') || selectedAddressId === 'use_current_location') ? '2px solid #10b981' : '2px solid #334155',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}
+                    >
+                      {(selectedAddressId?.startsWith('current_loc_') || selectedAddressId === 'use_current_location') && (
+                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981' }} />
+                      )}
+                    </div>
+                  </div>
+                  {/* Saved User Profile Address Cards (Home, Office, etc.) */}
+                  {savedAddresses
+                    .filter(
+                      (addr) =>
+                        !addr.id.startsWith('current_loc_') &&
+                        !addr.id.startsWith('pin_loc_') &&
+                        addr.label !== 'Use Current Location' &&
+                        addr.label !== 'Current Location'
+                    )
+                    .map((addr) => {
                     const isSelected = selectedAddressId === addr.id;
+                    const isCurrentLoc = addr.id.startsWith('current_loc_') || addr.id.startsWith('pin_loc_') || addr.label === 'Use Current Location';
 
                     return (
                       <div
                         key={addr.id}
                         onClick={() => setSelectedAddressId(addr.id)}
                         style={{
-                          background: isSelected ? '#111f30' : '#141d2b',
-                          border: isSelected ? '2px solid #10b981' : '1px solid rgba(255, 255, 255, 0.08)',
-                          borderRadius: '18px',
-                          padding: '18px',
+                          background: isSelected ? 'rgba(16, 185, 129, 0.08)' : '#141d2b',
+                          border: isSelected ? '1.5px solid #10b981' : '1px solid rgba(255, 255, 255, 0.08)',
+                          borderRadius: '20px',
+                          padding: '16px 18px',
                           display: 'flex',
-                          alignItems: 'flex-start',
+                          alignItems: 'center',
                           gap: '14px',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: isSelected ? '0 4px 20px rgba(16, 185, 129, 0.15)' : 'none'
                         }}
                       >
                         <div
                           style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '12px',
-                            background: 'rgba(255, 255, 255, 0.05)',
+                            width: '42px',
+                            height: '42px',
+                            borderRadius: '14px',
+                            background: isSelected ? 'rgba(16, 185, 129, 0.18)' : 'rgba(255, 255, 255, 0.05)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -604,14 +1069,20 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
                             flexShrink: 0
                           }}
                         >
-                          {addr.type === 'office' ? <Briefcase size={20} /> : <Home size={20} />}
+                          {isCurrentLoc ? (
+                            <Navigation size={20} color="#10b981" />
+                          ) : addr.type === 'office' ? (
+                            <Briefcase size={20} color="#10b981" />
+                          ) : (
+                            <Home size={20} color="#10b981" />
+                          )}
                         </div>
 
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: '1rem', fontWeight: '800', color: '#ffffff', marginBottom: '2px' }}>
-                            {addr.label}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '0.98rem', fontWeight: '800', color: '#ffffff', marginBottom: '2px' }}>
+                            {isCurrentLoc ? 'Use Current Location' : addr.label}
                           </div>
-                          <div style={{ fontSize: '0.82rem', color: '#64748b', lineHeight: 1.4 }}>
+                          <div style={{ fontSize: '0.82rem', color: '#64748b', lineHeight: 1.35, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {addr.address}
                           </div>
                         </div>
@@ -621,11 +1092,11 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
                             width: '22px',
                             height: '22px',
                             borderRadius: '50%',
-                            border: isSelected ? '2px solid #10b981' : '2px solid #475569',
+                            border: isSelected ? '2px solid #10b981' : '2px solid #334155',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            marginTop: '2px'
+                            flexShrink: 0
                           }}
                         >
                           {isSelected && <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981' }} />}
@@ -634,13 +1105,13 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
                     );
                   })}
 
-                  {/* Add New Address CTA */}
+                  {/* Add New Address Dashed Card */}
                   <div
                     onClick={() => setCurrentStep('add_address')}
                     style={{
-                      border: '1.5px dashed rgba(16, 185, 129, 0.4)',
-                      borderRadius: '18px',
-                      padding: '18px',
+                      border: '1.5px dashed #10b981',
+                      borderRadius: '20px',
+                      padding: '16px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -649,10 +1120,11 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
                       fontWeight: '800',
                       fontSize: '0.95rem',
                       cursor: 'pointer',
-                      background: 'rgba(16, 185, 129, 0.03)'
+                      background: 'rgba(16, 185, 129, 0.04)',
+                      transition: 'all 0.2s ease'
                     }}
                   >
-                    <Plus size={20} />
+                    <Plus size={20} color="#10b981" />
                     <span>Add New Address</span>
                   </div>
                 </div>
@@ -684,12 +1156,12 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
         )}
 
         {/* ========================================================================= */}
-        {/* STEP 2.5: ADD NEW ADDRESS (Full Page View)                                */}
+        {/* STEP 2.5: ADD NEW ADDRESS (Full Page View matching Mockup)                */}
         {/* ========================================================================= */}
         {currentStep === 'add_address' && (
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
             {/* Header Navbar */}
-            <div style={{ padding: '24px 20px 16px 20px', display: 'flex', alignItems: 'center', gap: '14px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+            <div style={{ padding: '20px 20px 14px 20px', display: 'flex', alignItems: 'center', gap: '14px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
               <button
                 type="button"
                 onClick={() => setCurrentStep('select_address')}
@@ -708,48 +1180,65 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
               >
                 <ArrowLeft size={20} />
               </button>
-              <div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, color: '#ffffff' }}>
-                  Add New Address
-                </h2>
-                <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '2px 0 0 0' }}>
-                  Save to your backend profile
-                </p>
-              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, color: '#ffffff' }}>
+                Add New Address
+              </h2>
             </div>
 
             <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Interactive Leaflet Map Box */}
+              <AddressMapPicker
+                onLocateGps={handleDetectCurrentLocation}
+                isLocating={detectingCurrentLocation}
+                onLocationSelect={(fullAddr, city, lat, lng) => {
+                  let cleanFull = (fullAddr || '').replace(/,?\s*\d{5,6}/g, '').replace(/,?\s*India$/i, '').trim();
+                  if (!cleanFull || cleanFull === 'UP' || cleanFull === 'India') cleanFull = city ? `${city}, UP` : 'Nizamabad, UP';
+                  setNewFullAddress(cleanFull);
+                  if (city) setNewCity(city);
+                }}
+                onMapReady={(map, marker) => {
+                  activeMapRef.current = map;
+                  activeMarkerRef.current = marker;
+                }}
+              />
+
               {/* Address Label Selector */}
               <div>
-                <label style={{ fontSize: '0.82rem', fontWeight: '700', color: '#94a3b8', display: 'block', marginBottom: '10px' }}>
+                <label style={{ fontSize: '0.86rem', fontWeight: '700', color: '#94a3b8', display: 'block', marginBottom: '10px' }}>
                   Address Label
                 </label>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   {[
                     { label: 'Home', icon: <Home size={16} /> },
                     { label: 'Office', icon: <Briefcase size={16} /> },
-                    { label: 'Other', icon: <MapPin size={16} /> }
+                    { label: 'Current', icon: <MapPin size={16} /> }
                   ].map((item) => {
                     const active = newAddressLabel === item.label;
                     return (
                       <button
                         key={item.label}
                         type="button"
-                        onClick={() => setNewAddressLabel(item.label)}
+                        onClick={() => {
+                          setNewAddressLabel(item.label);
+                          if (item.label === 'Current') {
+                            handleDetectCurrentLocation();
+                          }
+                        }}
                         style={{
                           flex: 1,
-                          padding: '12px',
-                          borderRadius: '14px',
+                          padding: '12px 14px',
+                          borderRadius: '9999px',
                           background: active ? 'rgba(16, 185, 129, 0.15)' : '#141d2b',
-                          border: active ? '1.5px solid #10b981' : '1px solid rgba(255, 255, 255, 0.08)',
+                          border: active ? '1.5px solid #10b981' : '1px solid rgba(255, 255, 255, 0.1)',
                           color: active ? '#10b981' : '#94a3b8',
                           fontWeight: '800',
                           fontSize: '0.88rem',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          gap: '6px',
-                          cursor: 'pointer'
+                          gap: '8px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
                         }}
                       >
                         {item.icon}
@@ -762,11 +1251,11 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
 
               {/* Full Address Input */}
               <div>
-                <label style={{ fontSize: '0.82rem', fontWeight: '700', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>
-                  Full Address *
+                <label style={{ fontSize: '0.86rem', fontWeight: '700', color: '#94a3b8', display: 'block', marginBottom: '8px' }}>
+                  Full Address
                 </label>
                 <div style={{ position: 'relative' }}>
-                  <MapPin size={18} color="#10b981" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                  <MapPin size={18} color="#10b981" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
                   <input
                     type="text"
                     value={newFullAddress}
@@ -774,8 +1263,8 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
                     placeholder="91 Orchard St, New York, NY 10002"
                     style={{
                       width: '100%',
-                      padding: '14px 14px 14px 44px',
-                      borderRadius: '14px',
+                      padding: '16px 16px 16px 48px',
+                      borderRadius: '16px',
                       background: '#141d2b',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                       color: '#ffffff',
@@ -786,13 +1275,13 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
                 </div>
               </div>
 
-              {/* Floor / Flat Input */}
+              {/* Floor / Flat / Building No. Input */}
               <div>
-                <label style={{ fontSize: '0.82rem', fontWeight: '700', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>
+                <label style={{ fontSize: '0.86rem', fontWeight: '700', color: '#94a3b8', display: 'block', marginBottom: '8px' }}>
                   Floor / Flat / Building No.
                 </label>
                 <div style={{ position: 'relative' }}>
-                  <Building size={18} color="#64748b" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                  <Layers size={18} color="#64748b" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
                   <input
                     type="text"
                     value={newFloorApt}
@@ -800,8 +1289,8 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
                     placeholder="e.g. 4th Floor, Apt 4B"
                     style={{
                       width: '100%',
-                      padding: '14px 14px 14px 44px',
-                      borderRadius: '14px',
+                      padding: '16px 16px 16px 48px',
+                      borderRadius: '16px',
                       background: '#141d2b',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                       color: '#ffffff',
@@ -814,11 +1303,11 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
 
               {/* Landmark Input */}
               <div>
-                <label style={{ fontSize: '0.82rem', fontWeight: '700', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>
+                <label style={{ fontSize: '0.86rem', fontWeight: '700', color: '#94a3b8', display: 'block', marginBottom: '8px' }}>
                   Landmark
                 </label>
                 <div style={{ position: 'relative' }}>
-                  <Landmark size={18} color="#64748b" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                  <Compass size={18} color="#64748b" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
                   <input
                     type="text"
                     value={newLandmark}
@@ -826,8 +1315,8 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
                     placeholder="e.g. Next to Orchard Cafe"
                     style={{
                       width: '100%',
-                      padding: '14px 14px 14px 44px',
-                      borderRadius: '14px',
+                      padding: '16px 16px 16px 48px',
+                      borderRadius: '16px',
                       background: '#141d2b',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                       color: '#ffffff',
@@ -1074,7 +1563,7 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
-                    <span>Customer Platform Fee (5%)</span>
+                    <span>Customer Platform Fee ({customerPlatformFeePercent}%)</span>
                     <span style={{ color: '#38bdf8', fontWeight: '800' }}>+ ₹{platformFee.toLocaleString()}</span>
                   </div>
 

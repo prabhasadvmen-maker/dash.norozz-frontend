@@ -59,12 +59,12 @@ const OnlineOfflineModal = ({ isOpen, targetStatus, onClose, onConfirm, loading 
         </div>
 
         {/* Title */}
-        <h3 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '10px', color: 'var(--text-primary)' }}>
+        <h3 style={{ fontSize: '1.4rem', fontWeight: '900', marginBottom: '10px', color: '#0f172a' }}>
           {isGoingOnline ? 'Go Online?' : 'Go Offline?'}
         </h3>
 
         {/* Description */}
-        <p style={{ fontSize: '0.92rem', color: 'var(--text-secondary)', marginBottom: '28px', lineHeight: '1.55' }}>
+        <p style={{ fontSize: '0.92rem', color: '#334155', marginBottom: '28px', lineHeight: '1.55', fontWeight: '600' }}>
           {isGoingOnline
             ? 'You will start receiving high-paying booking requests near your location instantly.'
             : 'You will pause receiving new customer booking requests. You can switch back online anytime.'}
@@ -82,7 +82,7 @@ const OnlineOfflineModal = ({ isOpen, targetStatus, onClose, onConfirm, loading 
               padding: '14px',
               borderRadius: '14px',
               fontSize: '1rem',
-              fontWeight: '700',
+              fontWeight: '800',
               background: isGoingOnline ? '#16a34a' : '#dc2626',
               color: '#ffffff',
               border: 'none',
@@ -104,10 +104,10 @@ const OnlineOfflineModal = ({ isOpen, targetStatus, onClose, onConfirm, loading 
               padding: '13px',
               borderRadius: '14px',
               fontSize: '0.95rem',
-              fontWeight: '600',
+              fontWeight: '700',
               background: '#f1f5f9',
-              color: 'var(--text-secondary)',
-              border: '1px solid var(--border-light)',
+              color: '#334155',
+              border: '1px solid #cbd5e1',
               cursor: 'pointer'
             }}
           >

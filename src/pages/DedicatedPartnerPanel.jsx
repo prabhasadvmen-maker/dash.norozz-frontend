@@ -25,7 +25,7 @@ import {
   ZapOff,
 } from 'lucide-react';
 
-const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
+const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const { dashboard, todayBookings, updateAvailability, refetchAll } = usePartner(activeTab);
   const [refreshing, setRefreshing] = useState(false);
@@ -259,7 +259,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
           {/* View Title Header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
             <div>
-              <h2 style={{ fontSize: '1.4rem', fontWeight: '800', margin: 0 }}>
+              <h2 style={{ fontSize: '1.45rem', fontWeight: '900', margin: 0, color: '#0f172a' }}>
                 {activeTab === 'dashboard' && 'Technician Earnings & Bookings Overview'}
                 {activeTab === 'kycStatus' && 'Technician KYC Verification Status'}
                 {activeTab === 'bookings' && 'Assigned Customer Jobs & Earnings'}
@@ -276,7 +276,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
                 {activeTab === 'support' && 'Technician Priority Helpdesk'}
                 {activeTab === 'profile' && 'Service Technician Partner Profile'}
               </h2>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+              <p style={{ fontSize: '0.86rem', color: '#475569', marginTop: '4px', fontWeight: '700' }}>
                 {currentUser?.name || 'Service Partner'} ({resolvedCategoryNames || 'Technician'}) • {resolvedCityName} Zone
               </p>
             </div>
@@ -400,13 +400,13 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout }) => {
           )}
 
           {/* PROFILE & SUB TABS (PROFILE, EDIT PROFILE, DOCUMENTS, BANK DETAILS, REFERRAL, WALLET, SETTINGS) */}
-          {activeTab === 'profile' && <PartnerProfileView partnerData={currentUser} initialSubTab="overview" onTabChange={(t) => setActiveTab(t)} />}
-          {activeTab === 'editProfile' && <PartnerProfileView partnerData={currentUser} initialSubTab="edit" onTabChange={(t) => setActiveTab(t)} />}
-          {activeTab === 'documents' && <PartnerProfileView partnerData={currentUser} initialSubTab="documents" onTabChange={(t) => setActiveTab(t)} />}
-          {activeTab === 'bankDetails' && <PartnerProfileView partnerData={currentUser} initialSubTab="bank" onTabChange={(t) => setActiveTab(t)} />}
-          {activeTab === 'referral' && <PartnerProfileView partnerData={currentUser} initialSubTab="referral" onTabChange={(t) => setActiveTab(t)} />}
-          {activeTab === 'wallet' && <PartnerProfileView partnerData={currentUser} initialSubTab="wallet" onTabChange={(t) => setActiveTab(t)} />}
-          {activeTab === 'settings' && <PartnerProfileView partnerData={currentUser} initialSubTab="settings" onTabChange={(t) => setActiveTab(t)} />}
+          {activeTab === 'profile' && <PartnerProfileView partnerData={currentUser} initialSubTab="overview" onTabChange={(t) => setActiveTab(t)} onUpdateUser={onUpdateUser} />}
+          {activeTab === 'editProfile' && <PartnerProfileView partnerData={currentUser} initialSubTab="edit" onTabChange={(t) => setActiveTab(t)} onUpdateUser={onUpdateUser} />}
+          {activeTab === 'documents' && <PartnerProfileView partnerData={currentUser} initialSubTab="documents" onTabChange={(t) => setActiveTab(t)} onUpdateUser={onUpdateUser} />}
+          {activeTab === 'bankDetails' && <PartnerProfileView partnerData={currentUser} initialSubTab="bank" onTabChange={(t) => setActiveTab(t)} onUpdateUser={onUpdateUser} />}
+          {activeTab === 'referral' && <PartnerProfileView partnerData={currentUser} initialSubTab="referral" onTabChange={(t) => setActiveTab(t)} onUpdateUser={onUpdateUser} />}
+          {activeTab === 'wallet' && <PartnerProfileView partnerData={currentUser} initialSubTab="wallet" onTabChange={(t) => setActiveTab(t)} onUpdateUser={onUpdateUser} />}
+          {activeTab === 'settings' && <PartnerProfileView partnerData={currentUser} initialSubTab="settings" onTabChange={(t) => setActiveTab(t)} onUpdateUser={onUpdateUser} />}
 
           {/* UNLOCKED TABS FOR APPROVED PARTNERS */}
           {isApproved && (

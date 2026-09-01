@@ -40,7 +40,7 @@ const PartnerQuickActions = ({ onNavigateTab }) => {
 
   return (
     <div style={{ marginBottom: '24px' }}>
-      <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: '14px', color: 'var(--text-primary)' }}>
+      <h3 style={{ fontSize: '1.15rem', fontWeight: '900', marginBottom: '14px', color: '#0f172a' }}>
         Quick Actions
       </h3>
 
@@ -57,8 +57,8 @@ const PartnerQuickActions = ({ onNavigateTab }) => {
                 background: '#ffffff',
                 borderRadius: 'var(--radius-lg)',
                 padding: '16px 20px',
-                border: '1px solid var(--border-light)',
-                boxShadow: 'var(--shadow-sm)',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.03)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '14px',
@@ -83,7 +83,7 @@ const PartnerQuickActions = ({ onNavigateTab }) => {
                 <IconComponent size={20} color={item.color} />
               </div>
 
-              <span style={{ fontSize: '0.92rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+              <span style={{ fontSize: '0.94rem', fontWeight: '800', color: '#0f172a' }}>
                 {item.title}
               </span>
             </button>

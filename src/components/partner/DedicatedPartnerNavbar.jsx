@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { RefreshCw, LogOut, ShieldCheck, Lock, Menu, User, MapPin, Briefcase, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { RefreshCw, LogOut, ShieldCheck, Lock, Menu, Briefcase, MapPin, ChevronDown } from 'lucide-react';
+import LanguageSelector from '../common/LanguageSelector.jsx';
 
 const DedicatedPartnerNavbar = ({
   currentUser,
@@ -18,51 +19,42 @@ const DedicatedPartnerNavbar = ({
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
-    const handleClickOutside = () => setDropdownOpen(false);
-    window.addEventListener('click', handleClickOutside);
-    return () => window.removeEventListener('click', handleClickOutside);
-  }, []);
+    const handleOutsideClick = () => setDropdownOpen(false);
+    if (dropdownOpen) {
+      window.addEventListener('click', handleOutsideClick);
+    }
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, [dropdownOpen]);
 
-  const partnerName = currentUser?.name || 'Service Partner';
-  const partnerEmail = currentUser?.email || 'partner@norozz.com';
+  const partnerName = currentUser?.name || currentUser?.agencyName || 'Service Partner';
+  const partnerEmail = currentUser?.email || currentUser?.phone || 'partner@norozz.com';
   const displayCategory = categoryNames || 'Service Technician';
-  const initialLetter = partnerName.charAt(0).toUpperCase();
+  const initialLetter = (partnerName[0] || 'P').toUpperCase();
 
   return (
-    <header style={{
-      background: '#ffffff',
-      borderBottom: '1px solid #e2e8f0',
-      padding: '0 24px',
-      height: '60px',
-      boxSizing: 'border-box',
+    <header className="card card-glow" style={{
+      margin: 0,
+      borderRadius: '0 0 24px 24px',
+      padding: '14px 24px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
       position: 'sticky',
       top: 0,
       zIndex: 100,
-      boxShadow: '0 2px 12px rgba(0, 0, 0, 0.03)'
+      background: 'rgba(255, 255, 255, 0.96)',
+      backdropFilter: 'blur(12px)',
+      borderBottom: '1px solid #e2e8f0',
+      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)'
     }}>
-      {/* Left Area: Toggle & Scope */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+      {/* Left Title & Mobile Menu Toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         {setCollapsed && (
           <button
             type="button"
             onClick={() => setCollapsed(!collapsed)}
-            title="Toggle Sidebar"
-            style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '10px',
-              width: '38px',
-              height: '38px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              color: '#1e293b',
-              transition: 'all 0.2s ease'
-            }}
+            className="btn btn-ghost"
+            style={{ padding: '8px', borderRadius: '12px' }}
           >
             <Menu size={20} color="#0f172a" />
           </button>
@@ -87,8 +79,12 @@ const DedicatedPartnerNavbar = ({
         </div>
       </div>
 
-      {/* Right Controls: Online Toggle, Refresh, Clickable User Pill with Logout Dropdown */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+      {/* Right Controls: KYC Status, Online Toggle, Language Selector, Refresh & User Dropdown */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <span className={`badge ${isApproved ? 'badge-success' : 'badge-warning'}`} style={{ padding: '6px 14px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '800' }}>
+          {isApproved ? <ShieldCheck size={14} /> : <Lock size={14} />}
+          {isApproved ? 'VERIFIED TECHNICIAN' : 'KYC PENDING APPROVAL'}
+        </span>
 
         {/* Online / Offline Toggle Pill */}
         {onToggleOnlineClick && (
@@ -102,9 +98,9 @@ const DedicatedPartnerNavbar = ({
               padding: '6px 14px',
               borderRadius: '9999px',
               fontSize: '0.78rem',
-              fontWeight: '700',
+              fontWeight: '800',
               background: isOnline ? '#ecfdf5' : '#fef2f2',
-              color: isOnline ? '#059669' : '#dc2626',
+              color: isOnline ? '#047857' : '#dc2626',
               border: `1px solid ${isOnline ? '#a7f3d0' : '#fecaca'}`,
               cursor: 'pointer',
               transition: 'all 0.2s ease'
@@ -114,6 +110,9 @@ const DedicatedPartnerNavbar = ({
             <span>{isOnline ? 'Online' : 'Offline'}</span>
           </button>
         )}
+
+        {/* Sarvam AI Language Selector */}
+        <LanguageSelector compact />
 
         {/* Refresh Button */}
         <button
@@ -155,10 +154,6 @@ const DedicatedPartnerNavbar = ({
               cursor: 'pointer',
               transition: 'all 0.2s ease'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-            onMouseLeave={(e) => {
-              if (!dropdownOpen) e.currentTarget.style.background = '#f8fafc';
-            }}
           >
             <div style={{
               width: '34px',
@@ -178,10 +173,10 @@ const DedicatedPartnerNavbar = ({
 
             <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
               <span style={{ fontSize: '0.82rem', fontWeight: '800', color: '#0f172a', lineHeight: '1.2' }}>
-                {partnerEmail}
+                {partnerName}
               </span>
               <span style={{ fontSize: '0.68rem', color: '#059669', fontWeight: '700', whiteSpace: 'nowrap' }}>
-                {partnerName} • {displayCategory}
+                {displayCategory}
               </span>
             </div>
 
@@ -246,15 +241,12 @@ const DedicatedPartnerNavbar = ({
                   transition: 'background-color 0.15s ease',
                   marginTop: '4px'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
-                onMouseLeave={(e) => e.currentTarget.style.background = '#fef2f2'}
               >
                 <LogOut size={16} color="#ef4444" /> Sign Out & Logout
               </button>
             </div>
           )}
         </div>
-
       </div>
 
       <style>{`

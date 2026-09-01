@@ -17,6 +17,7 @@ import {
   Sparkles,
   ChevronRight
 } from 'lucide-react';
+import LanguageSelector from './common/LanguageSelector.jsx';
 
 const Sidebar = ({ activeTab, setActiveTab, onLogout }) => {
   const menuItems = [
@@ -49,6 +50,11 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout }) => {
       boxShadow: 'var(--shadow-md)'
     }}>
       <div>
+        {/* Sarvam AI Language Selector */}
+        <div style={{ marginBottom: '16px', padding: '0 4px' }}>
+          <LanguageSelector compact style={{ width: '100%' }} />
+        </div>
+
         {/* Section Header */}
         <div style={{
           padding: '0 12px 14px 12px',

@@ -8,6 +8,7 @@ import CustomerProfileView from '../components/customer/CustomerProfileView';
 import CustomerWalletView from '../components/customer/CustomerWalletView';
 import { useAuth } from '../hooks/useAuth.js';
 import { authService } from '../services/auth.service.js';
+import { geoapifyService } from '../services/geoapify.service.js';
 import { toast } from '../utils/toast.js';
 import {
   Search,
@@ -112,14 +113,13 @@ const CustomerDashboard = ({ currentUser, onLogout, selectedCity }) => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
 
-          // Reverse Geocoding via OpenStreetMap Nominatim API
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-          const data = await res.json();
+          // Reverse Geocoding via Geoapify API
+          const data = await geoapifyService.reverseGeocode(lat, lng);
 
-          const formattedAddress = data?.display_name || `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`;
-          const city = data?.address?.city || data?.address?.suburb || data?.address?.town || data?.address?.state_district || selectedCity || 'Delhi NCR';
-          const state = data?.address?.state || '';
-          const country = data?.address?.country || 'India';
+          const formattedAddress = data?.formatted || `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`;
+          const city = data?.city || selectedCity || 'Delhi NCR';
+          const state = data?.state || '';
+          const country = data?.country || 'India';
 
           await updateProfileWithDetails(formattedAddress, city, state, country, 'Location saved to profile');
         } catch (err) {

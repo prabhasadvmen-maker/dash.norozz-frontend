@@ -9,6 +9,7 @@ import SuperAdminCouponsView from '../components/superAdmin/SuperAdminCouponsVie
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import { useSuperAdmin } from '../hooks/useSuperAdmin.js';
 import { useCatalog } from '../hooks/useCatalog.js';
+import { superAdminService } from '../services/superAdmin.service.js';
 import {
   Users,
   Briefcase,
@@ -122,43 +123,63 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
   const [selectedServiceForPackages, setSelectedServiceForPackages] = useState(null);
   const [isPkgModalOpen, setIsPkgModalOpen] = useState(false);
 
-  // Referral Bonus Settings State
+  // Referral & Platform Settings State
   const [referralBonusAmount, setReferralBonusAmount] = useState(500);
+  const [customerPlatformFeePercent, setCustomerPlatformFeePercent] = useState(5);
+  const [partnerPlatformFeePercent, setPartnerPlatformFeePercent] = useState(10);
   const [savingReferral, setSavingReferral] = useState(false);
+  const [savingPlatformFee, setSavingPlatformFee] = useState(false);
   const [referralSuccessMsg, setReferralSuccessMsg] = useState('');
+  const [platformSuccessMsg, setPlatformSuccessMsg] = useState('');
 
   useEffect(() => {
-    fetch('/api/super-admin/referral-settings', {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.data?.referralBonusAmount) {
-          setReferralBonusAmount(data.data.referralBonusAmount);
-        }
+    superAdminService
+      .getSettings()
+      .then((res) => {
+        const data = res.data?.data || res.data || {};
+        if (data.referralBonusAmount !== undefined) setReferralBonusAmount(data.referralBonusAmount);
+        if (data.customerPlatformFeePercent !== undefined) setCustomerPlatformFeePercent(data.customerPlatformFeePercent);
+        if (data.partnerPlatformFeePercent !== undefined) setPartnerPlatformFeePercent(data.partnerPlatformFeePercent);
       })
-      .catch(() => {});
+      .catch((err) => console.warn('Fetch settings error:', err));
   }, []);
+
+  const handleSavePlatformFeeConfig = async (e) => {
+    e.preventDefault();
+    setSavingPlatformFee(true);
+    setPlatformSuccessMsg('');
+    try {
+      const res = await superAdminService.updateSettings({
+        customerPlatformFeePercent: Number(customerPlatformFeePercent),
+        partnerPlatformFeePercent: Number(partnerPlatformFeePercent),
+      });
+      const data = res.data || {};
+      if (data) {
+        setPlatformSuccessMsg('Platform Fee & Commission Rates updated successfully!');
+        setTimeout(() => setPlatformSuccessMsg(''), 4000);
+      }
+    } catch (err) {
+      console.error('Save platform fee error:', err);
+    } finally {
+      setSavingPlatformFee(false);
+    }
+  };
 
   const handleSaveReferralBonus = async (e) => {
     e.preventDefault();
     setSavingReferral(true);
+    setReferralSuccessMsg('');
     try {
-      const res = await fetch('/api/super-admin/referral-settings', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ referralBonusAmount: Number(referralBonusAmount) }),
+      const res = await superAdminService.updateSettings({
+        referralBonusAmount: Number(referralBonusAmount),
       });
-      const data = await res.json();
-      if (data.success) {
+      const data = res.data || {};
+      if (data) {
         setReferralSuccessMsg('Partner Referral Bonus updated successfully!');
-        setTimeout(() => setReferralSuccessMsg(''), 3000);
+        setTimeout(() => setReferralSuccessMsg(''), 4000);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Save referral bonus error:', err);
     } finally {
       setSavingReferral(false);
     }
@@ -387,14 +408,15 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     }
   };
 
-  // Skill Inputs State per Category
+  // Skill Inputs State per Service & Category Filter
   const [skillInputs, setSkillInputs] = useState({});
+  const [skillCatFilter, setSkillCatFilter] = useState('ALL');
 
-  const handleAddSkillToCategory = async (catId) => {
-    const inputVal = skillInputs[catId]?.trim();
+  const handleAddSkillToService = async (serviceId, catId) => {
+    const inputVal = skillInputs[serviceId]?.trim();
     if (!inputVal) return;
-    await createSkill({ name: inputVal, category: catId });
-    setSkillInputs((prev) => ({ ...prev, [catId]: '' }));
+    await createSkill({ name: inputVal, service: serviceId, category: catId });
+    setSkillInputs((prev) => ({ ...prev, [serviceId]: '' }));
   };
 
   const handleRemoveSkillFromCategory = async (skillId) => {
@@ -789,7 +811,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
             </div>
           )}
 
-          {/* TAB 5.5: SKILL MANAGEMENT PAGE */}
+          {/* TAB 5.5: SERVICE-WISE SKILL MANAGEMENT PAGE */}
           {activeTab === 'skills' && (
             <div style={{
               background: '#ffffff',
@@ -798,124 +820,175 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
               border: '1px solid #f0f0f0',
               boxShadow: '0 8px 26px rgba(0, 0, 0, 0.03)'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
-                  <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                    <Grid size={20} color="#10b981" /> Category-wise Skill Options Management ({categories.length} Categories)
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                    <Grid size={22} color="#10b981" /> Service-wise Skill Options Management ({services.length} Services)
                   </h3>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-                    Manage skill choices for each category. Technicians will see these skills on Partner Onboarding Step 4.
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                    Select a Service under any Category to add specific technical skills. Partners will select these skills during Step 3 Onboarding.
                   </p>
+                </div>
+
+                {/* Category Filter Dropdown */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '0.84rem', fontWeight: '700', color: '#475569' }}>Filter Category:</span>
+                  <select
+                    value={skillCatFilter}
+                    onChange={(e) => setSkillCatFilter(e.target.value)}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: '12px',
+                      border: '1.5px solid #cbd5e1',
+                      background: '#ffffff',
+                      fontSize: '0.86rem',
+                      fontWeight: '700',
+                      outline: 'none',
+                      color: '#0f172a',
+                    }}
+                  >
+                    <option value="ALL">All Categories ({categories.length})</option>
+                    {categories.map((c) => (
+                      <option key={c._id} value={c._id}>{c.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              {categories.length === 0 ? (
-                <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  No categories found. Create a category first.
+              {services.length === 0 ? (
+                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  No services found. Please create a Service under a Category first.
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '18px' }}>
-                  {categories.map((cat) => {
-                    const catSkills = skills.filter((sk) => {
-                      const cId = typeof sk.category === 'object' ? sk.category?._id : sk.category;
-                      return cId === cat._id;
-                    });
-                    return (
-                      <div
-                        key={cat._id}
-                        style={{
-                          padding: '20px',
-                          background: '#ffffff',
-                          borderRadius: '16px',
-                          border: '1.5px solid #e2e8f0',
-                          boxShadow: '0 4px 14px rgba(0,0,0,0.03)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'space-between',
-                        }}
-                      >
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                            <div style={{ fontWeight: '800', fontSize: '1.05rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <Grid size={18} color="#7c3aed" />
-                              {cat.name}
-                            </div>
-                            <span className="badge badge-purple" style={{ fontSize: '0.75rem', fontWeight: '700' }}>
-                              {catSkills.length} Skills
-                            </span>
-                          </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
+                  {services
+                    .filter((srv) => {
+                      if (skillCatFilter === 'ALL') return true;
+                      const srvCatId = typeof srv.category === 'object' ? srv.category?._id : srv.category;
+                      return String(srvCatId) === String(skillCatFilter);
+                    })
+                    .map((srv) => {
+                      const srvSkills = skills.filter((sk) => {
+                        const skSrvId = typeof sk.service === 'object' ? sk.service?._id : sk.service;
+                        const skCatId = typeof sk.category === 'object' ? sk.category?._id : sk.category;
+                        const srvCatId = typeof srv.category === 'object' ? srv.category?._id : srv.category;
+                        return String(skSrvId) === String(srv._id) || (!skSrvId && String(skCatId) === String(srvCatId));
+                      });
 
-                          {/* Skill Tags List */}
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px', minHeight: '42px', alignItems: 'center' }}>
-                            {catSkills.length === 0 ? (
-                              <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontStyle: 'italic' }}>
-                                No skills added yet. Type a skill name below & click Add.
-                              </span>
-                            ) : (
-                              catSkills.map((sk) => (
-                                <span
-                                  key={sk._id}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    padding: '5px 10px',
-                                    borderRadius: '20px',
-                                    background: '#f0fdf4',
-                                    border: '1px solid #bbf7d0',
-                                    color: '#15803d',
-                                    fontSize: '0.78rem',
-                                    fontWeight: '700',
-                                  }}
-                                >
-                                  {sk.name}
-                                  <Trash2
-                                    size={12}
-                                    color="#ef4444"
-                                    style={{ cursor: 'pointer' }}
-                                    onClick={() => handleRemoveSkillFromCategory(sk._id)}
-                                    title="Delete Skill Document"
-                                  />
+                      const parentCatName = typeof srv.category === 'object' ? srv.category?.name : (categories.find((c) => String(c._id) === String(srv.category))?.name || 'Category');
+
+                      return (
+                        <div
+                          key={srv._id}
+                          style={{
+                            padding: '22px',
+                            background: '#ffffff',
+                            borderRadius: '18px',
+                            border: '1.5px solid #e2e8f0',
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                          }}
+                        >
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
+                              <div>
+                                <span style={{ fontSize: '0.72rem', fontWeight: '800', color: '#16a34a', textTransform: 'uppercase', background: '#f0fdf4', padding: '3px 8px', borderRadius: '6px', border: '1px solid #bbf7d0', display: 'inline-block', marginBottom: '4px' }}>
+                                  {parentCatName}
                                 </span>
-                              ))
-                            )}
+                                <div style={{ fontWeight: '800', fontSize: '1.08rem', color: '#0f172a', lineHeight: '1.3' }}>
+                                  {srv.name}
+                                </div>
+                              </div>
+                              <span className="badge badge-purple" style={{ fontSize: '0.75rem', fontWeight: '700' }}>
+                                {srvSkills.length} Skills
+                              </span>
+                            </div>
+
+                            {/* Skill Tags List */}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '18px', minHeight: '44px', alignItems: 'center' }}>
+                              {srvSkills.length === 0 ? (
+                                <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                                  No skills created for this service yet. Type skill name below & hit Enter.
+                                </span>
+                              ) : (
+                                srvSkills.map((sk) => (
+                                  <span
+                                    key={sk._id}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '6px',
+                                      padding: '6px 12px',
+                                      borderRadius: '20px',
+                                      background: '#f0fdf4',
+                                      border: '1px solid #bbf7d0',
+                                      color: '#15803d',
+                                      fontSize: '0.8rem',
+                                      fontWeight: '700',
+                                    }}
+                                  >
+                                    {sk.name}
+                                    <Trash2
+                                      size={13}
+                                      color="#ef4444"
+                                      style={{ cursor: 'pointer' }}
+                                      onClick={() => handleRemoveSkillFromCategory(sk._id)}
+                                      title="Delete Skill Document"
+                                    />
+                                  </span>
+                                ))
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Add Skill Input Box */}
+                          <div style={{ display: 'flex', gap: '8px', paddingTop: '14px', borderTop: '1px dashed #e2e8f0' }}>
+                            <input
+                              type="text"
+                              placeholder={`+ Add skill for ${srv.name}...`}
+                              value={skillInputs[srv._id] || ''}
+                              onChange={(e) => setSkillInputs({ ...skillInputs, [srv._id]: e.target.value })}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const cId = typeof srv.category === 'object' ? srv.category?._id : srv.category;
+                                  handleAddSkillToService(srv._id, cId);
+                                }
+                              }}
+                              style={{
+                                flex: 1,
+                                padding: '9px 12px',
+                                borderRadius: '12px',
+                                border: '1px solid #cbd5e1',
+                                fontSize: '0.84rem',
+                                outline: 'none',
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const cId = typeof srv.category === 'object' ? srv.category?._id : srv.category;
+                                handleAddSkillToService(srv._id, cId);
+                              }}
+                              style={{
+                                padding: '9px 14px',
+                                borderRadius: '12px',
+                                background: '#16a34a',
+                                color: '#ffffff',
+                                border: 'none',
+                                fontWeight: '700',
+                                fontSize: '0.82rem',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Add
+                            </button>
                           </div>
                         </div>
-
-                        {/* Add Skill Input Box */}
-                        <div style={{ display: 'flex', gap: '8px', paddingTop: '12px', borderTop: '1px dashed #e2e8f0' }}>
-                          <input
-                            type="text"
-                            placeholder="+ Type skill name & hit enter..."
-                            value={skillInputs[cat._id] || ''}
-                            onChange={(e) => setSkillInputs({ ...skillInputs, [cat._id]: e.target.value })}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleAddSkillToCategory(cat._id);
-                              }
-                            }}
-                            style={{
-                              flex: 1,
-                              padding: '8px 12px',
-                              borderRadius: '10px',
-                              border: '1px solid #cbd5e1',
-                              fontSize: '0.82rem',
-                              outline: 'none',
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleAddSkillToCategory(cat._id)}
-                            className="btn btn-primary btn-sm"
-                            style={{ padding: '8px 14px', borderRadius: '10px', fontSize: '0.8rem', fontWeight: '700' }}
-                          >
-                            <Plus size={14} /> Add
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               )}
             </div>
@@ -1429,16 +1502,59 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
           {activeTab === 'settings' && (
             <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
               <div className="mui-card" style={{ padding: '26px', maxWidth: '480px', flex: '1 1 400px' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Settings size={20} color="#2563eb" /> Platform Settings & Commission Rates
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Settings size={20} color="#2563eb" /> Platform Fee & Commission Rates
                 </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <p style={{ fontSize: '0.84rem', color: '#64748b', marginBottom: '16px' }}>
+                  Set the percentage fee charged to customers on bookings and commission rate for service partners.
+                </p>
+                <form onSubmit={handleSavePlatformFeeConfig} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div className="form-group">
-                    <label className="form-label">Platform Default Commission (%)</label>
-                    <input type="number" className="form-input" defaultValue={20} />
+                    <label className="form-label" style={{ fontWeight: '800', color: '#0f172a' }}>Customer Platform Fee (%)</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={customerPlatformFeePercent}
+                      onChange={(e) => setCustomerPlatformFeePercent(e.target.value)}
+                      placeholder="e.g. 5"
+                      min={0}
+                      max={100}
+                      required
+                      style={{ fontSize: '1.1rem', fontWeight: '800' }}
+                    />
+                    <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                      Current: <strong>{customerPlatformFeePercent}%</strong> added to customer's booking total.
+                    </span>
                   </div>
-                  <button className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>Save Configuration</button>
-                </div>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '800', color: '#0f172a' }}>Partner Platform Fee / Commission (%)</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={partnerPlatformFeePercent}
+                      onChange={(e) => setPartnerPlatformFeePercent(e.target.value)}
+                      placeholder="e.g. 10"
+                      min={0}
+                      max={100}
+                      required
+                      style={{ fontSize: '1.1rem', fontWeight: '800' }}
+                    />
+                    <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                      Current: <strong>{partnerPlatformFeePercent}%</strong> commission deducted from partner payout.
+                    </span>
+                  </div>
+
+                  {platformSuccessMsg && (
+                    <div style={{ background: '#f0fdf4', color: '#15803d', padding: '10px 14px', border: '1px solid #bbf7d0', fontSize: '0.84rem', fontWeight: '800', borderRadius: '8px' }}>
+                      ✓ {platformSuccessMsg}
+                    </div>
+                  )}
+
+                  <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', padding: '12px 20px', fontWeight: '800' }} disabled={savingPlatformFee}>
+                    {savingPlatformFee ? 'Saving...' : 'Save Configuration'}
+                  </button>
+                </form>
               </div>
 
               <div className="mui-card" style={{ padding: '26px', maxWidth: '520px', flex: '1 1 400px', borderLeft: '4px solid #701a75' }}>

@@ -75,9 +75,9 @@ const TechnicianGreetingHeader = ({ currentUser, categoryNames, isOnline, onTogg
           <h2
             style={{
               fontSize: '1.35rem',
-              fontWeight: '800',
+              fontWeight: '900',
               margin: 0,
-              color: 'var(--text-primary)',
+              color: '#0f172a',
               display: 'flex',
               alignItems: 'center',
               gap: '6px'
@@ -87,18 +87,18 @@ const TechnicianGreetingHeader = ({ currentUser, categoryNames, isOnline, onTogg
           </h2>
           <p
             style={{
-              fontSize: '0.84rem',
-              color: 'var(--text-muted)',
-              margin: '3px 0 0 0',
-              fontWeight: '600',
+              fontSize: '0.86rem',
+              color: '#334155',
+              margin: '4px 0 0 0',
+              fontWeight: '700',
               display: 'flex',
               alignItems: 'center',
               gap: '6px'
             }}
           >
-            <span>{category}</span>
+            <span style={{ color: '#0f172a' }}>{category}</span>
             <span>•</span>
-            <span style={{ color: '#2563eb', fontFamily: 'monospace', fontWeight: '700' }}>{partnerCode}</span>
+            <span style={{ color: '#0284c7', fontFamily: 'monospace', fontWeight: '800' }}>{partnerCode}</span>
           </p>
         </div>
       </div>

@@ -31,4 +31,5 @@ export const customerService = {
 
   // Coupon Validation & Application API
   applyCoupon: (data) => axiosInstance.post('/customer/coupons/apply', data),
+  getSystemSettings: () => axiosInstance.get('/customer/system-settings'),
 };

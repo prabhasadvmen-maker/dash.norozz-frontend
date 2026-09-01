@@ -17,4 +17,8 @@ export const superAdminService = {
   createCoupon: (data) => axiosInstance.post('/super-admin/coupons', data),
   updateCoupon: (id, data) => axiosInstance.put(`/super-admin/coupons/${id}`, data),
   deleteCoupon: (id) => axiosInstance.delete(`/super-admin/coupons/${id}`),
+
+  // Platform & Referral Settings
+  getSettings: () => axiosInstance.get('/super-admin/referral-settings'),
+  updateSettings: (data) => axiosInstance.put('/super-admin/referral-settings', data),
 };

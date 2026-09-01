@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, Plus, KeyRound, MapPin, Power, Search, Edit3, LogIn, Loader2, Settings } from 'lucide-react';
+import { Building2, Plus, KeyRound, MapPin, Power, Search, Edit3, LogIn, Loader2, Settings, Trash2 } from 'lucide-react';
 import CityAdminModal from './CityAdminModal';
 import { useSuperAdmin } from '../../hooks/useSuperAdmin.js';
 import { cityService } from '../../services/city.service.js';
@@ -7,7 +7,7 @@ import { useAuthContext } from '../../contexts/AuthContext.jsx';
 import { toast } from '../../utils/toast.js';
 
 const CityAdminManagement = () => {
-  const { cityAdmins, createCityAdmin, updateCityAdminStatus, impersonateCityAdmin } = useSuperAdmin();
+  const { cityAdmins, createCityAdmin, updateCityAdminStatus, impersonateCityAdmin, deleteCityAdmin } = useSuperAdmin();
   const { login, loginNewTab } = useAuthContext();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' | 'edit' | 'resetPassword'
@@ -80,6 +80,16 @@ const CityAdminManagement = () => {
   const handleToggleStatus = async (admin) => {
     const newStatus = admin.status === 'active' ? 'inactive' : 'active';
     await updateCityAdminStatus({ id: admin._id, status: newStatus });
+  };
+
+  const handleDeleteAdmin = async (admin) => {
+    if (window.confirm(`Are you sure you want to permanently delete City Admin '${admin.name}' (${admin.email})?`)) {
+      try {
+        await deleteCityAdmin(admin._id);
+      } catch (err) {
+        console.error('Failed to delete city admin:', err);
+      }
+    }
   };
 
   const handleDirectLogin = async (admin) => {
@@ -378,7 +388,7 @@ const CityAdminManagement = () => {
                                 padding: '8px 12px',
                                 fontSize: '0.82rem',
                                 fontWeight: '700',
-                                color: isActive ? '#dc2626' : '#16a34a',
+                                color: isActive ? '#d97706' : '#16a34a',
                                 background: 'transparent',
                                 border: 'none',
                                 borderRadius: '8px',
@@ -386,10 +396,33 @@ const CityAdminManagement = () => {
                                 textAlign: 'left',
                                 width: '100%'
                               }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = isActive ? '#fef2f2' : '#f0fdf4'}
+                              onMouseEnter={(e) => e.currentTarget.style.background = isActive ? '#fffbebfb' : '#f0fdf4'}
                               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                             >
-                              <Power size={15} color={isActive ? '#dc2626' : '#16a34a'} /> {isActive ? 'Disable Admin' : 'Enable Admin'}
+                              <Power size={15} color={isActive ? '#d97706' : '#16a34a'} /> {isActive ? 'Disable Admin' : 'Enable Admin'}
+                            </button>
+
+                            <button
+                              onClick={() => { setActiveDropdownId(null); handleDeleteAdmin(admin); }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '8px 12px',
+                                fontSize: '0.82rem',
+                                fontWeight: '700',
+                                color: '#dc2626',
+                                background: 'transparent',
+                                border: 'none',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                width: '100%'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <Trash2 size={15} color="#dc2626" /> Delete City Admin
                             </button>
                           </div>
                         )}

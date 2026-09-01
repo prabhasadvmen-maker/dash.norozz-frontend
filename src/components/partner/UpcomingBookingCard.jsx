@@ -75,7 +75,7 @@ const UpcomingBookingCard = ({ booking, onViewAllClick, onOpenFulfillment }) => 
     <div style={{ marginBottom: '24px' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-        <h3 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)' }}>
+        <h3 style={{ fontSize: '1.15rem', fontWeight: '900', margin: 0, color: '#0f172a' }}>
           Upcoming Booking
         </h3>
         <button
@@ -86,7 +86,7 @@ const UpcomingBookingCard = ({ booking, onViewAllClick, onOpenFulfillment }) => 
             border: 'none',
             color: '#16a34a',
             fontSize: '0.85rem',
-            fontWeight: '700',
+            fontWeight: '800',
             cursor: 'pointer'
           }}
         >
@@ -100,8 +100,8 @@ const UpcomingBookingCard = ({ booking, onViewAllClick, onOpenFulfillment }) => 
           background: '#ffffff',
           borderRadius: 'var(--radius-lg)',
           padding: '22px',
-          border: '1px solid var(--border-light)',
-          boxShadow: 'var(--shadow-sm)',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 4px 14px rgba(0,0,0,0.04)',
           display: 'flex',
           flexDirection: 'column',
           gap: '16px'
@@ -111,12 +111,12 @@ const UpcomingBookingCard = ({ booking, onViewAllClick, onOpenFulfillment }) => 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span
             style={{
-              padding: '6px 12px',
+              padding: '6px 14px',
               borderRadius: '9999px',
               background: '#ecfdf5',
-              color: '#059669',
-              fontSize: '0.78rem',
-              fontWeight: '700',
+              color: '#047857',
+              fontSize: '0.8rem',
+              fontWeight: '800',
               border: '1px solid #a7f3d0'
             }}
           >
@@ -124,9 +124,9 @@ const UpcomingBookingCard = ({ booking, onViewAllClick, onOpenFulfillment }) => 
           </span>
           <span
             style={{
-              fontSize: '0.82rem',
-              fontWeight: '700',
-              color: '#059669',
+              fontSize: '0.84rem',
+              fontWeight: '800',
+              color: '#047857',
               display: 'flex',
               alignItems: 'center',
               gap: '4px'
@@ -138,24 +138,46 @@ const UpcomingBookingCard = ({ booking, onViewAllClick, onOpenFulfillment }) => 
 
         {/* Customer Details */}
         <div>
-          <h4 style={{ fontSize: '1.1rem', fontWeight: '800', margin: '0 0 4px 0', color: 'var(--text-primary)' }}>
+          <h4 style={{ fontSize: '1.15rem', fontWeight: '900', margin: '0 0 6px 0', color: '#0f172a' }}>
             {activeBooking.customerName}
           </h4>
           <p
             style={{
-              fontSize: '0.84rem',
-              color: 'var(--text-muted)',
+              fontSize: '0.86rem',
+              color: '#475569',
               margin: 0,
+              fontWeight: '600',
               display: 'flex',
               alignItems: 'flex-start',
               gap: '6px',
               lineHeight: '1.4'
             }}
           >
-            <MapPin size={14} color="#64748b" style={{ flexShrink: 0, marginTop: '2px' }} />
+            <MapPin size={15} color="#0284c7" style={{ flexShrink: 0, marginTop: '2px' }} />
             <span>{activeBooking.address}</span>
           </p>
         </div>
+
+        {/* Payout & Financial Breakdown Card */}
+        {(() => {
+          const serviceVal = booking?.financialSnapshot?.servicePrice || booking?.packageSnapshot?.finalPrice || (booking?.amount > 400 ? Math.round(booking.amount * 0.909) : booking?.amount) || 399;
+          const comm = booking?.financialSnapshot?.partnerCommission ?? Math.round(serviceVal * 0.10);
+          const netEarning = booking?.financialSnapshot?.partnerNetEarning ?? (serviceVal - comm);
+
+          return (
+            <div style={{ padding: '10px 14px', background: '#f0fdf4', borderRadius: '14px', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+              <div>
+                <span style={{ color: '#475569', fontWeight: '700' }}>Package Price: </span>
+                <strong style={{ color: '#0f172a' }}>₹{serviceVal}</strong>
+                <span style={{ color: '#dc2626', fontWeight: '700', marginLeft: '10px' }}>Fee: -₹{comm}</span>
+              </div>
+              <div>
+                <span style={{ color: '#166534', fontWeight: '800' }}>Your Net: </span>
+                <strong style={{ color: '#16a34a', fontSize: '1.05rem', fontWeight: '900' }}>₹{netEarning}</strong>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Action Buttons */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '4px' }}>
@@ -167,10 +189,10 @@ const UpcomingBookingCard = ({ booking, onViewAllClick, onOpenFulfillment }) => 
               padding: '11px',
               borderRadius: '12px',
               background: '#f8fafc',
-              border: '1px solid var(--border-light)',
-              color: 'var(--text-primary)',
+              border: '1px solid #cbd5e1',
+              color: '#0f172a',
               fontSize: '0.88rem',
-              fontWeight: '700',
+              fontWeight: '800',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

@@ -63,7 +63,7 @@ const PartnerMetricCards = () => {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-secondary)' }}>
+              <span style={{ fontSize: '0.88rem', fontWeight: '800', color: '#334155' }}>
                 {card.title}
               </span>
               <div style={{
@@ -79,11 +79,11 @@ const PartnerMetricCards = () => {
               </div>
             </div>
 
-            <div style={{ fontSize: '1.75rem', fontWeight: '800', color: card.color, letterSpacing: '-0.5px' }}>
+            <div style={{ fontSize: '1.75rem', fontWeight: '900', color: card.color, letterSpacing: '-0.5px' }}>
               {isLoading ? '...' : card.value}
             </div>
 
-            <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: '600', marginTop: '6px' }}>
+            <div style={{ fontSize: '0.78rem', color: '#475569', fontWeight: '700', marginTop: '6px' }}>
               {card.subtitle}
             </div>
           </div>

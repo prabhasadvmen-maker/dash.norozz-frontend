@@ -28,6 +28,7 @@ import {
 import { useAuth } from '../hooks/useAuth.js';
 import { catalogService } from '../services/catalog.service.js';
 import { cityService } from '../services/city.service.js';
+import { geoapifyService } from '../services/geoapify.service.js';
 import { toast } from '../utils/toast.js';
 
 const DEFAULT_SCHEDULE = [
@@ -161,9 +162,9 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
         attributionControl: false,
       });
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      L.tileLayer(geoapifyService.getTileUrl('osm-bright'), {
         maxZoom: 19,
-        subdomains: ['a', 'b', 'c'],
+        attribution: '&copy; Geoapify &copy; OpenStreetMap',
       }).addTo(map);
 
       const circle = L.circle([activeLat, activeLng], {
@@ -465,21 +466,38 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
   const [activeGenericDoc, setActiveGenericDoc] = useState('panDoc');
   const [showGenericModal, setShowGenericModal] = useState(false);
 
-  // Category State (Single-Selection by Category ObjectId)
-  const [selectedCategories, setSelectedCategories] = useState(() => {
-    if (currentUser?.categories?.length) return [currentUser.categories[0]];
-    if (currentUser?.category) return [currentUser.category];
-    return [];
-  });
-  const [category, setCategory] = useState(currentUser?.category || '');
+  // Category & Offered Services State (Step 2)
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [category, setCategory] = useState('');
   const [categoriesList, setCategoriesList] = useState([]);
   const [searchCatQuery, setSearchCatQuery] = useState('');
+  const [showCategoryServicesModal, setShowCategoryServicesModal] = useState(false);
+  const [selectedCategoryObj, setSelectedCategoryObj] = useState(null);
+  const [categoryServices, setCategoryServices] = useState([]);
+  const [offeredServices, setOfferedServices] = useState(() => {
+    if (Array.isArray(currentUser?.offeredServices)) {
+      return currentUser.offeredServices
+        .map((s) => (typeof s === 'object' && s?._id ? String(s._id) : String(s)))
+        .filter((s) => Boolean(s.match(/^[0-9a-fA-F]{24}$/)));
+    }
+    return [];
+  });
+  const [loadingCategoryServices, setLoadingCategoryServices] = useState(false);
 
-  // Single-selection category handler
+  const handleToggleOfferedService = (serviceId) => {
+    setOfferedServices((prev) => {
+      if (prev.includes(serviceId)) return prev.filter((id) => id !== serviceId);
+      return [...prev, serviceId];
+    });
+  };
+
+  // Single-selection category handler with services modal trigger
   const handleSelectCategory = (catObj) => {
     const catId = catObj._id || catObj.id || catObj.name;
     setSelectedCategories([catId]);
     setCategory(catId);
+    setSelectedCategoryObj(catObj);
+    setShowCategoryServicesModal(true);
   };
 
   // Skills & Experience State (Dynamic Skills based on Selected Category)
@@ -592,40 +610,88 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     }
   };
 
-  // Fetch Dynamic Skills for Selected Category from Super Admin API using Category ID
+  // Fetch Dynamic Category Services for Step 2 Modal
+  useEffect(() => {
+    if (!showCategoryServicesModal || (!selectedCategories.length && !category && !selectedCategoryObj)) return;
+    const loadCategoryServices = async () => {
+      setLoadingCategoryServices(true);
+      try {
+        const targetCatId = selectedCategories[0] || category || selectedCategoryObj?._id;
+        const res = await catalogService.getServices({ category: targetCatId });
+        let list = res.data?.data || res.data || [];
+
+        if (!Array.isArray(list) || list.length === 0) {
+          const resAll = await catalogService.getServices({});
+          const allList = resAll.data?.data || resAll.data || [];
+          if (Array.isArray(allList)) {
+            list = allList.filter((s) => String(s.category?._id || s.category) === String(targetCatId) || String(s.category?.name || s.category) === String(selectedCategoryObj?.name));
+          }
+        }
+
+        if (Array.isArray(list) && list.length > 0) {
+          const formatted = list.map((s) => ({ _id: s._id, name: s.name || s.title, description: s.description || s.duration }));
+          setCategoryServices(formatted);
+          setOfferedServices((prev) => {
+            if (!prev.length) return formatted.map((s) => String(s._id));
+            return prev;
+          });
+        } else {
+          const catName = selectedCategoryObj?.name || 'Category';
+          const defaultServices = [
+            { _id: `svc_std_1`, name: `${catName} Standard Service`, description: 'General service delivery & inspection' },
+            { _id: `svc_std_2`, name: `Deep ${catName} Package`, description: 'Advanced specialized equipment & deep service' },
+            { _id: `svc_std_3`, name: `Premium ${catName} Repair & Fix`, description: 'Full service package with warranty' },
+          ];
+          setCategoryServices(defaultServices);
+          setOfferedServices(defaultServices.map((s) => s._id));
+        }
+      } catch (err) {
+        console.warn('Failed to load category services:', err);
+      } finally {
+        setLoadingCategoryServices(false);
+      }
+    };
+    loadCategoryServices();
+  }, [showCategoryServicesModal, selectedCategories, category, selectedCategoryObj]);
+
+  // Fetch Dynamic Skills for Step 3 Page
   useEffect(() => {
     if (step !== 3) return;
     const loadCategorySkills = async () => {
       setLoadingSkills(true);
       try {
-        const rawCats = selectedCategories.length > 0
-          ? selectedCategories
-          : (category ? [category] : (currentUser?.categories || (currentUser?.category ? [currentUser.category] : [])));
+        const targetCatId = selectedCategories[0] || category || selectedCategoryObj?._id || currentUser?.category;
+        let fetchedSkills = [];
+        try {
+          const res = await catalogService.getSkills({ categories: targetCatId });
+          fetchedSkills = res.data?.data || res.data || [];
+        } catch (e) {}
 
-        const catIds = rawCats.map((c) => (typeof c === 'object' && c?._id ? c._id : c));
-        const categoriesParam = catIds.join(',');
-
-        const res = await catalogService.getSkills({ categories: categoriesParam });
-        const fetchedSkills = res.data?.data || res.data || [];
-
-        if (Array.isArray(fetchedSkills)) {
+        if (Array.isArray(fetchedSkills) && fetchedSkills.length > 0) {
           setCategorySkills(fetchedSkills);
-          setSkills((prevSkills) => {
-            const validOnly = prevSkills.filter((s) => typeof s === 'string' && Boolean(s.match(/^[0-9a-fA-F]{24}$/)));
-            if (!validOnly.length && fetchedSkills.length > 0) {
-              return fetchedSkills.slice(0, 3).map((sk) => String(sk._id || sk.id));
-            }
+          setSkills((prev) => {
+            const validOnly = prev.filter((s) => typeof s === 'string' && Boolean(s.match(/^[0-9a-fA-F]{24}$/)));
+            if (!validOnly.length) return fetchedSkills.map((sk) => String(sk._id || sk.id));
             return validOnly;
           });
+        } else {
+          const catName = selectedCategoryObj?.name || 'Technical';
+          const defaultSkills = [
+            { _id: `sk_1`, name: `${catName} Diagnostics`, description: 'Problem identification & safety check' },
+            { _id: `sk_2`, name: `High-Precision Equipment Usage`, description: 'Certified professional tools operation' },
+            { _id: `sk_3`, name: `Sanitization & Worksite Safety`, description: 'Clean post-service cleanup protocol' },
+          ];
+          setCategorySkills(defaultSkills);
+          setSkills(defaultSkills.map((s) => s._id));
         }
       } catch (err) {
-        console.warn('Failed to fetch category skills from server:', err);
+        console.warn('Failed to fetch category skills:', err);
       } finally {
         setLoadingSkills(false);
       }
     };
     loadCategorySkills();
-  }, [step, selectedCategories, category, currentUser]);
+  }, [step, selectedCategories, category, selectedCategoryObj, currentUser]);
 
   const [detectedCity, setDetectedCity] = useState('');
 
@@ -680,28 +746,16 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
 
     Promise.all(
       offsets.map((pt) =>
-        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pt.lat}&lon=${pt.lng}&zoom=14`)
-          .then((r) => r.json())
+        geoapifyService.reverseGeocode(pt.lat, pt.lng)
           .catch(() => null)
       )
     ).then((results) => {
       const locNames = [];
       results.forEach((data) => {
-        if (data?.address) {
-          const addr = data.address;
-          const name =
-            addr.suburb ||
-            addr.neighbourhood ||
-            addr.residential ||
-            addr.subdistrict ||
-            addr.quarter ||
-            addr.town ||
-            addr.city_district ||
-            addr.village ||
-            addr.county ||
-            addr.road;
+        if (data?.addressLine2 || data?.addressLine1 || data?.city) {
+          const name = data.addressLine2 || data.addressLine1;
+          const localCity = data.city || '';
           if (name) {
-            const localCity = addr.city || addr.town || addr.district || addr.county || addr.state_district || '';
             const formatted = (localCity && localCity.toLowerCase() !== name.toLowerCase())
               ? `${name} (${localCity})`
               : name;
@@ -847,17 +901,15 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     const coordsObj = { lat: rLat, lng: rLng };
     setDeviceCoords(coordsObj);
 
-    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${rLat}&lon=${rLng}`)
-      .then((r) => r.json())
+    geoapifyService.reverseGeocode(rLat, rLng)
       .then((data) => {
-        if (data?.display_name) {
-          setDeviceAddress(data.display_name);
+        if (data?.formatted) {
+          setDeviceAddress(data.formatted);
         } else {
           setDeviceAddress(`Pinned Location (${rLat}, ${rLng})`);
         }
-        if (data?.address) {
-          const cityFromGeo = data.address.city || data.address.town || data.address.district || data.address.county || data.address.state_district;
-          if (cityFromGeo) setDetectedCity(cityFromGeo);
+        if (data?.city) {
+          setDetectedCity(data.city);
         }
       })
       .catch(() => {
@@ -1010,21 +1062,38 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     }
   };
 
-  // STEP 2: Submit Single Selected Service Category
+  // STEP 2: Submit Single Selected Service Category and Offered Services
   const handleStep2CategorySubmit = async () => {
     setError('');
     setSuccessMsg('');
 
     if (!selectedCategories.length && !category) {
-      setError('Please select a service category to proceed');
+      setError('Please click on a service category to proceed');
+      toast.error('Please select a service category');
       return;
     }
 
     try {
       const selectedId = selectedCategories[0] || category;
-      await saveOnboardingCategory({ category: selectedId });
+      const validServiceIds = offeredServices
+        .map((s) => (typeof s === 'object' && s?._id ? String(s._id) : String(s)))
+        .filter((s) => Boolean(s.match(/^[0-9a-fA-F]{24}$/)));
+
+      const res = await saveOnboardingCategory({
+        category: selectedId,
+        offeredServices: validServiceIds,
+      });
+
+      const updatedUser = res.data?.user || res.user;
+      if (updatedUser) {
+        updateUser(updatedUser);
+      }
+
+      toast.success('✓ Category & Partner Services saved!');
+      setShowCategoryServicesModal(false);
       setStep(3); // Go to Step 3: Skills & Experience Page!
     } catch (err) {
+      console.error('Save category & services error:', err);
       setError(err.message || 'Failed to save service category');
     }
   };
@@ -1511,13 +1580,109 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
               </button>
               <button
                 type="button"
-                onClick={handleStep2CategorySubmit}
-                disabled={isLoggingIn}
-                style={{ flex: 1.5, padding: '14px', borderRadius: '14px', background: '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.94rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                onClick={() => {
+                  if (!selectedCategories.length && !category) {
+                    toast.error('Please select a category first');
+                    return;
+                  }
+                  setShowCategoryServicesModal(true);
+                }}
+                disabled={isLoggingIn || (!selectedCategories.length && !category)}
+                style={{ flex: 1.5, padding: '14px', borderRadius: '14px', background: (!selectedCategories.length && !category) ? '#cbd5e1' : '#16a34a', color: '#ffffff', border: 'none', fontSize: '0.94rem', fontWeight: '700', cursor: (!selectedCategories.length && !category) ? 'not-allowed' : 'pointer', boxShadow: '0 8px 20px rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
-                {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Continue <ArrowRight size={16} /></>}
+                {isLoggingIn ? <Loader2 size={18} className="spin" /> : <>Select Services <ArrowRight size={16} /></>}
               </button>
             </div>
+
+            {/* Category Services Selection Modal / Drawer */}
+            {showCategoryServicesModal && (
+              <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+                <div style={{ background: '#ffffff', borderRadius: '24px', maxWidth: '480px', width: '100%', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#0f172a', margin: 0 }}>
+                        Select Services under {selectedCategoryObj?.name || 'Selected Category'}
+                      </h3>
+                      <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '4px 0 0 0' }}>
+                        Check all specific services/specializations you offer as a partner
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => setShowCategoryServicesModal(false)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <X size={18} color="#64748b" />
+                    </button>
+                  </div>
+
+                  {loadingCategoryServices ? (
+                    <div style={{ textAlign: 'center', padding: '40px 0', color: '#16a34a', fontWeight: '700' }}>
+                      <Loader2 size={24} className="spin" style={{ margin: '0 auto 10px auto', display: 'block' }} />
+                      Loading category services...
+                    </div>
+                  ) : (
+                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', paddingRight: '4px' }}>
+                      {categoryServices.length > 0 ? (
+                        categoryServices.map((svc) => {
+                          const svcId = svc._id || svc.id || svc;
+                          const svcName = svc.name || svc;
+                          const isSelected = offeredServices.includes(svcId);
+                          return (
+                            <div
+                              key={svcId}
+                              onClick={() => handleToggleOfferedService(svcId)}
+                              style={{
+                                padding: '14px 16px',
+                                borderRadius: '16px',
+                                border: isSelected ? '2px solid #16a34a' : '1.5px solid #e2e8f0',
+                                background: isSelected ? '#f0fdf4' : '#ffffff',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                transition: 'all 0.2s ease',
+                              }}
+                            >
+                              <div>
+                                <div style={{ fontSize: '0.92rem', fontWeight: '800', color: isSelected ? '#15803d' : '#0f172a' }}>
+                                  {svcName}
+                                </div>
+                                {svc.description && (
+                                  <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px' }}>
+                                    {svc.description}
+                                  </div>
+                                )}
+                              </div>
+                              <div style={{ width: '22px', height: '22px', borderRadius: '6px', border: isSelected ? 'none' : '2px solid #cbd5e1', background: isSelected ? '#16a34a' : '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {isSelected && <Check size={14} color="#ffffff" />}
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div style={{ textAlign: 'center', padding: '20px', color: '#64748b', fontSize: '0.86rem' }}>
+                          All services in this category selected for your profile. Click continue to proceed.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowCategoryServicesModal(false)}
+                      style={{ flex: 1, padding: '12px', borderRadius: '12px', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', fontWeight: '700', cursor: 'pointer' }}
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleStep2CategorySubmit}
+                      style={{ flex: 2, padding: '12px', borderRadius: '12px', background: '#16a34a', color: '#ffffff', border: 'none', fontWeight: '800', cursor: 'pointer', boxShadow: '0 4px 14px rgba(22, 163, 74, 0.3)' }}
+                    >
+                      Save & Continue to Skills →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1814,33 +1979,33 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                   ...(dynamicNearbyLocalities.length === 0 ? (REAL_LOCALITIES_BY_CITY[displayCityName] || []) : []),
                 ]))
                   .map((loc) => {
-                  const isChecked = selectedLocalities.includes(loc);
-                  const isNearby = dynamicNearbyLocalities.includes(loc);
-                  return (
-                    <div
-                      key={loc}
-                      onClick={() => handleToggleLocality(loc)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 14px',
-                        borderRadius: '12px',
-                        border: isChecked ? '1.5px solid #16a34a' : '1px solid #e2e8f0',
-                        background: isChecked ? '#f0fdf4' : '#f8fafc',
-                        cursor: 'pointer',
-                        fontSize: '0.84rem',
-                        fontWeight: '600',
-                        color: isChecked ? '#15803d' : '#334155',
-                      }}
-                    >
-                      <span>
-                        📍 {loc} {isNearby && <span style={{ marginLeft: '6px', fontSize: '0.7rem', background: '#dcfce7', color: '#15803d', padding: '2px 6px', borderRadius: '6px', fontWeight: '700' }}>Your Location</span>}
-                      </span>
-                      <input type="checkbox" checked={isChecked} onChange={() => { }} style={{ accentColor: '#16a34a' }} />
-                    </div>
-                  );
-                })}
+                    const isChecked = selectedLocalities.includes(loc);
+                    const isNearby = dynamicNearbyLocalities.includes(loc);
+                    return (
+                      <div
+                        key={loc}
+                        onClick={() => handleToggleLocality(loc)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 14px',
+                          borderRadius: '12px',
+                          border: isChecked ? '1.5px solid #16a34a' : '1px solid #e2e8f0',
+                          background: isChecked ? '#f0fdf4' : '#f8fafc',
+                          cursor: 'pointer',
+                          fontSize: '0.84rem',
+                          fontWeight: '600',
+                          color: isChecked ? '#15803d' : '#334155',
+                        }}
+                      >
+                        <span>
+                          📍 {loc} {isNearby && <span style={{ marginLeft: '6px', fontSize: '0.7rem', background: '#dcfce7', color: '#15803d', padding: '2px 6px', borderRadius: '6px', fontWeight: '700' }}>Your Location</span>}
+                        </span>
+                        <input type="checkbox" checked={isChecked} onChange={() => { }} style={{ accentColor: '#16a34a' }} />
+                      </div>
+                    );
+                  })}
               </div>
             </div>
 

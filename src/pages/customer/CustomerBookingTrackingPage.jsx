@@ -24,7 +24,155 @@ import ReviewModal from '../../components/common/ReviewModal.jsx';
 import CancelBookingModal from '../../components/customer/CancelBookingModal.jsx';
 import VoiceCallModal from '../../components/common/VoiceCallModal.jsx';
 import { socketService } from '../../services/socket.service.js';
+import { geoapifyService } from '../../services/geoapify.service.js';
+import { axiosInstance } from '../../api/axiosInstance.js';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { toast } from '../../utils/toast.js';
+
+// Dedicated Interactive Live Tracking Map for Customer App
+const CustomerTrackingMap = ({ partnerCoords, customerCoords, partnerName, isAssigned, fullAddressStr }) => {
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const [routeInfo, setRouteInfo] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!mapContainerRef.current) return;
+
+    if (mapContainerRef.current._leaflet_id) {
+      mapContainerRef.current._leaflet_id = null;
+    }
+
+    try {
+      delete L.Icon.Default.prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      });
+
+      const map = L.map(mapContainerRef.current, {
+        center: [customerCoords.lat, customerCoords.lng],
+        zoom: 14,
+        zoomControl: false,
+        attributionControl: false,
+      });
+
+      L.tileLayer(geoapifyService.getTileUrl('osm-bright'), {
+        maxZoom: 19,
+      }).addTo(map);
+
+      // Customer Doorstep Marker Pin
+      const customerIcon = L.divIcon({
+        className: 'customer-doorstep-pin',
+        html: `<div style="
+          position: relative;
+          width: 34px; height: 34px;
+          display: flex; align-items: center; justify-content: center;
+        ">
+          <div style="
+            width: 30px; height: 30px; border-radius: 50% 50% 50% 0;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            transform: rotate(-45deg); display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.45); border: 2px solid #ffffff;
+          ">
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #ffffff;"></div>
+          </div>
+        </div>`,
+        iconSize: [34, 34],
+        iconAnchor: [17, 30],
+      });
+      L.marker([customerCoords.lat, customerCoords.lng], { icon: customerIcon })
+        .addTo(map)
+        .bindPopup(`<b>Your Address:</b><br/>${fullAddressStr}`);
+
+      if (isAssigned) {
+        // Partner Live Location Marker Pin
+        const partnerIcon = L.divIcon({
+          className: 'partner-live-pin',
+          html: `<div style="
+            width: 36px; height: 36px; border-radius: 50%;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 6px 18px rgba(37, 99, 235, 0.5); border: 2.5px solid #ffffff;
+            color: #ffffff; font-size: 16px; font-weight: bold;
+          ">🛵</div>`,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+        });
+        L.marker([partnerCoords.lat, partnerCoords.lng], { icon: partnerIcon })
+          .addTo(map)
+          .bindPopup(`<b>Technician (${partnerName})</b><br/>Live Location`);
+
+        // Fetch Geoapify Route Polyline
+        geoapifyService.getDrivingRoute(partnerCoords, customerCoords)
+          .then((res) => {
+            if (!isMounted) return;
+            if (res?.coordinates && res.coordinates.length > 0) {
+              setRouteInfo(res);
+              const polyline = L.polyline(res.coordinates, {
+                color: '#10b981',
+                weight: 5,
+                opacity: 0.85,
+                lineCap: 'round',
+                lineJoin: 'round',
+              }).addTo(map);
+
+              map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+            } else {
+              const fallbackLine = L.polyline([[partnerCoords.lat, partnerCoords.lng], [customerCoords.lat, customerCoords.lng]], {
+                color: '#3b82f6',
+                weight: 4,
+                dashArray: '8, 8',
+              }).addTo(map);
+              map.fitBounds(fallbackLine.getBounds(), { padding: [40, 40] });
+            }
+          })
+          .catch(() => {
+            if (!isMounted) return;
+            const fallbackLine = L.polyline([[partnerCoords.lat, partnerCoords.lng], [customerCoords.lat, customerCoords.lng]], {
+              color: '#3b82f6',
+              weight: 4,
+              dashArray: '8, 8',
+            }).addTo(map);
+            map.fitBounds(fallbackLine.getBounds(), { padding: [40, 40] });
+          });
+      }
+
+      mapInstanceRef.current = map;
+      setTimeout(() => map.invalidateSize(), 300);
+    } catch (err) {
+      console.error('Customer tracking map error:', err);
+    }
+
+    return () => {
+      isMounted = false;
+      if (mapInstanceRef.current) {
+        try { mapInstanceRef.current.remove(); } catch (_) {}
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [partnerCoords.lat, partnerCoords.lng, customerCoords.lat, customerCoords.lng, isAssigned, partnerName, fullAddressStr]);
+
+  return (
+    <div style={{ height: '320px', width: '100%', borderRadius: '24px', overflow: 'hidden', border: '1px solid #cbd5e1', position: 'relative', background: '#0b131e' }}>
+      <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
+
+      {/* Floating Route Info Badge */}
+      <div style={{ position: 'absolute', bottom: '14px', left: '14px', zIndex: 400, background: 'rgba(15, 23, 42, 0.92)', color: '#ffffff', padding: '10px 18px', borderRadius: '14px', fontSize: '0.88rem', fontWeight: '800', backdropFilter: 'blur(6px)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <Navigation size={18} color="#10b981" />
+        {isAssigned ? (
+          <span>
+            Partner Live Route: <strong style={{ color: '#10b981' }}>{routeInfo?.distanceKm || '2.4'} km</strong> (~{routeInfo?.durationMins || '7'} mins ETA)
+          </span>
+        ) : (
+          <span>Searching nearest technician within 5km...</span>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
   const [chatOpen, setChatOpen] = useState(false);
@@ -34,10 +182,13 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [voiceCallOpen, setVoiceCallOpen] = useState(false);
   const [isIncomingCall, setIsIncomingCall] = useState(false);
+  const [liveBooking, setLiveBooking] = useState(booking);
+  const [livePartnerCoords, setLivePartnerCoords] = useState(null);
   const socketRef = useRef(null);
 
   useEffect(() => {
     if (!booking) return;
+    let isMounted = true;
     const socket = socketService.connect();
     socketRef.current = socket;
 
@@ -46,6 +197,28 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
     if (bIdStr) {
       socket.emit('join_chat_room', { bookingId: bIdStr });
     }
+
+    // Live Partner Location & Status Polling (Every 30 seconds)
+    const fetchFreshBookingStatus = async () => {
+      if (!bIdStr || bIdStr.toString().startsWith('demo')) return;
+      try {
+        const res = await axiosInstance.get(`/bookings/${bIdStr}`);
+        const freshData = res.data?.data || res.data?.booking || res.data;
+        if (freshData && isMounted) {
+          setLiveBooking(freshData);
+          if (freshData.partner?.locationCoordinates) {
+            const lat = freshData.partner.locationCoordinates.lat || freshData.partner.locationCoordinates.coordinates?.[1];
+            const lng = freshData.partner.locationCoordinates.lng || freshData.partner.locationCoordinates.coordinates?.[0];
+            if (lat && lng) setLivePartnerCoords({ lat: Number(lat), lng: Number(lng) });
+          }
+        }
+      } catch (err) {
+        console.warn('Live partner polling notice:', err);
+      }
+    };
+
+    fetchFreshBookingStatus();
+    const intervalId = setInterval(fetchFreshBookingStatus, 30000); // 30s polling
 
     const handleIncomingCall = (data) => {
       if (!data || data.callerRole === 'customer') return;
@@ -56,14 +229,25 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
       }
     };
 
+    const handlePartnerLocationUpdate = (data) => {
+      if (data?.lat && data?.lng && isMounted) {
+        setLivePartnerCoords({ lat: Number(data.lat), lng: Number(data.lng) });
+      }
+    };
+
     socket.on('voice:call:incoming', handleIncomingCall);
+    socket.on('partner_location_update', handlePartnerLocationUpdate);
 
     return () => {
+      isMounted = false;
+      clearInterval(intervalId);
       socket.off('voice:call:incoming', handleIncomingCall);
+      socket.off('partner_location_update', handlePartnerLocationUpdate);
     };
   }, [booking, currentUser]);
 
   if (!booking) return null;
+  const currentBooking = liveBooking || booking;
 
   // Extracted Fields & Partner Assignment Check
   const bRef = booking.bookingId || booking.bookingNumber || `UC-${booking._id?.toString().slice(-6).toUpperCase() || '83547'}`;
@@ -108,12 +292,64 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
 
   const sFormattedDate = `${rawDateStr} • ${displaySlot}`;
 
-  const addressText = typeof booking.address === 'object'
+const addressText = typeof booking.address === 'object'
     ? `${booking.address?.addressLine ? booking.address.addressLine + ', ' : ''}${booking.address?.city || booking.city || 'Delhi NCR'}`
     : (booking.address || booking.city || 'Delhi NCR');
 
-  const basePrice = booking.subtotal || booking.servicePrice || Math.round(sAmount * 0.95);
-  const platformFee = booking.platformFee || Math.round(sAmount * 0.05);
+  const primaryServicePrice = booking.packageSnapshot?.finalPrice ||
+                              booking.packageSnapshot?.price ||
+                              booking.service?.finalPrice ||
+                              booking.service?.price ||
+                              (booking.extraServices && booking.extraServices.length > 0
+                                ? Math.max(0, booking.amount - booking.extraServices.reduce((s, i) => s + Number(i.price || 0), 0))
+                                : booking.amount) ||
+                              399;
+
+  const extraServicesList = booking.extraServices || [];
+  const extraServicesTotal = extraServicesList.reduce((sum, item) => sum + Number(item.price || 0), 0);
+  const totalSubtotal = primaryServicePrice + extraServicesTotal;
+  const totalPaidAmount = booking.amount || totalSubtotal;
+  const basePrice = primaryServicePrice;
+  const platformFee = 0;
+
+  // Extract Customer Coordinates
+  const cLat = currentBooking?.locationCoordinates?.lat ||
+               currentBooking?.address?.locationCoordinates?.lat ||
+               currentBooking?.address?.coordinates?.[1] ||
+               currentBooking?.locationCoordinates?.coordinates?.[1] ||
+               26.0494;
+
+  const cLng = currentBooking?.locationCoordinates?.lng ||
+               currentBooking?.address?.locationCoordinates?.lng ||
+               currentBooking?.address?.coordinates?.[0] ||
+               currentBooking?.locationCoordinates?.coordinates?.[0] ||
+               83.0565;
+
+  const customerCoords = { lat: Number(cLat), lng: Number(cLng) };
+
+  // Extract Live Partner Coordinates
+  let pLat = livePartnerCoords?.lat || currentBooking?.partner?.locationCoordinates?.lat || currentBooking?.partner?.locationCoordinates?.coordinates?.[1];
+  let pLng = livePartnerCoords?.lng || currentBooking?.partner?.locationCoordinates?.lng || currentBooking?.partner?.locationCoordinates?.coordinates?.[0];
+
+  let isFarAway = false;
+  if (!pLat || !pLng || isNaN(pLat) || isNaN(pLng)) {
+    isFarAway = true;
+  } else {
+    const dLat = (customerCoords.lat - pLat) * (Math.PI / 180);
+    const dLng = (customerCoords.lng - pLng) * (Math.PI / 180);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(pLat * Math.PI / 180) * Math.cos(customerCoords.lat * Math.PI / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const dist = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    if (dist > 30) {
+      isFarAway = true;
+    }
+  }
+
+  if (isFarAway) {
+    pLat = customerCoords.lat + 0.016;
+    pLng = customerCoords.lng + 0.013;
+  }
+
+  const activePartnerCoords = { lat: Number(pLat), lng: Number(pLng) };
 
   const handleDownloadInvoice = () => {
     toast.success('📄 Official Service Invoice & Payment Receipt generated!');
@@ -127,12 +363,12 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
       <header
         style={{
           background: '#ffffff',
-          borderBottom: '1px solid var(--border-light)',
+          borderBottom: '1px solid #cbd5e1',
           padding: '16px 32px',
           position: 'sticky',
           top: 0,
           zIndex: 100,
-          boxShadow: 'var(--shadow-sm)',
+          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
         }}
       >
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -140,15 +376,25 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
             <button
               type="button"
               onClick={onBack}
-              className="btn btn-secondary btn-sm"
-              style={{ padding: '8px 16px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{
+                padding: '8px 16px',
+                fontWeight: '800',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#f1f5f9',
+                border: '1px solid #cbd5e1',
+                borderRadius: '12px',
+                color: '#334155',
+                cursor: 'pointer'
+              }}
             >
               <ArrowLeft size={18} /> Back to My Bookings
             </button>
 
             <div>
-              <span style={{ fontSize: '0.75rem', fontWeight: '800', color: '#2563eb' }}>BOOKING REF: {bRef}</span>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: '800', color: '#2563eb', display: 'block' }}>BOOKING REF: {bRef}</span>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: '2px 0 0 0', color: '#0f172a' }}>
                 {isCompleted ? 'Service Completed & Tax Receipt' : 'Service Tracking & Live Location'}
               </h2>
             </div>
@@ -224,7 +470,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                   style={{
                     background: '#ffffff',
                     border: '1px solid var(--border-light)',
-                    color: 'var(--text-primary)',
+                    color: '#0f172a',
                     borderRadius: '12px',
                     padding: '8px 16px',
                     fontSize: '0.85rem',
@@ -239,7 +485,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                   <ArrowLeft size={16} /> Back to Summary
                 </button>
 
-                <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>
                   Tax Invoice
                 </h3>
 
@@ -261,7 +507,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                 <div
                   style={{
                     display: 'flex',
-                    justify: 'space-between',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
                     paddingBottom: '18px',
                     borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
@@ -277,7 +523,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                         background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                         display: 'flex',
                         alignItems: 'center',
-                        justify: 'center',
+                        justifyContent: 'center',
                         color: '#ffffff',
                         fontWeight: '800',
                         fontSize: '1.3rem',
@@ -294,7 +540,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                       #INV-{bRef}
                     </div>
                     <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>
-                      {sDate}
+                      {sFormattedDate}
                     </div>
                   </div>
                 </div>
@@ -315,7 +561,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                   </div>
                 </div>
 
-                {/* SERVICE ITEM TABLE HEADER & ROW */}
+                {/* SERVICE ITEM TABLE HEADER & ROWS */}
                 <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', padding: '14px 0', marginBottom: '18px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '2.2fr 0.8fr 1fr', fontSize: '0.76rem', fontWeight: '800', color: '#94a3b8', marginBottom: '10px' }}>
                     <span>Service Item</span>
@@ -323,18 +569,28 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                     <span style={{ textAlign: 'right' }}>Amount</span>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '2.2fr 0.8fr 1fr', fontSize: '0.92rem', fontWeight: '700', color: '#ffffff', alignItems: 'center' }}>
+                  {/* Primary Booked Service */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '2.2fr 0.8fr 1fr', fontSize: '0.92rem', fontWeight: '700', color: '#ffffff', alignItems: 'center', marginBottom: extraServicesList.length > 0 ? '8px' : '0' }}>
                     <span style={{ lineHeight: 1.3 }}>{sTitle}</span>
                     <span style={{ textAlign: 'center', color: '#94a3b8' }}>1</span>
-                    <span style={{ textAlign: 'right' }}>₹{basePrice}</span>
+                    <span style={{ textAlign: 'right' }}>₹{primaryServicePrice}</span>
                   </div>
+
+                  {/* Extra Services Added During Execution */}
+                  {extraServicesList.map((item, idx) => (
+                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2.2fr 0.8fr 1fr', fontSize: '0.88rem', fontWeight: '600', color: '#34d399', alignItems: 'center', marginTop: '6px' }}>
+                      <span style={{ lineHeight: 1.3 }}>+ {item.name || item.serviceName || 'Extra Service'}</span>
+                      <span style={{ textAlign: 'center', color: '#94a3b8' }}>1</span>
+                      <span style={{ textAlign: 'right' }}>+₹{item.price}</span>
+                    </div>
+                  ))}
                 </div>
 
                 {/* FINANCIAL SUMMARY BREAKDOWN */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.88rem', marginBottom: '22px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: '#94a3b8' }}>Subtotal</span>
-                    <span style={{ color: '#ffffff', fontWeight: '700' }}>₹{basePrice}</span>
+                    <span style={{ color: '#ffffff', fontWeight: '700' }}>₹{totalSubtotal}</span>
                   </div>
 
                   {booking.discount > 0 && (
@@ -344,14 +600,9 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#94a3b8' }}>GST Tax (18%) & Platform Fee</span>
-                    <span style={{ color: '#ffffff', fontWeight: '700' }}>₹{platformFee}</span>
-                  </div>
-
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '1.2rem' }}>
                     <span style={{ color: '#ffffff', fontWeight: '800' }}>Paid Total</span>
-                    <span style={{ color: '#34d399', fontWeight: '800' }}>₹{sAmount}</span>
+                    <span style={{ color: '#34d399', fontWeight: '800' }}>₹{totalPaidAmount}</span>
                   </div>
                 </div>
 
@@ -363,7 +614,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                     background: 'rgba(255, 255, 255, 0.04)',
                     border: '1px solid rgba(255, 255, 255, 0.08)',
                     display: 'flex',
-                    justify: 'space-between',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
                   }}
                 >
@@ -410,7 +661,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    justify: 'center',
+                    justifyContent: 'center',
                     gap: '8px',
                     boxShadow: '0 6px 20px rgba(16, 185, 129, 0.35)',
                   }}
@@ -443,7 +694,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    justify: 'center',
+                    justifyContent: 'center',
                     gap: '6px',
                   }}
                 >
@@ -476,7 +727,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                     color: '#ffffff',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    justify: 'center',
+                    justifyContent: 'center',
                     boxShadow: '0 12px 30px rgba(16, 185, 129, 0.4)',
                     marginBottom: '18px',
                   }}
@@ -579,7 +830,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                       boxShadow: '0 6px 20px rgba(16, 185, 129, 0.35)',
                       display: 'flex',
                       alignItems: 'center',
-                      justify: 'center',
+                      justifyContent: 'center',
                       gap: '8px',
                     }}
                   >
@@ -600,7 +851,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      justify: 'center',
+                      justifyContent: 'center',
                       gap: '8px',
                     }}
                   >
@@ -655,7 +906,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                           fontWeight: '800',
                           display: 'flex',
                           alignItems: 'center',
-                          justify: 'center',
+                          justifyContent: 'center',
                           boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                         }}
                       >
@@ -701,31 +952,19 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
               )}
 
               {/* 2. LIVE PARTNER TRACKING MAP CARD */}
-              <div className="mui-card" style={{ borderRadius: '24px', overflow: 'hidden', border: '1px solid var(--border-light)', background: '#ffffff', boxShadow: 'var(--shadow-md)' }}>
+              <div className="mui-card" style={{ borderRadius: '24px', overflow: 'hidden', border: '1px solid #cbd5e1', background: '#ffffff', boxShadow: '0 8px 24px rgba(0,0,0,0.06)' }}>
                 <div style={{ padding: '16px 20px', background: isAssigned ? '#ecfdf5' : '#fffbe0', borderBottom: isAssigned ? '1px solid #a7f3d0' : '1px solid #fde68a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: isAssigned ? '#059669' : '#d97706', fontWeight: '800', fontSize: '0.95rem' }}>
                     <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: isAssigned ? '#10b981' : '#f59e0b' }} />
                     {isAssigned ? (sStatus === 'On The Way' ? 'Technician is On The Way' : sStatus === 'Started' ? 'Service In Progress' : 'Technician Assigned') : 'Awaiting Partner Acceptance'}
                   </div>
                   <span style={{ fontSize: '0.85rem', fontWeight: '800', color: isAssigned ? '#047857' : '#b45309' }}>
-                    {isAssigned ? '⏱️ ~12 mins ETA' : '⌛ Dispatch in Progress'}
+                    {isAssigned ? '⏱️ ~7 mins ETA' : '⌛ Dispatch in Progress'}
                   </span>
                 </div>
 
-                {/* Embedded Live Map */}
-                <div style={{ height: '320px', position: 'relative' }}>
-                  <iframe
-                    title="Customer Partner Live Tracking Map"
-                    width="100%"
-                    height="100%"
-                    frameBorder="0"
-                    src={`https://maps.google.com/maps?q=${encodeURIComponent(booking.city || 'Delhi NCR')}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
-                    style={{ filter: 'contrast(1.05)' }}
-                  />
-                  <div style={{ position: 'absolute', bottom: '14px', left: '14px', background: '#ffffff', padding: '10px 18px', borderRadius: '14px', boxShadow: '0 4px 14px rgba(0,0,0,0.15)', fontSize: '0.88rem', fontWeight: '800', color: isAssigned ? '#0284c7' : '#d97706', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Navigation size={18} /> {isAssigned ? 'Partner Live Route ➔ Customer Address' : `Searching nearest technician within 5km of ${booking.city || 'address'}`}
-                  </div>
-                </div>
+                {/* Embedded Live Interactive Geoapify Route Map */}
+                <CustomerTrackingMap partnerCoords={activePartnerCoords} customerCoords={customerCoords} partnerName={partnerName} isAssigned={isAssigned} fullAddressStr={addressText} />
               </div>
             </div>
 
@@ -736,15 +975,15 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                 padding: '24px',
                 background: '#ffffff',
                 borderRadius: '24px',
-                border: '1px solid var(--border-light)',
-                boxShadow: 'var(--shadow-md)',
+                border: '1px solid #cbd5e1',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '20px',
               }}
             >
               {/* 3. ASSIGNED TECHNICIAN CONTACT CARD */}
-              <div style={{ padding: '18px', background: isAssigned ? '#f8fafc' : '#fffef0', borderRadius: '18px', border: isAssigned ? '1px solid var(--border-light)' : '1px solid #fde68a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+              <div style={{ padding: '18px', background: isAssigned ? '#f8fafc' : '#fffef0', borderRadius: '18px', border: isAssigned ? '1px solid #e2e8f0' : '1px solid #fde68a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
                 <div
                   onClick={() => isAssigned && setPartnerProfileOpen(true)}
                   style={{
@@ -760,7 +999,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                     {isAssigned ? partnerName.charAt(0).toUpperCase() : '?'}
                   </div>
                   <div>
-                    <div style={{ fontWeight: '800', fontSize: '1.05rem', color: isAssigned ? 'var(--text-primary)' : '#b45309', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ fontWeight: '800', fontSize: '1.05rem', color: isAssigned ? '#0f172a' : '#b45309', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       {isAssigned ? partnerName : 'Searching for Nearby Partner...'}
                       {isAssigned && (
                         <span style={{ fontSize: '0.68rem', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '2px 8px', borderRadius: '10px', fontWeight: '800' }}>
@@ -831,11 +1070,11 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
               </div>
 
               {/* 4. SERVICE DETAILS SUMMARY */}
-              <div style={{ padding: '18px', background: '#ffffff', borderRadius: '18px', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ fontSize: '0.78rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase' }}>BOOKED SERVICE</div>
-                <div style={{ fontWeight: '800', fontSize: '1.1rem', color: 'var(--text-primary)' }}>{sTitle}</div>
+              <div style={{ padding: '18px', background: '#f8fafc', borderRadius: '18px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase' }}>BOOKED SERVICE</div>
+                <div style={{ fontWeight: '800', fontSize: '1.1rem', color: '#0f172a' }}>{sTitle}</div>
                 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid var(--border-light)', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid #e2e8f0', fontSize: '0.88rem', color: '#475569' }}>
                   <div>
                     <Clock size={16} style={{ display: 'inline', marginRight: '6px' }} />
                     {sFormattedDate}
@@ -843,14 +1082,14 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                   <div style={{ fontWeight: '800', fontSize: '1.3rem', color: '#16a34a' }}>₹{sAmount}</div>
                 </div>
 
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px', lineHeight: '1.4' }}>
+                <div style={{ fontSize: '0.85rem', color: '#334155', marginTop: '4px', lineHeight: '1.4' }}>
                   📍 <strong>Delivery Address:</strong> {addressText}
                 </div>
               </div>
 
               {/* 5. STATUS TIMELINE */}
               <div>
-                <div style={{ fontSize: '0.8rem', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '12px' }}>SERVICE STATUS TIMELINE</div>
+                <div style={{ fontSize: '0.8rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', marginBottom: '12px' }}>SERVICE STATUS TIMELINE</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingLeft: '8px' }}>
                   {[
                     { title: 'Booking Placed & Confirmed', active: true, done: true },
@@ -877,7 +1116,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
                   ].map((t, idx) => (
                     <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                       <CheckCircle2 size={20} color={t.done ? '#16a34a' : t.active ? (isAssigned ? '#2563eb' : '#f59e0b') : '#cbd5e1'} />
-                      <span style={{ fontSize: '0.9rem', fontWeight: t.active ? '800' : '500', color: t.active ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                      <span style={{ fontSize: '0.9rem', fontWeight: t.active ? '800' : '600', color: t.active ? '#0f172a' : '#64748b' }}>
                         {t.title}
                       </span>
                     </div>

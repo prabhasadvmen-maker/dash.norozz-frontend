@@ -60,23 +60,23 @@ const PartnerWalletCard = () => {
 
       {/* Recent Wallet Transactions */}
       <div className="mui-card" style={{ padding: '24px' }}>
-        <h3 style={{ fontSize: '1.05rem', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <h3 style={{ fontSize: '1.05rem', fontWeight: '900', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: '#0f172a' }}>
           <CreditCard size={20} color="#7c3aed" /> Recent Wallet Transactions
         </h3>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {transactions.map((txn, idx) => (
-            <div key={txn.id || idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+            <div key={txn.id || idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid #e2e8f0' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: txn.type === 'Credit' ? '#ecfdf5' : '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {txn.type === 'Credit' ? <ArrowDownLeft size={16} color="#10b981" /> : <ArrowUpRight size={16} color="#ef4444" />}
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)' }}>{txn.desc || txn.type}</div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{txn.date || 'Recent'}</div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: '800', color: '#0f172a' }}>{txn.desc || txn.type}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#475569', fontWeight: '600' }}>{txn.date || 'Recent'}</div>
                 </div>
               </div>
-              <span style={{ fontWeight: '800', fontSize: '0.9rem', color: txn.type === 'Credit' ? '#10b981' : '#ef4444' }}>
+              <span style={{ fontWeight: '900', fontSize: '0.92rem', color: txn.type === 'Credit' ? '#10b981' : '#ef4444' }}>
                 {txn.amount || '₹0'}
               </span>
             </div>

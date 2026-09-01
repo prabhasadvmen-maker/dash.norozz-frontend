@@ -27,23 +27,15 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
   const [otpInput, setOtpInput] = useState('');
   const [fetchingDetailsId, setFetchingDetailsId] = useState(null);
 
-  // Consolidate all bookings without duplicates
-  const masterBookingsList = useMemo(() => {
-    const map = new Map();
-    [...(allBookings || []), ...(todayBookings || []), ...(pendingBookings || []), ...(completedBookings || []), ...(cancelledBookings || [])].forEach((b) => {
-      if (b && b._id) {
-        map.set(b._id.toString(), b);
-      }
-    });
-    return Array.from(map.values());
-  }, [allBookings, todayBookings, pendingBookings, completedBookings, cancelledBookings]);
+  // Partner's own assigned/claimed bookings (Accepted, In Progress, Completed, Cancelled)
+  const myAssignedBookings = useMemo(() => {
+    return allBookings || [];
+  }, [allBookings]);
 
-  // Filter lists for tabs
+  // Open unassigned pending job offers matching partner's offeredServices & workArea
   const upcomingBookings = useMemo(() => {
-    return masterBookingsList.filter((b) =>
-      ['Pending', 'pending', 'Accepted', 'accepted', 'Assigned', 'assigned', 'On The Way', 'on_the_way', 'Started', 'started', 'in_progress'].includes(b.status)
-    );
-  }, [masterBookingsList]);
+    return pendingBookings || [];
+  }, [pendingBookings]);
 
   const [acceptingId, setAcceptingId] = useState(null);
 
@@ -63,22 +55,22 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
   };
 
   const acceptedBookingsList = useMemo(() => {
-    return masterBookingsList.filter((b) =>
+    return myAssignedBookings.filter((b) =>
       ['Accepted', 'accepted', 'Assigned', 'assigned', 'On The Way', 'on_the_way', 'Started', 'started', 'in_progress'].includes(b.status)
     );
-  }, [masterBookingsList]);
+  }, [myAssignedBookings]);
 
   const completedBookingsList = useMemo(() => {
-    return masterBookingsList.filter((b) =>
+    return myAssignedBookings.filter((b) =>
       ['Completed', 'completed'].includes(b.status)
     );
-  }, [masterBookingsList]);
+  }, [myAssignedBookings]);
 
   const cancelledBookingsList = useMemo(() => {
-    return masterBookingsList.filter((b) =>
+    return myAssignedBookings.filter((b) =>
       ['Cancelled', 'cancelled', 'Refunded', 'refunded'].includes(b.status)
     );
-  }, [masterBookingsList]);
+  }, [myAssignedBookings]);
 
   // Current active display list
   const currentJobsList = useMemo(() => {
@@ -93,9 +85,9 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
         return cancelledBookingsList;
       case 'all':
       default:
-        return masterBookingsList;
+        return myAssignedBookings;
     }
-  }, [activeTab, masterBookingsList, upcomingBookings, acceptedBookingsList, completedBookingsList, cancelledBookingsList]);
+  }, [activeTab, myAssignedBookings, upcomingBookings, acceptedBookingsList, completedBookingsList, cancelledBookingsList]);
 
   // Handle Tab Click - Instant In-Memory Filter Transition
   const handleTabClick = (tabId) => {
@@ -158,10 +150,10 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
       {/* Top Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
         <div>
-          <h3 style={{ fontSize: '1.15rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '8px', margin: 0, color: '#0f172a' }}>
             <CalendarCheck size={22} color="#7c3aed" /> Active Jobs & Field Dispatch Operations
           </h3>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px', margin: 0 }}>
+          <p style={{ fontSize: '0.82rem', color: '#475569', marginTop: '4px', margin: 0, fontWeight: '600' }}>
             Accept incoming service assignments, update real-time progress, and complete jobs with OTP verification.
           </p>
         </div>
@@ -173,13 +165,13 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
         alignItems: 'center',
         gap: '8px',
         marginBottom: '20px',
-        borderBottom: '1.5px solid var(--border-light)',
+        borderBottom: '1.5px solid #e2e8f0',
         paddingBottom: '12px',
         overflowX: 'auto',
       }}>
         {[
-          { id: 'all', label: 'All Bookings', count: masterBookingsList.length, icon: Layers, color: '#2563eb' },
-          { id: 'upcoming', label: 'Upcoming', count: upcomingBookings.length, icon: Clock, color: '#0284c7' },
+          { id: 'all', label: 'All Bookings', count: myAssignedBookings.length, icon: Layers, color: '#2563eb' },
+          { id: 'upcoming', label: 'Upcoming Offers', count: upcomingBookings.length, icon: Clock, color: '#0284c7' },
           { id: 'accepted', label: 'Accepted', count: acceptedBookingsList.length, icon: CalendarCheck, color: '#7c3aed' },
           { id: 'completed', label: 'Completed', count: completedBookingsList.length, icon: CheckCircle2, color: '#16a34a' },
           { id: 'cancelled', label: 'Cancelled', count: cancelledBookingsList.length, icon: XCircle, color: '#dc2626' },
@@ -196,9 +188,9 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
                 borderRadius: '12px',
                 fontSize: '0.84rem',
                 fontWeight: '800',
-                border: isActive ? `2px solid ${tab.color}` : '1px solid #e2e8f0',
+                border: isActive ? `2px solid ${tab.color}` : '1px solid #cbd5e1',
                 background: isActive ? `${tab.color}15` : '#ffffff',
-                color: isActive ? tab.color : '#64748b',
+                color: isActive ? tab.color : '#334155',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -207,11 +199,11 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
                 whiteSpace: 'nowrap',
               }}
             >
-              <IconComp size={15} color={isActive ? tab.color : '#64748b'} />
+              <IconComp size={15} color={isActive ? tab.color : '#475569'} />
               <span>{tab.label}</span>
               <span style={{
                 background: isActive ? tab.color : '#f1f5f9',
-                color: isActive ? '#ffffff' : '#64748b',
+                color: isActive ? '#ffffff' : '#334155',
                 padding: '2px 8px',
                 borderRadius: '20px',
                 fontSize: '0.74rem',
@@ -228,7 +220,7 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+            <tr style={{ borderBottom: '2px solid #cbd5e1', color: '#334155', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: '800', background: '#f8fafc' }}>
               <th style={{ padding: '12px 14px' }}>BOOKING REF</th>
               <th style={{ padding: '12px 14px' }}>CUSTOMER</th>
               <th style={{ padding: '12px 14px' }}>SERVICE REQUEST</th>
@@ -241,7 +233,7 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
           <tbody>
             {currentJobsList.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ padding: '28px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <td colSpan={7} style={{ padding: '28px', textAlign: 'center', color: '#64748b', fontWeight: '700' }}>
                   {activeTab === 'all' && 'No bookings found.'}
                   {activeTab === 'upcoming' && 'No upcoming open jobs.'}
                   {activeTab === 'accepted' && 'No accepted jobs for today.'}
@@ -258,29 +250,36 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
                 const addr = typeof job.address === 'object'
                   ? `${job.address?.addressLine ? job.address.addressLine + ', ' : ''}${job.address?.city || job.city || 'Delhi NCR'}`
                   : (job.address || job.city || 'Delhi NCR');
-                const amt = job.amount || job.totalAmount || job.service?.finalPrice || 599;
+                const serviceVal = job.financialSnapshot?.servicePrice || job.packageSnapshot?.finalPrice || (job.amount > 400 ? Math.round(job.amount * 0.909) : job.amount) || 399;
+                const comm = job.financialSnapshot?.partnerCommission ?? Math.round(serviceVal * 0.10);
+                const netEarning = job.financialSnapshot?.partnerNetEarning ?? (serviceVal - comm);
 
                 const isFetching = fetchingDetailsId === job._id;
 
                 return (
-                  <tr key={job._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                    <td style={{ padding: '14px', fontWeight: '800', color: 'var(--accent-purple)', fontSize: '0.85rem' }}>
+                  <tr key={job._id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '14px', fontWeight: '900', color: '#6d28d9', fontSize: '0.88rem' }}>
                       {bId}
                     </td>
-                    <td style={{ padding: '14px', fontWeight: '700', fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                    <td style={{ padding: '14px', fontWeight: '800', fontSize: '0.88rem', color: '#0f172a' }}>
                       {custName}
                     </td>
-                    <td style={{ padding: '14px', fontWeight: '700', fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                    <td style={{ padding: '14px', fontWeight: '800', fontSize: '0.88rem', color: '#0f172a' }}>
                       {sName}
                     </td>
-                    <td style={{ padding: '14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                      <div>{slot}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <MapPin size={12} color="#2563eb" /> {addr}
+                    <td style={{ padding: '14px', fontSize: '0.84rem', color: '#334155', fontWeight: '600' }}>
+                      <div style={{ color: '#0f172a', fontWeight: '700' }}>{slot}</div>
+                      <div style={{ fontSize: '0.78rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                        <MapPin size={13} color="#0284c7" /> {addr}
                       </div>
                     </td>
-                    <td style={{ padding: '14px', fontWeight: '800', color: '#10b981', fontSize: '0.9rem' }}>
-                      ₹{amt}
+                    <td style={{ padding: '14px', minWidth: '150px' }}>
+                      <div style={{ fontSize: '0.92rem', fontWeight: '900', color: '#16a34a' }}>
+                        ₹{netEarning.toLocaleString('en-IN')} <span style={{ fontSize: '0.72rem', color: '#15803d', fontWeight: '800' }}>(Net)</span>
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '700', marginTop: '2px' }}>
+                        Pkg: ₹{serviceVal} • Fee: -₹{comm}
+                      </div>
                     </td>
                     <td style={{ padding: '14px' }}>
                       {getStatusBadge(job.status)}

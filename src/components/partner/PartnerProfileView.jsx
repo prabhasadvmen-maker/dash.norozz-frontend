@@ -94,6 +94,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
   };
   const [categoriesMap, setCategoriesMap] = useState({});
   const [citiesMap, setCitiesMap] = useState({});
+  const [servicesMap, setServicesMap] = useState({});
   const [saving, setSaving] = useState(false);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -538,8 +539,80 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
     return 'Delhi NCR';
   };
 
+  useEffect(() => {
+    catalogService.getServices()
+      .then((res) => {
+        const sList = res.data?.data?.items || res.data?.data || res.data || [];
+        if (Array.isArray(sList)) {
+          const map = {};
+          sList.forEach((s) => {
+            if (s._id && (s.name || s.title)) {
+              map[s._id] = s.name || s.title;
+            }
+          });
+          setServicesMap(map);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const getResolvedOfferedServices = () => {
+    const namesList = [];
+    const rawServices = Array.isArray(user.offeredServices) && user.offeredServices.length > 0
+      ? user.offeredServices
+      : (Array.isArray(user.skills) ? user.skills : []);
+
+    rawServices.forEach((svc) => {
+      if (typeof svc === 'object' && (svc?.name || svc?.title)) {
+        namesList.push(svc.name || svc.title);
+      } else if (typeof svc === 'string') {
+        if (servicesMap[svc]) {
+          namesList.push(servicesMap[svc]);
+        } else if (categoriesMap[svc]) {
+          namesList.push(categoriesMap[svc]);
+        } else if (!svc.match(/^[0-9a-fA-F]{24}$/)) {
+          namesList.push(svc);
+        }
+      }
+    });
+
+    return Array.from(new Set(namesList));
+  };
+
   const resolvedCategoryNames = getResolvedCategories();
   const resolvedCityName = getResolvedCityName();
+  const resolvedOfferedServices = getResolvedOfferedServices();
+
+  const handleProfileImageChange = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select a valid image file (PNG, JPG, JPEG)');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size should be less than 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64Url = reader.result;
+      setEditForm((prev) => ({ ...prev, profileImage: base64Url }));
+      setSaving(true);
+      try {
+        const res = await partnerService.updateProfile({ profileImage: base64Url });
+        toast.success('📸 Profile picture updated successfully!');
+        if (onUpdateUser && res.data?.user) {
+          onUpdateUser(res.data.user);
+        }
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Failed to update profile picture.');
+      } finally {
+        setSaving(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Handlers for Profile Save
   const handleSaveProfile = async (e) => {
@@ -554,6 +627,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
         workRadius: Number(editForm.workRadius),
         localities: editForm.localities,
         address: editForm.address,
+        profileImage: editForm.profileImage,
       };
 
       const res = await partnerService.updateProfile(payload);
@@ -717,11 +791,11 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
           
-          {/* Avatar Image */}
+          {/* Avatar Image with Quick Camera Upload Overlay */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
-            {user.profileImage ? (
+            {editForm.profileImage || user.profileImage ? (
               <img
-                src={user.profileImage}
+                src={editForm.profileImage || user.profileImage}
                 alt={user.name || 'Partner Profile'}
                 style={{
                   width: '56px',
@@ -752,6 +826,8 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                 {(user.name || 'P')[0].toUpperCase()}
               </div>
             )}
+            
+            {/* Online indicator dot */}
             <span
               style={{
                 position: 'absolute',
@@ -761,7 +837,45 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                 height: '14px',
                 borderRadius: '50%',
                 background: '#10b981',
-                border: '2px solid #064e3b'
+                border: '2px solid #064e3b',
+                zIndex: 2
+              }}
+            />
+
+            {/* Camera Overlay Badge Button */}
+            <label
+              htmlFor="hero-profile-image-input"
+              style={{
+                position: 'absolute',
+                top: '-4px',
+                right: '-4px',
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                background: '#2563eb',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                border: '2px solid #ffffff',
+                zIndex: 3,
+                transition: 'transform 0.2s ease'
+              }}
+              title="Change Profile Photo"
+            >
+              <Camera size={16} />
+            </label>
+            <input
+              id="hero-profile-image-input"
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  handleProfileImageChange(e.target.files[0]);
+                }
               }}
             />
           </div>
@@ -906,6 +1020,25 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                   </div>
                 </div>
 
+                <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
+                  <span style={{ color: '#64748b', fontSize: '0.84rem', fontWeight: '600', display: 'block', marginBottom: '8px' }}>
+                    Offered Partner Services (Selected Specializations)
+                  </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {resolvedOfferedServices.length > 0 ? (
+                      resolvedOfferedServices.map((svcName, idx) => (
+                        <span key={idx} style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', padding: '4px 12px', borderRadius: '12px', fontSize: '0.82rem', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <CheckCircle2 size={13} color="#16a34a" /> {svcName}
+                        </span>
+                      ))
+                    ) : (
+                      <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontStyle: 'italic' }}>
+                        All services in selected category enabled
+                      </span>
+                    )}
+                  </div>
+                </div>
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
                   <span style={{ color: '#64748b', fontSize: '0.86rem', fontWeight: '600' }}>Work Experience</span>
                   <span style={{ color: '#0f172a', fontSize: '0.88rem', fontWeight: '700' }}>{user.experience || '3-5 Years'}</span>
@@ -988,6 +1121,108 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
           <h3 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <UserCheck size={20} color="#2563eb" /> Edit Technician Partner Details
           </h3>
+
+          {/* Profile Picture Card inside Edit Profile Tab */}
+          <div style={{
+            padding: '20px 24px',
+            borderRadius: '16px',
+            background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+            border: '1px solid #cbd5e1',
+            display: 'flex',
+            alignItems: 'center',
+            justify: 'space-between',
+            flexWrap: 'wrap',
+            gap: '16px',
+            marginBottom: '24px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+              <div style={{ position: 'relative' }}>
+                {editForm.profileImage || user.profileImage ? (
+                  <img
+                    src={editForm.profileImage || user.profileImage}
+                    alt="Technician Profile"
+                    style={{
+                      width: '68px',
+                      height: '68px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: '3px solid #2563eb',
+                      boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+                    }}
+                  />
+                ) : (
+                  <div style={{
+                    width: '68px',
+                    height: '68px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: '800',
+                    fontSize: '1.6rem',
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+                  }}>
+                    {(user.name || 'P')[0].toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <div>
+                <div style={{ fontWeight: '800', fontSize: '1rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Camera size={18} color="#2563eb" /> Technician Profile Photo
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                  PNG, JPG or JPEG (Max 5MB). Photo is shown to customers when you accept booking dispatches.
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <label
+                htmlFor="edit-tab-profile-image-input"
+                className="btn btn-primary btn-sm"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontWeight: '800',
+                  cursor: 'pointer',
+                  padding: '10px 18px',
+                  borderRadius: '10px'
+                }}
+              >
+                <Upload size={16} /> Choose & Upload Photo
+              </label>
+              <input
+                id="edit-tab-profile-image-input"
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    handleProfileImageChange(e.target.files[0]);
+                  }
+                }}
+              />
+              {(editForm.profileImage || user.profileImage) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditForm((prev) => ({ ...prev, profileImage: '' }));
+                    partnerService.updateProfile({ profileImage: '' }).then((res) => {
+                      toast.info('Profile image removed');
+                      if (onUpdateUser && res.data?.user) onUpdateUser(res.data.user);
+                    });
+                  }}
+                  className="btn btn-secondary btn-sm"
+                  style={{ color: '#ef4444', borderColor: '#fca5a5', fontWeight: '700', borderRadius: '10px' }}
+                >
+                  <Trash2 size={14} /> Remove
+                </button>
+              )}
+            </div>
+          </div>
 
           <form onSubmit={handleSaveProfile} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
             <div>
@@ -1247,7 +1482,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                       </div>
                     ) : (
                       <div>
-                        <label style={{ fontSize: '0.76rem', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '4px' }}>
+                        <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#1e293b', display: 'block', marginBottom: '6px' }}>
                           Select File to Upload / Update:
                         </label>
                         <input

@@ -17,6 +17,7 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
 
   // Profile Form Fields (Requested: Profile Image, Name, DOB, Gender, Email, Mobile Phone)
   const [profileImage, setProfileImage] = useState('');
+  const [profileImageFile, setProfileImageFile] = useState(null);
   const [profileName, setProfileName] = useState('');
   const [profileDob, setProfileDob] = useState('');
   const [profileGender, setProfileGender] = useState('');
@@ -189,37 +190,10 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      setProfileImageFile(file);
       const reader = new FileReader();
       reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 400;
-          const MAX_HEIGHT = 400;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
-          setProfileImage(compressedBase64);
-        };
-        img.src = event.target.result;
+        setProfileImage(event.target.result);
       };
       reader.readAsDataURL(file);
     }
@@ -260,24 +234,27 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
       }
 
       try {
-        const res = await authService.updateCustomerProfile(
-          {
-            name: profileName.trim(),
-            email: profileEmail.trim(),
-            phone: profilePhone.trim(),
-            dob: profileDob,
-            gender: profileGender,
-            profileImage: profileImage,
-            isEmailVerified: true,
-            isPhoneVerified: true,
-            isProfileCompleted: true,
+        const formData = new FormData();
+        formData.append('name', profileName.trim());
+        formData.append('email', profileEmail.trim());
+        formData.append('phone', profilePhone.trim());
+        if (profileDob) formData.append('dob', profileDob);
+        if (profileGender) formData.append('gender', profileGender);
+        formData.append('isEmailVerified', 'true');
+        formData.append('isPhoneVerified', 'true');
+        formData.append('isProfileCompleted', 'true');
+
+        if (profileImageFile) {
+          formData.append('profileImage', profileImageFile);
+        } else if (profileImage && !profileImage.startsWith('blob:')) {
+          formData.append('profileImage', profileImage);
+        }
+
+        const res = await authService.updateCustomerProfile(formData, {
+          headers: {
+            Authorization: `Bearer ${tokenToUse}`,
           },
-          {
-            headers: {
-              Authorization: `Bearer ${tokenToUse}`,
-            },
-          }
-        );
+        });
         updatedUser = res?.data?.user || res?.data || {
           ...pendingSession?.user,
           name: profileName.trim(),
@@ -285,7 +262,6 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
           phone: profilePhone.trim(),
           dob: profileDob,
           gender: profileGender,
-          profileImage: profileImage,
           isEmailVerified: true,
           isPhoneVerified: true,
           isProfileCompleted: true,
@@ -299,7 +275,6 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
           phone: profilePhone.trim(),
           dob: profileDob,
           gender: profileGender,
-          profileImage: profileImage,
           isEmailVerified: true,
           isPhoneVerified: true,
           isProfileCompleted: true,

@@ -28,6 +28,7 @@ import { toast } from '../../utils/toast.js';
 import { useBookings } from '../../hooks/useBookings.js';
 import { axiosInstance } from '../../api/axiosInstance.js';
 import { partnerService } from '../../services/partner.service.js';
+import { geoapifyService } from '../../services/geoapify.service.js';
 import LiveChatModal from '../common/LiveChatModal.jsx';
 import ReviewModal from '../common/ReviewModal.jsx';
 
@@ -149,8 +150,36 @@ const PartnerFulfillmentModal = ({ isOpen, booking, currentUser, onClose, onComp
         { packageName: 'Full Home Deep Cleaning & Dusting', createdAt: '10 Dec 2025', totalAmount: 1499, status: 'Completed' },
       ];
 
-  // Real Distance & Time Calculation using Haversine
+  // Geoapify Live Road Distance & Driving Time State
+  const [geoapifyRouteInfo, setGeoapifyRouteInfo] = useState(null);
+
+  useEffect(() => {
+    if (!isOpen || !currentBooking) return;
+    const pLat = currentUser?.locationCoordinates?.coordinates?.[1] || currentUser?.locationCoordinates?.lat || 28.6139;
+    const pLng = currentUser?.locationCoordinates?.coordinates?.[0] || currentUser?.locationCoordinates?.lng || 77.2090;
+
+    const cLat = currentBooking?.locationCoordinates?.lat || currentBooking?.address?.coordinates?.[1] || 28.5355;
+    const cLng = currentBooking?.locationCoordinates?.lng || currentBooking?.address?.coordinates?.[0] || 77.3910;
+
+    geoapifyService.getDrivingRoute({ lat: pLat, lng: pLng }, { lat: cLat, lng: cLng })
+      .then((data) => {
+        if (data?.distanceKm) {
+          setGeoapifyRouteInfo({
+            km: data.distanceKm,
+            durationMins: data.durationMins,
+            coordinates: data.coordinates,
+          });
+        }
+      })
+      .catch((err) => console.warn('Geoapify route fetch warning:', err));
+  }, [isOpen, currentUser, currentBooking]);
+
+  // Real Distance & Time Calculation (Geoapify fallback to Haversine)
   const calculateDistanceInfo = () => {
+    if (geoapifyRouteInfo) {
+      return geoapifyRouteInfo;
+    }
+
     const pLat = currentUser?.locationCoordinates?.coordinates?.[1] || 12.9352;
     const pLng = currentUser?.locationCoordinates?.coordinates?.[0] || 77.6245;
 
@@ -386,14 +415,31 @@ const PartnerFulfillmentModal = ({ isOpen, booking, currentUser, onClose, onComp
                 </div>
               </div>
 
-              {/* Service & Price */}
-              <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '16px', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: '800', fontSize: '1rem', color: 'var(--text-primary)' }}>{sTitle}</div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Today, 10:30 AM • Online Payment</div>
-                </div>
-                <div style={{ fontSize: '1.3rem', fontWeight: '800', color: '#16a34a' }}>₹{basePrice}</div>
-              </div>
+              {/* Service & Price Financial Breakdown Card */}
+              {(() => {
+                const serviceVal = currentBooking.financialSnapshot?.servicePrice || currentBooking.packageSnapshot?.finalPrice || (basePrice > 400 ? Math.round(basePrice * 0.909) : basePrice) || 399;
+                const comm = currentBooking.financialSnapshot?.partnerCommission ?? Math.round(serviceVal * 0.10);
+                const netEarning = currentBooking.financialSnapshot?.partnerNetEarning ?? (serviceVal - comm);
+
+                return (
+                  <div style={{ padding: '14px', background: '#f0fdf4', borderRadius: '16px', border: '1px solid #bbf7d0', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <div style={{ fontWeight: '800', fontSize: '0.98rem', color: '#0f172a' }}>{sTitle}</div>
+                        <div style={{ fontSize: '0.78rem', color: '#475569', marginTop: '2px', fontWeight: '600' }}>Today, 10:30 AM • Online Payment</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.72rem', color: '#475569', fontWeight: '700' }}>YOUR NET EARNING</div>
+                        <div style={{ fontSize: '1.3rem', fontWeight: '900', color: '#16a34a' }}>₹{netEarning.toLocaleString('en-IN')}</div>
+                      </div>
+                    </div>
+                    <div style={{ borderTop: '1px solid #bbf7d0', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: '700', color: '#334155' }}>
+                      <span>Package Price: <strong style={{ color: '#0f172a' }}>₹{serviceVal}</strong></span>
+                      <span style={{ color: '#dc2626' }}>Admin Fee: <strong>- ₹{comm}</strong></span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Address */}
               <div style={{ padding: '12px', background: '#eff6ff', borderRadius: '14px', border: '1px solid #bfdbfe' }}>

@@ -32,10 +32,18 @@ export const usePartner = (tabOrOptions = 'dashboard') => {
     ...QUERY_CONFIG,
   });
 
-  // 2. Consolidated All Bookings Query (Only active on Bookings or Dashboard tab)
+  // 2. Consolidated Partner's Assigned Bookings Query
   const allBookingsQuery = useQuery({
     queryKey: ['partner', 'bookings', 'all'],
     queryFn: () => partnerService.getAllBookings(),
+    enabled: isBookings || isDashboard,
+    ...QUERY_CONFIG,
+  });
+
+  // 2b. Open Unassigned Pending Job Offers Query (Matching Offered Services & Work Area)
+  const pendingBookingsQuery = useQuery({
+    queryKey: ['partner', 'bookings', 'pending'],
+    queryFn: () => partnerService.getPendingBookings(),
     enabled: isBookings || isDashboard,
     ...QUERY_CONFIG,
   });
@@ -64,18 +72,16 @@ export const usePartner = (tabOrOptions = 'dashboard') => {
     ...QUERY_CONFIG,
   });
 
-  // Consolidated master bookings list
+  // Partner's assigned bookings
   const allBookings = allBookingsQuery.data?.data || [];
 
-  // Derive status subsets in-memory to prevent redundant API calls
+  // Open unassigned job offers matching partner's offeredServices & work area
+  const pendingBookings = pendingBookingsQuery.data?.data || [];
+
   const todayBookings = useMemo(() => {
     return allBookings.filter((b) =>
       ['Assigned', 'Accepted', 'On The Way', 'Started', 'assigned', 'accepted', 'in_progress'].includes(b.status)
     );
-  }, [allBookings]);
-
-  const pendingBookings = useMemo(() => {
-    return allBookings.filter((b) => ['Pending', 'pending'].includes(b.status));
   }, [allBookings]);
 
   const completedBookings = useMemo(() => {
