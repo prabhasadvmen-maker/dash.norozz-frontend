@@ -30,6 +30,7 @@ import { catalogService } from '../services/catalog.service.js';
 import { cityService } from '../services/city.service.js';
 import { geoapifyService } from '../services/geoapify.service.js';
 import { toast } from '../utils/toast.js';
+import { kycService } from '../services/kyc.service.js';
 
 const DEFAULT_SCHEDULE = [
   { day: 'Monday', isOpen: true, openTime: '09:00 AM', closeTime: '07:00 PM' },
@@ -463,6 +464,15 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
   // Raw file objects attached locally before clicking Continue
   const [documentFiles, setDocumentFiles] = useState({});
 
+  // Document Numbers Input State
+  const [aadhaarNoInput, setAadhaarNoInput] = useState(currentUser?.documents?.aadhaarNo || '');
+  const [panNoInput, setPanNoInput] = useState(currentUser?.kyc?.pan?.panNumber || '');
+  const [dlNoInput, setDlNoInput] = useState('');
+  const [dlDobInput, setDlDobInput] = useState(currentUser?.dob || '');
+  const [bankAccountNoInput, setBankAccountNoInput] = useState(currentUser?.bankDetails?.accountNumber || '');
+  const [bankIfscInput, setBankIfscInput] = useState(currentUser?.bankDetails?.ifscCode || '');
+  const [bankHolderNameInput, setBankHolderNameInput] = useState(currentUser?.bankDetails?.accountHolderName || currentUser?.name || '');
+
   const [activeGenericDoc, setActiveGenericDoc] = useState('panDoc');
   const [showGenericModal, setShowGenericModal] = useState(false);
 
@@ -499,6 +509,23 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     setSelectedCategoryObj(catObj);
     setShowCategoryServicesModal(true);
   };
+
+  // Check if selected category requires Driving License (Driver / Cab / Delivery)
+  const catObj = selectedCategoryObj || (Array.isArray(categoriesList) ? categoriesList.find((c) => String(c?._id || '') === String(category || '') || c?.slug === category || c?.name === category) : null);
+  const rawCatName = catObj?.name || catObj?.title || (typeof category === 'string' ? category : '') || (typeof currentUser?.category === 'object' ? currentUser?.category?.name : currentUser?.category) || '';
+  const catName = String(rawCatName || '').toLowerCase();
+  const catSlug = String(catObj?.slug || '').toLowerCase();
+  const isDriverCategory = Boolean(
+    catName.includes('driver') ||
+    catName.includes('cab') ||
+    catName.includes('driving') ||
+    catName.includes('chauffeur') ||
+    catName.includes('vehicle') ||
+    catName.includes('delivery') ||
+    catSlug.includes('driver') ||
+    catSlug.includes('cab') ||
+    catSlug.includes('driving')
+  );
 
   // Skills & Experience State (Dynamic Skills based on Selected Category)
   const [experience, setExperience] = useState(currentUser?.experience || '3-5 Years');
@@ -1131,28 +1158,79 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
 
     const hasAadhaarFront = Boolean(documents.aadhaarFront || documentFiles.aadhaarFront);
     const hasAadhaarBack = Boolean(documents.aadhaarBack || documentFiles.aadhaarBack);
+    const hasPan = Boolean(documents.panDoc || documentFiles.panDoc || panNoInput);
+    const hasPhoto = Boolean(documents.passportPhoto || documentFiles.passportPhoto || currentUser?.profileImage);
+    const hasBank = Boolean(documents.bankPassbookDoc || documentFiles.bankPassbookDoc || bankAccountNoInput);
+    const hasDl = Boolean(documents.drivingLicenseDoc || documentFiles.drivingLicenseDoc || dlNoInput);
 
     if (!hasAadhaarFront || !hasAadhaarBack) {
-      const msg = 'Aadhaar Card is required! Please upload both Front Side and Back Side of your Aadhaar Card before completing onboarding.';
+      const msg = 'Aadhaar Card is required! Please upload both Front Side and Back Side of your Aadhaar Card.';
       setError(msg);
-      toast.error('Aadhaar Card (Front & Back) is required!');
+      toast.error(msg);
+      return;
+    }
+
+    if (!hasPan) {
+      const msg = 'PAN Card is required! Please upload your PAN Card document or enter PAN Number.';
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    if (!hasPhoto) {
+      const msg = 'Passport Size Photo is required! Please upload a clear photo.';
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    if (!hasBank) {
+      const msg = 'Bank Passbook / Cheque is required! Please upload bank document or account details.';
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    if (isDriverCategory && !hasDl) {
+      const msg = 'Driving License is REQUIRED for Driver / Delivery partners! Please upload your Driving License.';
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
     try {
+      const formData = new FormData();
       const keys = Object.keys(documentFiles);
-      if (keys.length > 0) {
-        const formData = new FormData();
-        keys.forEach((key) => {
-          if (documentFiles[key]) {
-            formData.append(key, documentFiles[key]);
-          }
-        });
+      keys.forEach((key) => {
+        if (documentFiles[key]) {
+          formData.append(key, documentFiles[key]);
+        }
+      });
 
-        setSuccessMsg('Uploading attached documents... ⏳');
-        await saveOnboardingDocuments(formData);
-      } else {
-        await saveOnboardingDocuments({});
+      // Append Document Numbers & Bank Details
+      if (aadhaarNoInput) formData.append('aadhaarNo', aadhaarNoInput);
+      if (panNoInput) formData.append('panNo', panNoInput);
+      if (dlNoInput) formData.append('drivingLicenseNo', dlNoInput);
+      if (bankAccountNoInput) formData.append('accountNumber', bankAccountNoInput);
+      if (bankIfscInput) formData.append('ifscCode', bankIfscInput);
+      if (bankHolderNameInput) formData.append('accountHolderName', bankHolderNameInput);
+
+      setSuccessMsg('Uploading attached documents & verification details... ⏳');
+      await saveOnboardingDocuments(formData);
+
+      // Trigger automatic ZOOP verification checks in background if numbers present
+      try {
+        if (panNoInput && panNoInput.length === 10) {
+          kycService.verifyPan(panNoInput).catch(() => {});
+        }
+        if (bankAccountNoInput && bankIfscInput) {
+          kycService.verifyBankAccount({ accountNumber: bankAccountNoInput, ifscCode: bankIfscInput, accountHolderName: bankHolderNameInput }).catch(() => {});
+        }
+        if (dlNoInput) {
+          kycService.verifyDrivingLicense(dlNoInput, dlDobInput).catch(() => {});
+        }
+      } catch (zErr) {
+        console.warn('Background ZOOP verification trigger:', zErr);
       }
 
       setSuccessMsg('🎉 Onboarding Complete! Redirecting to Partner Dashboard...');
@@ -1315,7 +1393,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
             {[
               { id: 1, label: '1. Location' },
               { id: 2, label: '2. Category' },
-              { id: 3, label: '3. Skills' },
+              { id: 3, label: '3. Experience' },
               { id: 4, label: '4. Area' },
               { id: 5, label: '5. Docs' },
             ].map((s) => (
@@ -1677,7 +1755,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                       onClick={handleStep2CategorySubmit}
                       style={{ flex: 2, padding: '12px', borderRadius: '12px', background: '#16a34a', color: '#ffffff', border: 'none', fontWeight: '800', cursor: 'pointer', boxShadow: '0 4px 14px rgba(22, 163, 74, 0.3)' }}
                     >
-                      Save & Continue to Skills →
+                      Save & Continue to Experience →
                     </button>
                   </div>
                 </div>
@@ -1693,10 +1771,10 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
           <div style={{ padding: '18px 24px 28px 24px' }}>
             <div style={{ margin: '0 0 16px 0' }}>
               <h2 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
-                Skills & Experience
+                Experience & Certifications
               </h2>
               <p style={{ color: '#64748b', fontSize: '0.82rem', marginTop: '4px', margin: 0 }}>
-                Highlight experience level & skills for {category || 'selected category'}
+                Highlight your experience level & professional certifications
               </p>
             </div>
 
@@ -1715,47 +1793,6 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                 <option value="5-8 Years">5-8 Years</option>
                 <option value="8+ Years">8+ Years Experienced Expert</option>
               </select>
-            </div>
-
-            {/* Select Your Special Skills (Dynamic Category Skills from Super Admin API) */}
-            <div style={{ marginBottom: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155' }}>
-                  Select Your Special Skills
-                </label>
-                {loadingSkills && <span style={{ fontSize: '0.75rem', color: '#16a34a' }}>Loading category skills... ⏳</span>}
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {categorySkills.map((sk) => {
-                  const skillId = sk._id || sk.id || sk;
-                  const skillName = sk.name || sk;
-                  const isSelected = skills.includes(skillId);
-                  return (
-                    <button
-                      key={skillId}
-                      type="button"
-                      onClick={() => handleToggleSkill(skillId)}
-                      style={{
-                        padding: '8px 14px',
-                        borderRadius: '20px',
-                        border: isSelected ? '2px solid #16a34a' : '1px solid #cbd5e1',
-                        background: isSelected ? '#16a34a' : '#ffffff',
-                        color: isSelected ? '#ffffff' : '#475569',
-                        fontWeight: '700',
-                        fontSize: '0.8rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        boxShadow: isSelected ? '0 4px 10px rgba(22, 163, 74, 0.2)' : 'none',
-                      }}
-                    >
-                      {isSelected && <Check size={14} color="#ffffff" />}
-                      {skillName}
-                    </button>
-                  );
-                })}
-              </div>
             </div>
 
             {/* Certifications (Optional) */}
@@ -2070,15 +2107,15 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                 </button>
               </div>
 
-              {/* 2. Driving License */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', border: documents.drivingLicenseDoc ? '1.5px solid #16a34a' : '1.5px solid #e2e8f0', background: documents.drivingLicenseDoc ? '#f0fdf4' : '#f8fafc' }}>
+              {/* 2. Driving License (Optional unless Driver category) */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', border: documents.drivingLicenseDoc ? '1.5px solid #16a34a' : isDriverCategory ? '1.5px solid #ef4444' : '1.5px solid #e2e8f0', background: documents.drivingLicenseDoc ? '#f0fdf4' : isDriverCategory ? '#fef2f2' : '#f8fafc' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: documents.drivingLicenseDoc ? '#dcfce7' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <FileText size={20} color={documents.drivingLicenseDoc ? '#16a34a' : '#64748b'} />
+                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: documents.drivingLicenseDoc ? '#dcfce7' : isDriverCategory ? '#fee2e2' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <FileText size={20} color={documents.drivingLicenseDoc ? '#16a34a' : isDriverCategory ? '#ef4444' : '#64748b'} />
                   </div>
                   <div>
                     <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>
-                      Driving License <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '500' }}>(Optional)</span>
+                      Driving License {isDriverCategory ? <span style={{ color: '#ef4444', fontWeight: '800' }}>* Required (Driver Category)</span> : <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '500' }}>(Optional)</span>}
                     </div>
                     <div style={{ fontSize: '0.74rem', color: '#64748b' }}>JPEG or PNG up to 5MB</div>
                   </div>
@@ -2088,21 +2125,21 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                   onClick={() => { setActiveGenericDoc('drivingLicenseDoc'); setShowGenericModal(true); }}
                   style={{ padding: '6px 14px', borderRadius: '20px', border: documents.drivingLicenseDoc ? 'none' : '1px solid #16a34a', background: documents.drivingLicenseDoc ? '#16a34a' : '#ffffff', color: documents.drivingLicenseDoc ? '#ffffff' : '#16a34a', fontWeight: '700', fontSize: '0.78rem', cursor: 'pointer' }}
                 >
-                  {documents.drivingLicenseDoc ? 'Uploaded ✓' : 'Upload'}
+                  {documents.drivingLicenseDoc ? 'Uploaded ✓' : isDriverCategory ? 'Upload *' : 'Upload'}
                 </button>
               </div>
 
-              {/* 3. PAN Card */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', border: documents.panDoc ? '1.5px solid #16a34a' : '1.5px solid #e2e8f0', background: documents.panDoc ? '#f0fdf4' : '#f8fafc' }}>
+              {/* 3. PAN Card (Required) */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', border: documents.panDoc ? '1.5px solid #16a34a' : '1.5px solid #cbd5e1', background: documents.panDoc ? '#f0fdf4' : '#ffffff' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: documents.panDoc ? '#dcfce7' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <CreditCard size={20} color={documents.panDoc ? '#16a34a' : '#64748b'} />
+                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: documents.panDoc ? '#dcfce7' : '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <CreditCard size={20} color={documents.panDoc ? '#16a34a' : '#ef4444'} />
                   </div>
                   <div>
                     <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>
-                      PAN Card <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '500' }}>(Optional)</span>
+                      PAN Card <span style={{ color: '#ef4444', fontWeight: '800' }}>* Required</span>
                     </div>
-                    <div style={{ fontSize: '0.74rem', color: '#64748b' }}>Required for tax reporting</div>
+                    <div style={{ fontSize: '0.74rem', color: '#64748b' }}>Required for tax & payout verification</div>
                   </div>
                 </div>
                 <button
@@ -2110,19 +2147,19 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                   onClick={() => { setActiveGenericDoc('panDoc'); setShowGenericModal(true); }}
                   style={{ padding: '6px 14px', borderRadius: '20px', border: documents.panDoc ? 'none' : '1px solid #16a34a', background: documents.panDoc ? '#16a34a' : '#ffffff', color: documents.panDoc ? '#ffffff' : '#16a34a', fontWeight: '700', fontSize: '0.78rem', cursor: 'pointer' }}
                 >
-                  {documents.panDoc ? 'Uploaded ✓' : 'Upload'}
+                  {documents.panDoc ? 'Uploaded ✓' : 'Upload *'}
                 </button>
               </div>
 
-              {/* 4. Passport Size Photo */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', border: documents.passportPhoto ? '1.5px solid #16a34a' : '1.5px solid #e2e8f0', background: documents.passportPhoto ? '#f0fdf4' : '#f8fafc' }}>
+              {/* 4. Passport Size Photo (Required) */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', border: documents.passportPhoto ? '1.5px solid #16a34a' : '1.5px solid #cbd5e1', background: documents.passportPhoto ? '#f0fdf4' : '#ffffff' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: documents.passportPhoto ? '#dcfce7' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <User size={20} color={documents.passportPhoto ? '#16a34a' : '#64748b'} />
+                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: documents.passportPhoto ? '#dcfce7' : '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <User size={20} color={documents.passportPhoto ? '#16a34a' : '#ef4444'} />
                   </div>
                   <div>
                     <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>
-                      Passport Size Photo <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '500' }}>(Optional)</span>
+                      Passport Size Photo <span style={{ color: '#ef4444', fontWeight: '800' }}>* Required</span>
                     </div>
                     <div style={{ fontSize: '0.74rem', color: '#64748b' }}>Clear face photo for ID Card</div>
                   </div>
@@ -2132,19 +2169,19 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                   onClick={() => { setActiveGenericDoc('passportPhoto'); setShowGenericModal(true); }}
                   style={{ padding: '6px 14px', borderRadius: '20px', border: documents.passportPhoto ? 'none' : '1px solid #16a34a', background: documents.passportPhoto ? '#16a34a' : '#ffffff', color: documents.passportPhoto ? '#ffffff' : '#16a34a', fontWeight: '700', fontSize: '0.78rem', cursor: 'pointer' }}
                 >
-                  {documents.passportPhoto ? 'Uploaded ✓' : 'Upload'}
+                  {documents.passportPhoto ? 'Uploaded ✓' : 'Upload *'}
                 </button>
               </div>
 
-              {/* 5. Bank Passbook / Cheque */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', border: documents.bankPassbookDoc ? '1.5px solid #16a34a' : '1.5px solid #e2e8f0', background: documents.bankPassbookDoc ? '#f0fdf4' : '#f8fafc' }}>
+              {/* 5. Bank Passbook / Cheque (Required) */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '14px', border: documents.bankPassbookDoc ? '1.5px solid #16a34a' : '1.5px solid #cbd5e1', background: documents.bankPassbookDoc ? '#f0fdf4' : '#ffffff' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: documents.bankPassbookDoc ? '#dcfce7' : '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Building size={20} color={documents.bankPassbookDoc ? '#16a34a' : '#64748b'} />
+                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: documents.bankPassbookDoc ? '#dcfce7' : '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Building size={20} color={documents.bankPassbookDoc ? '#16a34a' : '#ef4444'} />
                   </div>
                   <div>
                     <div style={{ fontSize: '0.88rem', fontWeight: '700', color: '#0f172a' }}>
-                      Bank Passbook / Cheque <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '500' }}>(Optional)</span>
+                      Bank Passbook / Cheque <span style={{ color: '#ef4444', fontWeight: '800' }}>* Required</span>
                     </div>
                     <div style={{ fontSize: '0.74rem', color: '#64748b' }}>For directly transferring payouts</div>
                   </div>
@@ -2154,7 +2191,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                   onClick={() => { setActiveGenericDoc('bankPassbookDoc'); setShowGenericModal(true); }}
                   style={{ padding: '6px 14px', borderRadius: '20px', border: documents.bankPassbookDoc ? 'none' : '1px solid #16a34a', background: documents.bankPassbookDoc ? '#16a34a' : '#ffffff', color: documents.bankPassbookDoc ? '#ffffff' : '#16a34a', fontWeight: '700', fontSize: '0.78rem', cursor: 'pointer' }}
                 >
-                  {documents.bankPassbookDoc ? 'Uploaded ✓' : 'Upload'}
+                  {documents.bankPassbookDoc ? 'Uploaded ✓' : 'Upload *'}
                 </button>
               </div>
 
@@ -2193,6 +2230,80 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                       ✕
                     </button>
                   </div>
+
+                  {/* DOCUMENT SPECIFIC DETAILS INPUT FIELDS */}
+                  {activeGenericDoc === 'panDoc' && (
+                    <div style={{ marginBottom: '14px' }}>
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                        PAN Card Number (10 Characters)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter 10-digit PAN (e.g. ABCDE1234F)"
+                        maxLength={10}
+                        value={panNoInput}
+                        onChange={(e) => setPanNoInput(e.target.value.toUpperCase())}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.86rem', outline: 'none', textTransform: 'uppercase' }}
+                      />
+                    </div>
+                  )}
+
+                  {activeGenericDoc === 'drivingLicenseDoc' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                          Driving Licence Number
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="DL Number (e.g. DL-1420210089123)"
+                          value={dlNoInput}
+                          onChange={(e) => setDlNoInput(e.target.value.toUpperCase())}
+                          style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.86rem', outline: 'none' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                          Date of Birth (DOB)
+                        </label>
+                        <input
+                          type="date"
+                          value={dlDobInput}
+                          onChange={(e) => setDlDobInput(e.target.value)}
+                          style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.86rem', outline: 'none' }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {activeGenericDoc === 'bankPassbookDoc' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                          Bank Account Number
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter Account Number"
+                          value={bankAccountNoInput}
+                          onChange={(e) => setBankAccountNoInput(e.target.value)}
+                          style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.86rem', outline: 'none' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                          Bank IFSC Code
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter IFSC Code (e.g. HDFC0001234)"
+                          value={bankIfscInput}
+                          onChange={(e) => setBankIfscInput(e.target.value.toUpperCase())}
+                          style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.86rem', outline: 'none', textTransform: 'uppercase' }}
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <label htmlFor="generic-doc-file" style={{
                     display: 'flex',
@@ -2273,6 +2384,21 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
               <p style={{ color: '#64748b', fontSize: '0.82rem', marginTop: '4px', margin: 0 }}>
                 Upload clear photos of both sides of your Aadhaar Card for identity verification.
               </p>
+            </div>
+
+            {/* 12-digit Aadhaar Number Input Field */}
+            <div style={{ marginBottom: '18px' }}>
+              <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                Aadhaar Card Number (12 Digits)
+              </label>
+              <input
+                type="text"
+                placeholder="Enter 12-digit Aadhaar Number (e.g. 1234 5678 9012)"
+                maxLength={12}
+                value={aadhaarNoInput}
+                onChange={(e) => setAadhaarNoInput(e.target.value.replace(/\D/g, ''))}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', outline: 'none', background: '#ffffff', fontWeight: '600' }}
+              />
             </div>
 
             {/* Front Side Upload Drop Box */}

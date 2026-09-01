@@ -30,7 +30,6 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout, collapsed }) => 
     { id: 'customers', label: 'CUSTOMERS', icon: Users },
     { id: 'partners', label: 'PARTNERS', icon: Briefcase },
     { id: 'categories', label: 'CATEGORIES', icon: Grid },
-    { id: 'skills', label: 'SKILL MANAGEMENT', icon: Sparkles, badge: 'Onboarding' },
     { id: 'subCategories', label: 'SUB CATEGORIES', icon: Layers },
     { id: 'services', label: 'SERVICES', icon: Wrench },
     { id: 'bookings', label: 'BOOKINGS', icon: CalendarCheck },

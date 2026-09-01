@@ -26,6 +26,7 @@ import {
   X
 } from 'lucide-react';
 import { toast } from '../../utils/toast.js';
+import { kycService } from '../../services/kyc.service.js';
 
 const DEFAULT_KYC_IMAGE =
   'https://images.unsplash.com/photo-1633332755192-727a05c4013d?q=80&w=600&auto=format&fit=crop';
@@ -309,6 +310,91 @@ const PartnerKycDetailPage = ({
         </div>
       </div>
 
+      {/* 2b. ZOOP AUTOMATED IDENTITY & COMPLIANCE BADGES CARD */}
+      <div
+        className="mui-card"
+        style={{
+          padding: '22px 24px',
+          background: '#ffffff',
+          borderRadius: '20px',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 6px 18px rgba(0,0,0,0.05)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: '800', margin: 0, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShieldCheck size={20} color="#2563eb" /> ZOOP Automated Document & Identity Checks (7 Products)
+            </h3>
+            <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '2px' }}>
+              Overall ZOOP Status:{' '}
+              <strong style={{ color: (partner.kyc?.overallStatus || 'PENDING') === 'VERIFIED' ? '#16a34a' : '#d97706' }}>
+                {(partner.kyc?.overallStatus || 'PENDING').toUpperCase()}
+              </strong>{' '}
+              • Admin Approval Status:{' '}
+              <strong style={{ color: (partner.kyc?.approvalStatus || 'PENDING_ADMIN_REVIEW') === 'APPROVED' ? '#16a34a' : '#2563eb' }}>
+                {(partner.kyc?.approvalStatus || 'PENDING_ADMIN_REVIEW').replace(/_/g, ' ').toUpperCase()}
+              </strong>
+            </div>
+          </div>
+
+          {(partner.kyc?.overallStatus !== 'VERIFIED') && (
+            <button
+              type="button"
+              onClick={async () => {
+                const reason = prompt('Enter reason for Manual Override Approval (e.g. ZOOP API unavailable, verified physical documents):');
+                if (reason) {
+                  try {
+                    await kycService.approvePartnerAdmin(partner._id, { isManualOverride: true, overrideReason: reason });
+                    toast.success('Partner approved via Manual Override ✓');
+                    onBack();
+                  } catch (err) {
+                    toast.error(err.response?.data?.message || 'Manual override failed');
+                  }
+                }
+              }}
+              className="btn btn-secondary btn-sm"
+              style={{ borderRadius: '10px', fontWeight: '800', fontSize: '0.78rem', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' }}
+            >
+              ⚠️ Manual Admin Override Approval
+            </button>
+          )}
+        </div>
+
+        {/* 7 CHECK BADGES */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
+          {[
+            { label: 'Mobile OTP', status: partner.kyc?.mobile?.status },
+            { label: 'PAN Verification', status: partner.kyc?.pan?.status },
+            { label: 'Aadhaar / DigiLocker', status: partner.kyc?.aadhaar?.status || partner.kyc?.digilocker?.status },
+            { label: 'Driving Licence', status: partner.kyc?.drivingLicense?.status },
+            { label: 'Bank Account', status: partner.kyc?.bankAccount?.status },
+            { label: 'Face Match', status: partner.kyc?.faceMatch?.status, extra: partner.kyc?.faceMatch?.score ? `${partner.kyc.faceMatch.score}%` : null },
+            { label: 'Face Liveness', status: partner.kyc?.faceLiveness?.status },
+          ].map((item, idx) => {
+            const st = String(item.status || 'PENDING').toUpperCase();
+            const isOk = st === 'VERIFIED';
+            const isFail = st === 'FAILED';
+            return (
+              <div
+                key={idx}
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: '12px',
+                  background: isOk ? '#f0fdf4' : isFail ? '#fef2f2' : '#f8fafc',
+                  border: `1px solid ${isOk ? '#bbf7d0' : isFail ? '#fecdd3' : '#e2e8f0'}`,
+                }}
+              >
+                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>{item.label}</div>
+                <div style={{ fontSize: '0.84rem', fontWeight: '800', color: isOk ? '#16a34a' : isFail ? '#dc2626' : '#d97706', marginTop: '2px' }}>
+                  {isOk ? '✓ VERIFIED' : isFail ? '❌ FAILED' : '⏳ PENDING'} {item.extra ? '(' + item.extra + ')' : ''}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* 3. FULL PAGE TAB NAVIGATION BAR */}
       <div
         className="mui-card"
@@ -323,7 +409,7 @@ const PartnerKycDetailPage = ({
           { id: 'documents', label: 'KYC Compliance Documents & Approvals', icon: FileCheck },
           { id: 'profile', label: 'Personal & Government ID Info', icon: User },
           { id: 'bank', label: 'Settlement Bank & Financial Wallet', icon: Wallet },
-          { id: 'skills', label: 'Trade Skills & Localities Coverage', icon: Briefcase },
+          { id: 'skills', label: 'Localities & Coverage Area', icon: Briefcase },
         ].map((tab) => {
           const IconComp = tab.icon;
           const isActive = activeTab === tab.id;

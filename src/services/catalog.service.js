@@ -29,12 +29,6 @@ export const catalogService = {
   updateService: (id, data) => axiosInstance.put(`/services/${id}`, data),
   deleteService: (id) => axiosInstance.delete(`/services/${id}`),
 
-  // Dedicated Skills
-  getSkills: (params) => axiosInstance.get('/skills', { params }),
-  createSkill: (data) => axiosInstance.post('/skills', data),
-  updateSkill: (id, data) => axiosInstance.put(`/skills/${id}`, data),
-  deleteSkill: (id) => axiosInstance.delete(`/skills/${id}`),
-
   // Service Packages
   getServicePackages: (serviceId) => axiosInstance.get(`/packages/service/${serviceId}`),
   createPackage: (serviceId, data) => axiosInstance.post(`/packages/service/${serviceId}`, data),

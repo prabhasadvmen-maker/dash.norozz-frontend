@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Clock, CheckCircle2, XCircle, ShieldCheck, FileCheck, Lock, Unlock, Sparkles, Upload, Loader2 } from 'lucide-react';
 import { usePartner } from '../../hooks/usePartner.js';
+import PartnerZoopKycStepper from './PartnerZoopKycStepper.jsx';
 
 const PartnerKycStatusView = ({ kycStatus, onSimulateStatusChange, partnerData }) => {
   const { uploadDocuments, updateProfile } = usePartner();
@@ -96,6 +97,11 @@ const PartnerKycStatusView = ({ kycStatus, onSimulateStatusChange, partnerData }
           </span>
         </div>
 
+      </div>
+
+      {/* ZOOP AUTOMATIC KYC STEPPER & CHECK CARDS */}
+      <div style={{ marginBottom: '24px' }}>
+        <PartnerZoopKycStepper partnerData={partnerData} />
       </div>
 
       {/* KYC DETAILS & DOCUMENT UPLOAD FORM */}
