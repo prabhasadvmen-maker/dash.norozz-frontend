@@ -1204,6 +1204,16 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
       return;
     }
 
+    if (aadhaarNoInput) {
+      const cleanAadhaar = aadhaarNoInput.replace(/\D/g, '');
+      if (cleanAadhaar.length !== 12 || /^[0-1]/.test(cleanAadhaar)) {
+        const msg = 'Please enter a valid 12-digit Aadhaar Card Number (cannot start with 0 or 1).';
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
+    }
+
     try {
       const formData = new FormData();
       const keys = Object.keys(documentFiles);
