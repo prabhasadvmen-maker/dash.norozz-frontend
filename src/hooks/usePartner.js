@@ -132,6 +132,7 @@ export const usePartner = (tabOrOptions = 'dashboard') => {
     refetchDashboard: () => dashboardQuery.refetch(),
     refetchWallet: () => walletQuery.refetch(),
     refetchAll: () => queryClient.invalidateQueries({ queryKey: ['partner'] }),
+    refetch: () => queryClient.invalidateQueries({ queryKey: ['partner'] }),
     updateAvailability: updateAvailabilityMutation.mutateAsync,
     updateProfile: updateProfileMutation.mutateAsync,
     uploadDocuments: uploadDocumentsMutation.mutateAsync,

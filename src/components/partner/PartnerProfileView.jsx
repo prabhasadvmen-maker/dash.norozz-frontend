@@ -100,6 +100,10 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawing, setWithdrawing] = useState(false);
 
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [depositAmount, setDepositAmount] = useState('');
+  const [isDepositing, setIsDepositing] = useState(false);
+
   const user = partnerData || {};
   const kycStatus = user.kycStatus || 'pending';
   const isApproved = kycStatus === 'approved';
@@ -422,6 +426,34 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
     }
   };
 
+  const handleConfirmDeposit = async (e) => {
+    e?.preventDefault();
+    const amt = Number(depositAmount);
+    if (!amt || amt <= 0) {
+      return toast.error('Please enter a valid deposit amount');
+    }
+
+    setIsDepositing(true);
+    try {
+      const res = await partnerService.addDepositToWallet(amt);
+      toast.success(res.data?.message || `₹${amt.toLocaleString('en-IN')} added to your wallet!`);
+      setDepositModalOpen(false);
+      setDepositAmount('');
+      const updatedWallet = await partnerService.getWallet();
+      const newBal = res.data?.data?.walletBalance ?? res.data?.walletBalance ?? updatedWallet.data?.data?.walletBalance;
+      if (updatedWallet.data?.data) {
+        setWalletData(updatedWallet.data.data);
+      }
+      if (onUpdateUser && newBal !== undefined) {
+        onUpdateUser({ ...user, walletBalance: newBal });
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Deposit failed');
+    } finally {
+      setIsDepositing(false);
+    }
+  };
+
   // Uploaded Documents local state
   const docs = user.documents || {};
   const [documentsState, setDocumentsState] = useState({
@@ -596,46 +628,91 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64Url = reader.result;
-      setEditForm((prev) => ({ ...prev, profileImage: base64Url }));
-      setSaving(true);
-      try {
-        const res = await partnerService.updateProfile({ profileImage: base64Url });
-        toast.success('📸 Profile picture updated successfully!');
-        if (onUpdateUser && res.data?.user) {
-          onUpdateUser(res.data.user);
+    setSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append('profileImage', file);
+
+      // Local preview URL
+      const localPreviewUrl = URL.createObjectURL(file);
+      setEditForm((prev) => ({ ...prev, profileImage: localPreviewUrl }));
+
+      const res = await partnerService.updateProfile(formData);
+      toast.success('📸 Profile picture updated successfully!');
+
+      const updatedUser = res.data?.user || res.data?.data || res.data;
+      if (updatedUser) {
+        if (onUpdateUser) onUpdateUser(updatedUser);
+        if (updatedUser.profileImage) {
+          setEditForm((prev) => ({ ...prev, profileImage: updatedUser.profileImage }));
         }
-      } catch (err) {
-        toast.error(err.response?.data?.message || 'Failed to update profile picture.');
-      } finally {
-        setSaving(false);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update profile picture.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  // Handlers for Profile Save
+  // Sync editForm state when partnerData prop updates
+  useEffect(() => {
+    const u = partnerData || {};
+    setEditForm({
+      name: u.name || '',
+      email: u.email || '',
+      phone: u.phone || '',
+      dob: u.dob || '',
+      gender: u.gender || 'Male',
+      experience: u.experience || '3-5 Years',
+      workRadius: u.workRadius || 8,
+      address: u.address || '',
+      localities: u.localities ? [...u.localities] : [],
+      newLocalityInput: '',
+      profileImage: u.profileImage || '',
+    });
+  }, [partnerData]);
+
+  // Handlers for Profile Save (Sends ONLY modified fields in API payload)
   const handleSaveProfile = async (e) => {
     e?.preventDefault();
     setSaving(true);
     try {
-      const payload = {
-        name: editForm.name,
-        dob: editForm.dob,
-        gender: editForm.gender,
-        experience: editForm.experience,
-        workRadius: Number(editForm.workRadius),
-        localities: editForm.localities,
-        address: editForm.address,
-        profileImage: editForm.profileImage,
-      };
+      const payload = {};
 
+      const initialName = (user.name || '').trim();
+      const initialDob = user.dob || '';
+      const initialGender = user.gender || 'Male';
+      const initialExperience = user.experience || '3-5 Years';
+      const initialWorkRadius = Number(user.workRadius || 8);
+      const initialLocalities = JSON.stringify(user.localities || []);
+      const initialAddress = (user.address || '').trim();
+      const initialProfileImage = user.profileImage || '';
+
+      const currentName = (editForm.name || '').trim();
+      const currentAddress = (editForm.address || '').trim();
+
+      if (currentName && currentName !== initialName) payload.name = currentName;
+      if (editForm.dob && editForm.dob !== initialDob) payload.dob = editForm.dob;
+      if (editForm.gender && editForm.gender !== initialGender) payload.gender = editForm.gender;
+      if (editForm.experience && editForm.experience !== initialExperience) payload.experience = editForm.experience;
+      if (Number(editForm.workRadius) !== initialWorkRadius) payload.workRadius = Number(editForm.workRadius);
+      if (JSON.stringify(editForm.localities || []) !== initialLocalities) payload.localities = editForm.localities;
+      if (currentAddress !== initialAddress) payload.address = currentAddress;
+      if (editForm.profileImage && editForm.profileImage !== initialProfileImage) payload.profileImage = editForm.profileImage;
+
+      if (Object.keys(payload).length === 0) {
+        toast.info('No changes detected in profile fields.');
+        setSaving(false);
+        return;
+      }
+
+      console.log('📤 Sending Profile Edit Payload (Modified Fields Only):', payload);
       const res = await partnerService.updateProfile(payload);
       toast.success('🎉 Profile updated successfully!');
-      if (onUpdateUser && res.data?.user) {
-        onUpdateUser(res.data.user);
+
+      const updatedUser = res.data?.user || res.data?.data || res.data;
+      if (updatedUser && onUpdateUser) {
+        onUpdateUser(updatedUser);
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update profile.');
@@ -1820,7 +1897,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                 </button>
                 <button
                   type="button"
-                  onClick={() => toast.info('Instant deposit feature ready for commission top-ups.')}
+                  onClick={() => setDepositModalOpen(true)}
                   style={{
                     padding: '12px 20px',
                     background: 'rgba(255, 255, 255, 0.18)',
@@ -3297,6 +3374,108 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                   style={{ flex: 1.5, padding: '12px', background: '#16a34a', color: '#ffffff', border: 'none', borderRadius: '12px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 >
                   {isWithdrawing ? 'Processing...' : 'Confirm & Transfer Cash'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* WALLET ADD DEPOSIT / TOP-UP MODAL POPUP */}
+      {/* ------------------------------------------------------------- */}
+      {depositModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: '#ffffff', borderRadius: '24px', padding: '28px', maxWidth: '440px', width: '100%', border: '1px solid #e2e8f0', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#0f172a', margin: 0 }}>Add Deposit to Wallet</h3>
+                <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '2px 0 0 0' }}>Top-up wallet balance for platform dispatches & commission</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDepositModalOpen(false)}
+                style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
+                <X size={18} color="#64748b" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmDeposit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ background: '#f0fdf4', padding: '16px', borderRadius: '16px', border: '1px solid #bbf7d0' }}>
+                <div style={{ fontSize: '0.76rem', color: '#166534', fontWeight: '700', textTransform: 'uppercase' }}>Current Wallet Balance</div>
+                <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>
+                  ₹{(walletData?.walletBalance ?? user.walletBalance ?? 0).toLocaleString('en-IN')}.00
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.82rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
+                  Enter Deposit Amount (₹)
+                </label>
+                <input
+                  type="number"
+                  placeholder="e.g. 1000"
+                  value={depositAmount}
+                  onChange={(e) => setDepositAmount(e.target.value)}
+                  min="1"
+                  required
+                  style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '1rem', fontWeight: '800', outline: 'none' }}
+                />
+              </div>
+
+              {/* Quick Preset Amount Selector Chips */}
+              <div>
+                <label style={{ fontSize: '0.78rem', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '8px' }}>
+                  Quick Amount Select:
+                </label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {[500, 1000, 2000, 5000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setDepositAmount(String(amt))}
+                      style={{
+                        padding: '8px 14px',
+                        background: Number(depositAmount) === amt ? '#16a34a' : '#f1f5f9',
+                        color: Number(depositAmount) === amt ? '#ffffff' : '#334155',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontSize: '0.82rem',
+                        fontWeight: '800',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      + ₹{amt.toLocaleString('en-IN')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.82rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
+                  Payment Method
+                </label>
+                <div style={{ padding: '12px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '0.86rem', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>⚡ Instant UPI / NetBanking / Razorpay</span>
+                  <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '10px' }}>0% Gateway Fee</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setDepositModalOpen(false)}
+                  style={{ flex: 1, padding: '12px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isDepositing}
+                  style={{ flex: 1.5, padding: '12px', background: '#16a34a', color: '#ffffff', border: 'none', borderRadius: '12px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  {isDepositing ? 'Processing Deposit...' : 'Confirm & Add Deposit'}
                 </button>
               </div>
             </form>

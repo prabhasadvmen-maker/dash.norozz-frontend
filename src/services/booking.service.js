@@ -7,7 +7,7 @@ export const bookingService = {
   acceptBooking: (id) => axiosInstance.patch(`/bookings/${id}/accept`),
   onTheWayBooking: (id) => axiosInstance.patch(`/bookings/${id}/on-the-way`),
   startBooking: (id) => axiosInstance.patch(`/bookings/${id}/start`),
-  completeBooking: (id) => axiosInstance.patch(`/bookings/${id}/complete`),
+  completeBooking: (id, paymentMethod = 'UPI') => axiosInstance.patch(`/bookings/${id}/complete`, { paymentMethod: typeof paymentMethod === 'string' ? paymentMethod : paymentMethod?.paymentMethod || 'UPI' }),
   rateBooking: (id, data) => axiosInstance.post(`/bookings/${id}/rate`, data),
   cancelBooking: (id, reason) => axiosInstance.patch(`/bookings/${id}/cancel`, { reason }),
   getMyBookings: () => axiosInstance.get('/bookings/my-bookings'),

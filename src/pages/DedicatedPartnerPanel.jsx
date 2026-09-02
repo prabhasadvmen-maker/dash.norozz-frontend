@@ -27,7 +27,7 @@ import {
 
 const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const { dashboard, todayBookings, updateAvailability, refetchAll } = usePartner(activeTab);
+  const { dashboard, todayBookings, updateAvailability, refetchAll, refetchAll: refetch } = usePartner(activeTab);
   const [refreshing, setRefreshing] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -35,6 +35,12 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
   const [isOnline, setIsOnline] = useState(currentUser?.isOnline ?? true);
   const [onlineModalOpen, setOnlineModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
+
+  useEffect(() => {
+    if (currentUser?.isOnline !== undefined) {
+      setIsOnline(currentUser.isOnline);
+    }
+  }, [currentUser?.isOnline]);
 
   // Real-Time Incoming Job Offer State
   const [currentJobOffer, setCurrentJobOffer] = useState(null);
@@ -119,6 +125,10 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
 
     // Listen for new real-time job offers
     socketService.onNewJobOffer((offer) => {
+      if (!isOnline || !isApproved) {
+        console.log('⛔ Ignoring job offer because partner is offline or not approved.');
+        return;
+      }
       console.log('⚡ Received real-time job offer:', offer);
       setCurrentJobOffer(offer);
     });
@@ -194,6 +204,9 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
         await updateAvailability({ isOnline: nextStatus });
       }
       setIsOnline(nextStatus);
+      if (onUpdateUser) {
+        onUpdateUser({ ...currentUser, isOnline: nextStatus });
+      }
       toast.success(
         nextStatus
           ? '⚡ You are now ONLINE! High-paying booking requests active.'
@@ -202,6 +215,9 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
     } catch {
       // Fallback local toggle if server fails
       setIsOnline(nextStatus);
+      if (onUpdateUser) {
+        onUpdateUser({ ...currentUser, isOnline: nextStatus });
+      }
     } finally {
       setModalLoading(false);
       setOnlineModalOpen(false);

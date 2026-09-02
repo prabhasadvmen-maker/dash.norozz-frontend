@@ -52,6 +52,8 @@ const FulfillmentRouteMap = ({ partnerCoords, customerCoords, fullAddressStr }) 
       mapContainerRef.current._leaflet_id = null;
     }
 
+    let timer = null;
+
     try {
       delete L.Icon.Default.prototype._getIconUrl;
       L.Icon.Default.mergeOptions({
@@ -147,15 +149,24 @@ const FulfillmentRouteMap = ({ partnerCoords, customerCoords, fullAddressStr }) 
         });
 
       mapInstanceRef.current = map;
-      setTimeout(() => map.invalidateSize(), 300);
+      timer = setTimeout(() => {
+        if (isMounted && mapInstanceRef.current && mapContainerRef.current) {
+          try {
+            map.invalidateSize();
+          } catch (_) {}
+        }
+      }, 300);
     } catch (err) {
       console.error('Fulfillment route map initialization error:', err);
     }
 
     return () => {
       isMounted = false;
+      if (timer) clearTimeout(timer);
       if (mapInstanceRef.current) {
-        try { mapInstanceRef.current.remove(); } catch (_) {}
+        try {
+          mapInstanceRef.current.remove();
+        } catch (_) {}
         mapInstanceRef.current = null;
       }
     };
@@ -302,31 +313,43 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
     const partnerOffered = currentUser?.offeredServices || activeBooking?.partner?.offeredServices;
 
     if (partnerOffered && Array.isArray(partnerOffered) && partnerOffered.length > 0) {
+      const dbExtras = activeBooking?.extraServices || [];
+
       const items = partnerOffered.map((srv, idx) => {
         let textStr = '';
         let itemPrice = 150;
+        let sId = null;
+
         if (typeof srv === 'object' && srv !== null) {
           textStr = srv.name || srv.title || srv.serviceName || srv.packageName;
           itemPrice = srv.price || srv.finalPrice || 150;
+          sId = srv._id;
         } else if (typeof srv === 'string' && !isHexObjectId(srv)) {
           textStr = srv;
+        } else if (typeof srv === 'string' && isHexObjectId(srv)) {
+          sId = srv;
         }
 
-        // Fallback if srv was a raw 24-char Mongo hex ObjectId
         if (!textStr || isHexObjectId(textStr)) {
           textStr = idx === 0 ? bookedServiceTitle : `Extra Service Option ${idx + 1}`;
         }
 
         const isPrimary = idx === 0 || textStr.toLowerCase() === bookedServiceTitle.toLowerCase();
 
+        // Match with DB extraServices if already added
+        const matchedDbExtra = dbExtras.find(
+          (ex) => (sId && String(ex.serviceId) === String(sId)) || (ex.name && ex.name.toLowerCase().includes(textStr.toLowerCase()))
+        );
+
         return {
           id: idx + 1,
           text: textStr,
-          price: isPrimary ? baseP : itemPrice,
+          price: isPrimary ? baseP : (matchedDbExtra ? matchedDbExtra.price : itemPrice),
           isBooked: isPrimary,
-          completed: isPrimary, // Primary booked service is checked by default
+          completed: isPrimary || Boolean(matchedDbExtra),
+          packageName: matchedDbExtra ? matchedDbExtra.packageName : null,
           rawServiceObj: typeof srv === 'object' ? srv : null,
-          serviceId: typeof srv === 'object' ? srv._id : (isHexObjectId(srv) ? srv : null),
+          serviceId: sId || (typeof srv === 'object' ? srv._id : (isHexObjectId(srv) ? srv : null)),
         };
       });
       setChecklist(items);
@@ -393,9 +416,15 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
   const sTitle = currentBooking.packageName || currentBooking.service?.name || currentBooking.serviceTitle || 'Basic Haircut';
   const basePrice = currentBooking.amount || currentBooking.totalAmount || currentBooking.service?.finalPrice || 276;
 
-  // Calculate extra services selected from offeredServices checklist
-  const selectedExtraServices = checklist.filter((item) => !item.isBooked && item.completed);
-  const extraServicesTotal = selectedExtraServices.reduce((sum, item) => sum + (item.price || 150), 0);
+  // Calculate extra services selected from offeredServices checklist or DB extraServices
+  const selectedExtraServices = (currentBooking?.extraServices && currentBooking.extraServices.length > 0)
+    ? currentBooking.extraServices
+    : checklist.filter((item) => !item.isBooked && item.completed);
+
+  const extraServicesPrice = selectedExtraServices.reduce((sum, item) => sum + (item.price || 150), 0);
+  const extraCustomerPlatformFee = extraServicesPrice > 0 ? Math.round(extraServicesPrice * 0.05) : 0; // 5% Customer Platform Fee
+  const extraServicesTotal = extraServicesPrice + extraCustomerPlatformFee;
+
   const finalTotal = basePrice + extraServicesTotal;
   const platformCommissionFee = currentBooking.financialSnapshot?.partnerCommission || Math.round(finalTotal * 0.10);
   const netPartnerEarning = currentBooking.financialSnapshot?.partnerNetEarning || (finalTotal - platformCommissionFee);
@@ -598,11 +627,15 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
           paymentMethod,
           paymentTxnId: `PAY-EXT-${Date.now()}`,
         });
-        await completeBooking(rawId);
+        await completeBooking({ id: rawId, paymentMethod });
       } else {
         toast.success(`Job Completed! Payment collected.`);
       }
-      toast.success('🎉 Service Completed & Partner Wallet Credited!');
+      toast.success(
+        paymentMethod === 'cash'
+          ? '🎉 Service Completed! Platform fee deducted from your wallet for cash collection.'
+          : '🎉 Service Completed & Partner Wallet Credited!'
+      );
       if (onComplete) onComplete();
       if (onBack) onBack();
     } catch (err) {
@@ -1168,12 +1201,51 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                 </div>
               </div>
 
-              <div style={{ padding: '14px 16px', background: '#eff6ff', borderRadius: '16px', border: '1px solid #bfdbfe', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: '800', fontSize: '0.95rem', color: '#0f172a' }}>{sTitle}</div>
-                  <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: '600', marginTop: '2px' }}>{custName} • {fullAddressStr}</div>
+              <div style={{ padding: '16px 18px', background: '#eff6ff', borderRadius: '16px', border: '1px solid #bfdbfe', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontWeight: '800', fontSize: '1rem', color: '#0f172a' }}>{sTitle}</div>
+                    <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: '600', marginTop: '2px' }}>{custName} • {fullAddressStr}</div>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: '#2563eb', fontFamily: 'monospace', fontWeight: '800' }}>{bId}</div>
                 </div>
-                <div style={{ fontSize: '0.85rem', color: '#2563eb', fontFamily: 'monospace', fontWeight: '800' }}>{bId}</div>
+
+                {/* Display List of Extra Services Added under Primary Service */}
+                {((currentBooking?.extraServices && currentBooking.extraServices.length > 0) || selectedExtraServices.length > 0) && (
+                  <div style={{ borderTop: '1px dashed #bfdbfe', paddingTop: '10px', marginTop: '2px' }}>
+                    <div style={{ fontSize: '0.76rem', fontWeight: '800', color: '#1d4ed8', marginBottom: '6px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      ➕ Extra Services Added ({currentBooking?.extraServices?.length || selectedExtraServices.length}):
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {(currentBooking?.extraServices && currentBooking.extraServices.length > 0 ? currentBooking.extraServices : selectedExtraServices).map((ex, idx) => (
+                        <div
+                          key={ex._id || idx}
+                          style={{
+                            background: '#ffffff',
+                            color: '#1e40af',
+                            border: '1px solid #93c5fd',
+                            padding: '6px 12px',
+                            borderRadius: '12px',
+                            fontSize: '0.82rem',
+                            fontWeight: '800',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            boxShadow: '0 2px 6px rgba(37, 99, 235, 0.08)'
+                          }}
+                        >
+                          <span>✨ {ex.serviceName || ex.name || ex.text}</span>
+                          {(ex.packageName || ex.packageName) && (
+                            <span style={{ color: '#2563eb', fontWeight: '700', fontSize: '0.78rem' }}>({ex.packageName})</span>
+                          )}
+                          <span style={{ color: '#16a34a', fontWeight: '800', background: '#dcfce7', padding: '2px 8px', borderRadius: '8px' }}>
+                            +₹{ex.price}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -1323,18 +1395,32 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                 <div style={{ padding: '16px', background: '#fffbe6', borderRadius: '16px', border: '1px solid #fef08a' }}>
                   <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#b45309', textTransform: 'uppercase', marginBottom: '8px' }}>EXTRA SERVICES ADDED DURING EXECUTION</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {selectedExtraServices.map((item) => (
-                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem', fontWeight: '700', color: '#0f172a' }}>
+                    {selectedExtraServices.map((item, idx) => (
+                      <div key={item.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem', fontWeight: '700', color: '#0f172a' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <CheckCircle2 size={16} color="#16a34a" /> {item.text}
+                          <CheckCircle2 size={16} color="#16a34a" /> {item.name || item.serviceName || item.text}
+                          {item.packageName && <span style={{ color: '#2563eb', fontSize: '0.78rem' }}>({item.packageName})</span>}
                         </span>
                         <span style={{ color: '#b45309', fontWeight: '800' }}>+₹{item.price || 150}</span>
                       </div>
                     ))}
                   </div>
-                  <div style={{ borderTop: '1px solid #fef08a', marginTop: '10px', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontWeight: '800', color: '#b45309', fontSize: '0.95rem' }}>
-                    <span>Extra Payment to Collect:</span>
-                    <span>₹{extraServicesTotal}</span>
+
+                  <div style={{ borderTop: '1px solid #fef08a', marginTop: '10px', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.86rem', color: '#334155' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Extra Services Value:</span>
+                      <strong>+₹{extraServicesPrice}</strong>
+                    </div>
+                    {extraCustomerPlatformFee > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#2563eb' }}>
+                        <span>Customer Platform Fee (5%):</span>
+                        <strong>+₹{extraCustomerPlatformFee}</strong>
+                      </div>
+                    )}
+                    <div style={{ borderTop: '1px dashed #fde047', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', fontWeight: '900', color: '#b45309', fontSize: '1.05rem' }}>
+                      <span>Total Extra Amount to Collect:</span>
+                      <span>₹{extraServicesTotal}</span>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -1530,26 +1616,61 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.9rem', color: '#475569', fontWeight: '700' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Service Charge</span>
-                    <span style={{ color: '#0f172a', fontWeight: '800' }}>₹{finalTotal}</span>
+                  {/* 1. Base Service (Prepaid) */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <span style={{ color: '#0f172a', fontWeight: '800' }}>Base Service ({sTitle})</span>
+                      <span style={{ display: 'block', fontSize: '0.74rem', color: '#16a34a', fontWeight: '700' }}>✓ Prepaid Online by Customer</span>
+                    </div>
+                    <span style={{ color: '#0f172a', fontWeight: '800' }}>₹{basePrice}</span>
+                  </div>
+
+                  {/* 2. Extra Services & Platform Fee (Collected Now) */}
+                  {extraServicesPrice > 0 && (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#b45309' }}>
+                        <div>
+                          <span>Extra Services ({selectedExtraServices.length})</span>
+                          <span style={{ display: 'block', fontSize: '0.74rem', color: '#b45309', fontWeight: '700' }}>Collected Now ({paymentMethod === 'cash' ? 'Cash' : 'Online'})</span>
+                        </div>
+                        <span style={{ fontWeight: '800' }}>+₹{extraServicesPrice}</span>
+                      </div>
+
+                      {extraCustomerPlatformFee > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#2563eb' }}>
+                          <span>Customer Platform Fee (5%)</span>
+                          <span style={{ fontWeight: '800' }}>+₹{extraCustomerPlatformFee}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', fontWeight: '800', color: '#0f172a' }}>
+                    <span>Total Bill Value</span>
+                    <span>₹{finalTotal}</span>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444' }}>
-                    <span>Platform Fee</span>
+                    <span>Norozz Platform Fee (Commission)</span>
                     <span>-₹{platformCommissionFee}</span>
                   </div>
 
-                  <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.15rem' }}>
-                    <span style={{ fontWeight: '800', color: '#0f172a' }}>Your Earnings</span>
+                  <div style={{ borderTop: '1px solid #cbd5e1', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.15rem' }}>
+                    <span style={{ fontWeight: '800', color: '#0f172a' }}>Your Net Earnings</span>
                     <span style={{ fontWeight: '900', color: '#16a34a' }}>₹{netPartnerEarning}</span>
                   </div>
 
-                  <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.88rem' }}>
-                    <span>Payment Mode</span>
-                    <span style={{ color: '#16a34a', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <CheckCircle2 size={16} color="#16a34a" /> {paymentMethod === 'online' ? 'Online' : 'Cash'}
-                    </span>
+                  <div style={{ borderTop: '1px solid #cbd5e1', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.84rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a', fontWeight: '700' }}>
+                      <span>Base Service Status:</span>
+                      <span>✓ Prepaid Online (₹{basePrice})</span>
+                    </div>
+                    {extraServicesPrice > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: paymentMethod === 'cash' ? '#b45309' : '#16a34a', fontWeight: '800' }}>
+                        <span>Extra Services Status:</span>
+                        <span>{paymentMethod === 'cash' ? `💵 ₹${extraServicesTotal} Cash Collected` : `📱 ₹${extraServicesTotal} Paid Online`}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

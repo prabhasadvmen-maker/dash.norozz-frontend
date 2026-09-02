@@ -10,6 +10,7 @@ export const partnerService = {
   getBookingDetails: (id) => axiosInstance.get(`/partner/bookings/${id}`),
   getWallet: () => axiosInstance.get('/partner/wallet'),
   requestWithdrawal: (amount) => axiosInstance.post('/partner/wallet/withdraw', { amount }),
+  addDepositToWallet: (amount) => axiosInstance.post('/partner/wallet/add-money', { amount }),
   getEarnings: () => axiosInstance.get('/partner/earnings'),
   getRating: () => axiosInstance.get('/partner/rating'),
   getProfile: () => axiosInstance.get('/partner/profile'),

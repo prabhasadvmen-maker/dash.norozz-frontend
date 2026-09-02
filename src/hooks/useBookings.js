@@ -58,7 +58,12 @@ export const useBookings = (enabled = true) => {
   });
 
   const completeBookingMutation = useMutation({
-    mutationFn: (id) => bookingService.completeBooking(id),
+    mutationFn: (payload) => {
+      if (typeof payload === 'object' && payload !== null) {
+        return bookingService.completeBooking(payload.id || payload.bookingId, payload.paymentMethod || 'UPI');
+      }
+      return bookingService.completeBooking(payload);
+    },
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['partner'] });
