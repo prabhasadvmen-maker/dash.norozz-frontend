@@ -112,7 +112,7 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
         const list = res.data?.data || res.data || [];
         if (Array.isArray(list) && list.length > 0) {
           setActiveCitiesList(list);
-          if (!workCity) setWorkCity(list[0].name || list[0]._id);
+          if (!workCity) setWorkCity(list[0]._id);
         }
       })
       .catch((err) => console.warn('Active cities fetch warning:', err));
@@ -933,12 +933,12 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
                 >
                   {activeCitiesList.length > 0 ? (
                     activeCitiesList.map((c) => (
-                      <option key={c._id} value={c.name || c._id}>
+                      <option key={c._id} value={c._id}>
                         {c.name} {c.state ? `(${c.state})` : ''}
                       </option>
                     ))
                   ) : (
-                    <option value="Delhi NCR">Delhi NCR</option>
+                    <option value="">Select City</option>
                   )}
                 </select>
               </div>

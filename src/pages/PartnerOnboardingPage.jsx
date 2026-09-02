@@ -417,11 +417,17 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
         const list = res.data?.data || res.data || [];
         if (Array.isArray(list) && list.length > 0) {
           setActiveCitiesList(list);
-          if (!editCity) setEditCity(list[0]._id);
+          const currentCityVal = (typeof currentUser?.assignedCity === 'object' ? currentUser?.assignedCity?._id : currentUser?.assignedCity) || currentUser?.city;
+          const matched = list.find((c) => String(c._id) === String(currentCityVal) || c.name.toLowerCase() === String(currentCityVal || '').toLowerCase());
+          if (matched) {
+            setEditCity(matched._id);
+          } else if (!editCity) {
+            setEditCity(list[0]._id);
+          }
         }
       })
       .catch((err) => console.warn('Active cities fetch warning:', err));
-  }, []);
+  }, [currentUser?.assignedCity, currentUser?.city]);
 
   const handleSaveProfileEdit = async (e) => {
     e?.preventDefault();
