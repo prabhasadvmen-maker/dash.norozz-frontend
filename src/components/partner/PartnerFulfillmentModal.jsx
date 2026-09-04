@@ -153,6 +153,30 @@ const PartnerFulfillmentModal = ({ isOpen, booking, currentUser, onClose, onComp
   // Geoapify Live Road Distance & Driving Time State
   const [geoapifyRouteInfo, setGeoapifyRouteInfo] = useState(null);
 
+  // Dynamic Offered Extra Services State (API fetched)
+  const [offeredServicesList, setOfferedServicesList] = useState([]);
+  const [loadingOfferedServices, setLoadingOfferedServices] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && (step === 5 || step === 7)) {
+      setLoadingOfferedServices(true);
+      partnerService
+        .getOfferedServices({ bookingId: rawId })
+        .then((res) => {
+          const list = res.data?.data || res.data || [];
+          if (Array.isArray(list) && list.length > 0) {
+            setOfferedServicesList(list);
+          }
+        })
+        .catch((err) => {
+          console.warn('Could not fetch offered services:', err);
+        })
+        .finally(() => {
+          setLoadingOfferedServices(false);
+        });
+    }
+  }, [isOpen, step, rawId]);
+
   useEffect(() => {
     if (!isOpen || !currentBooking) return;
     const pLat = currentUser?.locationCoordinates?.coordinates?.[1] || currentUser?.locationCoordinates?.lat || 28.6139;
@@ -834,49 +858,66 @@ const PartnerFulfillmentModal = ({ isOpen, booking, currentUser, onClose, onComp
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {[
-                  { id: 'a1', name: 'Refrigerant Gas Refill (R32)', price: 1200, desc: 'Eco-friendly high cooling gas' },
-                  { id: 'a2', name: 'AC Foam Filter Deep Cleaning', price: 400, desc: 'Antibacterial foam spray wash' },
-                  { id: 'a3', name: 'Voltage Stabilizer Health Audit', price: 200, desc: 'Safety fuse & output testing' },
-                ].map((addon) => {
-                  const isSelected = selectedAddons.some((a) => a.id === addon.id);
-                  return (
-                    <div
-                      key={addon.id}
-                      style={{
-                        padding: '12px 14px',
-                        background: isSelected ? '#eff6ff' : '#f8fafc',
-                        border: `1.5px solid ${isSelected ? '#3b82f6' : 'var(--border-light)'}`,
-                        borderRadius: '14px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: '800', fontSize: '0.88rem', color: 'var(--text-primary)' }}>{addon.name}</div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{addon.desc}</div>
-                        <div style={{ fontWeight: '800', color: '#16a34a', fontSize: '0.85rem', marginTop: '2px' }}>₹{addon.price}</div>
-                      </div>
+                {loadingOfferedServices ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', gap: '10px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                    <Loader2 size={18} className="animate-spin" /> Fetching available offered services...
+                  </div>
+                ) : (
+                  (offeredServicesList.length > 0
+                    ? offeredServicesList
+                    : [
+                        { id: 'a1', name: 'Refrigerant Gas Refill (R32)', price: 1200, desc: 'Eco-friendly high cooling gas' },
+                        { id: 'a2', name: 'AC Foam Filter Deep Cleaning', price: 400, desc: 'Antibacterial foam spray wash' },
+                        { id: 'a3', name: 'Voltage Stabilizer Health Audit', price: 200, desc: 'Safety fuse & output testing' },
+                      ]
+                  ).map((addon) => {
+                    const addonId = addon.id || addon._id;
+                    const isSelected = selectedAddons.some((a) => (a.id || a._id) === addonId);
+                    const addonItem = {
+                      id: addonId,
+                      name: addon.name || addon.title,
+                      price: addon.price || addon.finalPrice || 0,
+                      desc: addon.desc || addon.description || addon.category || 'Extra service option'
+                    };
 
-                      <button
-                        type="button"
-                        onClick={() => handleAddAddon(addon)}
-                        className="btn btn-sm"
+                    return (
+                      <div
+                        key={addonId}
                         style={{
-                          background: isSelected ? '#ef4444' : '#16a34a',
-                          color: '#ffffff',
-                          fontWeight: '800',
-                          borderRadius: '10px',
-                          border: 'none',
-                          padding: '6px 14px',
+                          padding: '12px 14px',
+                          background: isSelected ? '#eff6ff' : '#f8fafc',
+                          border: `1.5px solid ${isSelected ? '#3b82f6' : 'var(--border-light)'}`,
+                          borderRadius: '14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
                         }}
                       >
-                        {isSelected ? 'Remove' : '+ Add'}
-                      </button>
-                    </div>
-                  );
-                })}
+                        <div>
+                          <div style={{ fontWeight: '800', fontSize: '0.88rem', color: 'var(--text-primary)' }}>{addonItem.name}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{addonItem.desc}</div>
+                          <div style={{ fontWeight: '800', color: '#16a34a', fontSize: '0.85rem', marginTop: '2px' }}>₹{addonItem.price}</div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAddAddon(addonItem)}
+                          className="btn btn-sm"
+                          style={{
+                            background: isSelected ? '#ef4444' : '#16a34a',
+                            color: '#ffffff',
+                            fontWeight: '800',
+                            borderRadius: '10px',
+                            border: 'none',
+                            padding: '6px 14px',
+                          }}
+                        >
+                          {isSelected ? 'Remove' : '+ Add'}
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
               </div>
 
               {selectedAddons.length > 0 && (
