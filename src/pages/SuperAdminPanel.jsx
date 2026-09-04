@@ -7,6 +7,8 @@ import CityAdminManagement from '../components/superAdmin/CityAdminManagement';
 import CityManagementView from '../components/superAdmin/CityManagementView';
 import SuperAdminCouponsView from '../components/superAdmin/SuperAdminCouponsView';
 import SuperAdminBannersView from '../components/superAdmin/SuperAdminBannersView';
+import SuperAdminFaqsView from '../components/superAdmin/SuperAdminFaqsView';
+import SuperAdminTicketsView from '../components/superAdmin/SuperAdminTicketsView';
 import SuperAdminReferralView from '../components/superAdmin/SuperAdminReferralView';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import { useSuperAdmin } from '../hooks/useSuperAdmin.js';
@@ -73,6 +75,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     cities: 'Dynamic City Operations',
     coupons: 'Coupons & Promos',
     banners: 'Promotional Banners',
+    faqs: 'FAQs Management',
     referral: 'Referral Program Setup',
     customers: 'Customer Directory',
     partners: 'Marketplace Partners',
@@ -517,6 +520,11 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
             <CityManagementView />
           )}
 
+          {/* TAB 2.7: CENTRAL SUPPORT TICKETS */}
+          {activeTab === 'tickets' && (
+            <SuperAdminTicketsView />
+          )}
+
           {/* TAB 2.8: COUPONS & PROMOS */}
           {activeTab === 'coupons' && (
             <SuperAdminCouponsView />
@@ -525,6 +533,11 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
           {/* TAB 2.85: PROMOTIONAL BANNERS */}
           {activeTab === 'banners' && (
             <SuperAdminBannersView />
+          )}
+
+          {/* TAB 2.87: FAQS MANAGEMENT */}
+          {activeTab === 'faqs' && (
+            <SuperAdminFaqsView />
           )}
 
           {/* TAB 2.9: REFERRAL PROGRAM MANAGER */}

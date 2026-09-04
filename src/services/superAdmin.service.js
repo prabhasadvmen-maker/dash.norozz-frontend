@@ -29,4 +29,16 @@ export const superAdminService = {
   updateBanner: (id, data) => axiosInstance.put(`/super-admin/banners/${id}`, data),
   deleteBanner: (id) => axiosInstance.delete(`/super-admin/banners/${id}`),
   toggleBannerStatus: (id) => axiosInstance.patch(`/super-admin/banners/${id}/status`),
+
+  // FAQ Management CRUD
+  getFaqs: (params) => axiosInstance.get('/super-admin/faqs', { params }),
+  createFaq: (data) => axiosInstance.post('/super-admin/faqs', data),
+  updateFaq: (id, data) => axiosInstance.put(`/super-admin/faqs/${id}`, data),
+  deleteFaq: (id) => axiosInstance.delete(`/super-admin/faqs/${id}`),
+  toggleFaqStatus: (id) => axiosInstance.patch(`/super-admin/faqs/${id}/status`),
+
+  // Support Tickets Management CRUD
+  getTickets: (params) => axiosInstance.get('/super-admin/tickets', { params }),
+  updateTicketStatus: (id, data) => axiosInstance.put(`/super-admin/tickets/${id}`, data),
+  deleteTicket: (id) => axiosInstance.delete(`/super-admin/tickets/${id}`),
 };

@@ -38,4 +38,10 @@ export const customerService = {
   sendAiChatMessage: (data) => axiosInstance.post('/customer/ai-chat', data),
   getAiChatHistory: () => axiosInstance.get('/customer/ai-chat/history'),
   clearAiChatHistory: () => axiosInstance.delete('/customer/ai-chat/history'),
+  // FAQs API
+  getFaqs: () => axiosInstance.get('/customer/faqs'),
+
+  // Support Tickets API
+  createTicket: (data) => axiosInstance.post('/customer/tickets', data),
+  getTickets: () => axiosInstance.get('/customer/tickets'),
 };

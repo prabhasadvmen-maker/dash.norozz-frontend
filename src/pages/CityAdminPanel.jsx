@@ -6,6 +6,7 @@ import CityCharts from '../components/cityAdmin/CityCharts';
 import PartnerKycManagement from '../components/cityAdmin/PartnerKycManagement';
 import PartnerKycDetailPage from '../components/cityAdmin/PartnerKycDetailPage';
 import CityBookingDispatch from '../components/cityAdmin/CityBookingDispatch';
+import CityAdminTicketsView from '../components/cityAdmin/CityAdminTicketsView';
 import { useCityAdmin } from '../hooks/useCityAdmin.js';
 import { cityService } from '../services/city.service.js';
 import {
@@ -267,107 +268,8 @@ const CityAdminPanel = ({ currentUser, onLogout }) => {
           )}
 
           {/* TAB 7: HELP & SUPPORT HUB */}
-          {(activeTab === 'support' || activeTab === 'help') && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '24px' }}>
-              {/* Left Column: Direct Support Ticket Form */}
-              <div style={{ background: '#ffffff', borderRadius: '18px', border: '1px solid #e2e8f0', padding: '26px', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Headphones size={20} color="#10b981" /> {assignedCity} Operations Support Desk
-                </h3>
-                <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '4px', marginBottom: '20px' }}>
-                  Submit urgent operational issues, partner dispute reports, or customer refund escalation requests directly to HQ.
-                </p>
-
-                {ticketSuccess && (
-                  <div style={{ background: '#ecfdf5', border: '1px solid #6ee7b7', color: '#065f46', padding: '12px 16px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: '700', marginBottom: '20px' }}>
-                    ✅ Support Ticket Submitted! Ticket ID: #TK-NOR-{Math.floor(1000 + Math.random() * 9000)}. HQ response estimated within 15 minutes.
-                  </div>
-                )}
-
-                <form onSubmit={handleSendTicket} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '6px' }}>Ticket Subject</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Partner Dispatch Failure in Sector 4"
-                      value={ticketForm.subject}
-                      onChange={(e) => setTicketForm({ ...ticketForm, subject: e.target.value })}
-                      required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none' }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '6px' }}>Issue Category</label>
-                    <select
-                      value={ticketForm.category}
-                      onChange={(e) => setTicketForm({ ...ticketForm, category: e.target.value })}
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', background: '#fff' }}
-                    >
-                      <option value="dispatch">Live Booking & Dispatch Issue</option>
-                      <option value="kyc">Technician KYC & Compliance Dispute</option>
-                      <option value="payment">Commission & Revenue Settlement</option>
-                      <option value="system">System Bug or Interface Issue</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '6px' }}>Detailed Issue Description</label>
-                    <textarea
-                      rows={5}
-                      placeholder="Describe the issue, booking reference number, or partner phone number..."
-                      value={ticketForm.message}
-                      onChange={(e) => setTicketForm({ ...ticketForm, message: e.target.value })}
-                      required
-                      style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', resize: 'vertical' }}
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="btn btn-primary"
-                    style={{ padding: '12px 20px', fontSize: '0.9rem', fontWeight: '800', borderRadius: '12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                  >
-                    Submit Support Ticket
-                  </button>
-                </form>
-              </div>
-
-              {/* Right Column: Hotline & FAQs */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {/* 24/7 Hotline */}
-                <div style={{ background: 'linear-gradient(135deg, #09331E 0%, #062616 100%)', borderRadius: '18px', padding: '22px', color: '#ffffff' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    24/7 HQ Hotline
-                  </div>
-                  <h4 style={{ fontSize: '1.2rem', fontWeight: '900', margin: '6px 0 10px 0' }}>
-                    +91 1800-NOROZZ-HELP
-                  </h4>
-                  <p style={{ fontSize: '0.8rem', color: '#a7f3d0', margin: 0 }}>
-                    Priority operations phone channel for City Managers. Available round the clock.
-                  </p>
-                </div>
-
-                {/* FAQ Cards */}
-                <div style={{ background: '#ffffff', borderRadius: '18px', border: '1px solid #e2e8f0', padding: '20px' }}>
-                  <h4 style={{ fontSize: '0.95rem', fontWeight: '800', margin: '0 0 14px 0', color: '#0f172a' }}>
-                    Frequent Operational FAQs
-                  </h4>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.82rem' }}>
-                    <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                      <div style={{ fontWeight: '800', color: '#0f172a' }}>Q: How do I approve a technician's KYC?</div>
-                      <div style={{ color: '#64748b', marginTop: '4px' }}>Go to Partner KYC tab, click Inspect Documents, verify Aadhaar/PAN, and click Approve.</div>
-                    </div>
-
-                    <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                      <div style={{ fontWeight: '800', color: '#0f172a' }}>Q: Can I reassign a pending booking?</div>
-                      <div style={{ color: '#64748b', marginTop: '4px' }}>Yes! Open Bookings tab, click the Gear Icon next to the order, select Assign Technician, and pick an active partner.</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+          {(activeTab === 'support' || activeTab === 'help' || activeTab === 'tickets') && (
+            <CityAdminTicketsView assignedCity={assignedCity} />
           )}
 
           {/* TAB 8: PROFILE PAGE */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   Search,
@@ -19,14 +19,15 @@ import {
   MessageCircle,
   FileText
 } from 'lucide-react';
+import { customerService } from '../../services/customer.service.js';
 import { toast } from '../../utils/toast.js';
 
 const CustomerHelpCenterView = ({ onBack, onOpenAIChat }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [expandedFaqId, setExpandedFaqId] = useState('faq-1');
+  const [expandedFaqId, setExpandedFaqId] = useState(null);
 
-  // Support Ticket Form State
+  // Ticket Form state
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [ticketCategory, setTicketCategory] = useState('Booking & Delay');
   const [ticketBookingId, setTicketBookingId] = useState('');
@@ -34,52 +35,46 @@ const CustomerHelpCenterView = ({ onBack, onOpenAIChat }) => {
   const [ticketMessage, setTicketMessage] = useState('');
   const [submittingTicket, setSubmittingTicket] = useState(false);
 
-  const categories = [
-    { id: 'all', label: 'All Topics', icon: HelpCircle, color: '#2563eb' },
-    { id: 'orders', label: 'Bookings & Delays', icon: Box, color: '#10b981' },
-    { id: 'payment', label: 'Payment & Wallet', icon: CreditCard, color: '#3b82f6' },
-    { id: 'delivery', label: 'Service Partner', icon: Truck, color: '#06b6d4' },
-    { id: 'profile', label: 'Account & Safety', icon: User, color: '#a855f7' }
+  // Live FAQs State
+  const [faqs, setFaqs] = useState([]);
+  const [loadingFaqs, setLoadingFaqs] = useState(true);
+
+  useEffect(() => {
+    customerService
+      .getFaqs()
+      .then((res) => {
+        const list = res.data?.data || res.data || [];
+        const validList = Array.isArray(list) ? list : [];
+        setFaqs(validList);
+        if (validList.length > 0) {
+          setExpandedFaqId(validList[0]._id);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not fetch customer FAQs:', err);
+      })
+      .finally(() => {
+        setLoadingFaqs(false);
+      });
+  }, []);
+
+  const baseCategories = [
+    { id: 'all', label: 'All Topics' },
+    { id: 'General', label: 'General' },
+    { id: 'Booking & Order', label: 'Booking & Orders' },
+    { id: 'Payment & Wallet', label: 'Payment & Wallet' },
+    { id: 'Cancellation & Refund', label: 'Cancellation & Refund' },
+    { id: 'Account & Safety', label: 'Account & Safety' },
   ];
 
-  const faqs = [
-    {
-      id: 'faq-1',
-      category: 'orders',
-      question: 'How do I track my assigned service partner?',
-      answer: "Go to 'My Bookings' tab, select your active booking, and click 'Track Partner'. You will see the live location and contact number of your assigned technician."
-    },
-    {
-      id: 'faq-2',
-      category: 'payment',
-      question: 'What is your refund policy if I cancel a booking?',
-      answer: 'Bookings can be cancelled free of cost up to 2 hours before the scheduled time slot. Refunds are credited instantly to your Norozz Wallet or back to your original payment method within 24 hours.'
-    },
-    {
-      id: 'faq-3',
-      category: 'delivery',
-      question: 'Are Norozz service partners background verified?',
-      answer: 'Yes! Every service technician undergoes 7-level background verification including Aadhaar KYC, criminal background check, and technical skill testing before onboarding.'
-    },
-    {
-      id: 'faq-4',
-      category: 'orders',
-      question: 'What if I am not satisfied with the service quality?',
-      answer: 'We provide a 30-Day Service Guarantee! If you face any issues after completion, request a re-visit from My Bookings and a senior technician will resolve it free of charge.'
-    },
-    {
-      id: 'faq-5',
-      category: 'payment',
-      question: 'Which payment methods are accepted on Norozz?',
-      answer: 'We accept UPI (Google Pay, PhonePe, Paytm), Credit & Debit Cards, Net Banking, Pay after Service (Cash/UPI to partner), and Norozz Wallet credits.'
-    },
-    {
-      id: 'faq-6',
-      category: 'profile',
-      question: 'How can I change my registered phone number or address?',
-      answer: 'You can update your address from My Account -> Saved Addresses. To change your registered phone number, please submit a support ticket or contact hotline.'
+  const uniqueFaqCats = Array.from(new Set(faqs.map(f => f.category).filter(Boolean)));
+  uniqueFaqCats.forEach(cat => {
+    if (!baseCategories.some(c => c.id === cat)) {
+      baseCategories.push({ id: cat, label: cat });
     }
-  ];
+  });
+
+  const categories = baseCategories;
 
   const filteredFaqs = faqs.filter((faq) => {
     if (selectedCategory !== 'all' && faq.category !== selectedCategory) return false;
@@ -108,22 +103,51 @@ const CustomerHelpCenterView = ({ onBack, onOpenAIChat }) => {
     window.location.href = 'mailto:support@norozz.com?subject=Customer Support Inquiry';
   };
 
-  const handleSubmitTicket = (e) => {
+  // User Raised Tickets State
+  const [userTickets, setUserTickets] = useState([]);
+
+  const fetchUserTickets = () => {
+    customerService
+      .getTickets()
+      .then((res) => {
+        const list = res.data?.data || res.data || [];
+        if (Array.isArray(list)) setUserTickets(list);
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchUserTickets();
+  }, []);
+
+  const handleSubmitTicket = async (e) => {
     e.preventDefault();
     if (!ticketSubject.trim() || !ticketMessage.trim()) {
       toast.error('Please enter subject and message description.');
       return;
     }
     setSubmittingTicket(true);
-    setTimeout(() => {
-      const ticketId = `TK-${Math.floor(100000 + Math.random() * 900000)}`;
-      toast.success(`🎉 Support Ticket Created! Ticket ID: #${ticketId}`);
+    try {
+      const res = await customerService.createTicket({
+        category: ticketCategory,
+        bookingId: ticketBookingId,
+        subject: ticketSubject,
+        description: ticketMessage,
+      });
+      const created = res.data?.data || res.data;
+      const tId = created?.ticketId || 'TK-SUBMITTED';
+      toast.success(`🎉 Support Ticket Created! Ticket ID: #${tId}`);
       setTicketSubject('');
       setTicketMessage('');
       setTicketBookingId('');
       setShowTicketForm(false);
+      fetchUserTickets();
+    } catch (err) {
+      console.error('Failed to submit ticket:', err);
+      toast.error(err.response?.data?.message || 'Failed to submit support ticket.');
+    } finally {
       setSubmittingTicket(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -403,6 +427,44 @@ const CustomerHelpCenterView = ({ onBack, onOpenAIChat }) => {
         </div>
       )}
 
+      {/* User Tickets History */}
+      {userTickets.length > 0 && (
+        <div style={{ background: '#ffffff', borderRadius: '24px', padding: '24px', border: '1px solid #e2e8f0', marginBottom: '28px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: '900', color: '#0f172a', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FileText size={20} color="#2563eb" /> My Support Tickets ({userTickets.length})
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {userTickets.map((t) => (
+              <div key={t._id || t.ticketId} style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '16px 20px', background: '#f8fafc' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontWeight: '900', fontSize: '0.88rem', color: '#2563eb' }}>#{t.ticketId}</span>
+                    <span style={{ fontSize: '0.78rem', background: '#e2e8f0', padding: '2px 8px', borderRadius: '6px', fontWeight: '700', color: '#475569' }}>{t.category}</span>
+                  </div>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: '800',
+                    padding: '4px 10px',
+                    borderRadius: '20px',
+                    background: t.status === 'Resolved' ? '#dcfce7' : t.status === 'In Progress' ? '#fef3c7' : '#fee2e2',
+                    color: t.status === 'Resolved' ? '#15803d' : t.status === 'In Progress' ? '#b45309' : '#b91c1c'
+                  }}>
+                    {t.status.toUpperCase()}
+                  </span>
+                </div>
+                <div style={{ fontWeight: '800', fontSize: '0.92rem', color: '#0f172a', marginBottom: '4px' }}>{t.subject}</div>
+                <div style={{ fontSize: '0.84rem', color: '#475569', lineHeight: '1.5' }}>{t.description}</div>
+                {t.adminNote && (
+                  <div style={{ marginTop: '12px', background: '#eff6ff', borderLeft: '4px solid #2563eb', padding: '10px 14px', borderRadius: '0 8px 8px 0', fontSize: '0.82rem', color: '#1e40af' }}>
+                    <strong>Norozz Support Reply ({t.resolvedBy || 'Admin'}):</strong> {t.adminNote}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 4. Category Pills */}
       <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '24px', paddingBottom: '4px' }}>
         {categories.map((cat) => {
@@ -438,14 +500,15 @@ const CustomerHelpCenterView = ({ onBack, onOpenAIChat }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filteredFaqs.length === 0 ? (
             <div style={{ padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '0.88rem' }}>
-              No matching questions found for "{searchQuery}". Try a different search term.
+              No matching questions found. Try a different search term or category.
             </div>
           ) : (
             filteredFaqs.map((faq) => {
-              const isExpanded = expandedFaqId === faq.id;
+              const faqKey = faq._id || faq.id;
+              const isExpanded = expandedFaqId === faqKey;
               return (
                 <div
-                  key={faq.id}
+                  key={faqKey}
                   style={{
                     background: isExpanded ? '#f8fafc' : '#ffffff',
                     borderRadius: '16px',
@@ -455,7 +518,7 @@ const CustomerHelpCenterView = ({ onBack, onOpenAIChat }) => {
                   }}
                 >
                   <div
-                    onClick={() => toggleAccordion(faq.id)}
+                    onClick={() => toggleAccordion(faqKey)}
                     style={{
                       padding: '18px 20px',
                       display: 'flex',
@@ -471,7 +534,7 @@ const CustomerHelpCenterView = ({ onBack, onOpenAIChat }) => {
                   </div>
 
                   {isExpanded && (
-                    <div style={{ padding: '0 20px 18px 20px', fontSize: '0.88rem', color: '#475569', lineHeight: 1.5, borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
+                    <div style={{ padding: '0 20px 18px 20px', fontSize: '0.88rem', color: '#475569', lineHeight: 1.5, borderTop: '1px solid #f1f5f9', paddingTop: '12px', whiteSpace: 'pre-line' }}>
                       {faq.answer}
                     </div>
                   )}

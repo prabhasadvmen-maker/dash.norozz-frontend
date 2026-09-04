@@ -224,8 +224,8 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
   const [earningsData, setEarningsData] = useState(null);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
-  // FAQ Knowledge Base
-  const faqItems = [
+  // FAQ Knowledge Base (Live backend fetched)
+  const [faqs, setFaqs] = useState([
     {
       cat: 'Bookings',
       q: 'How do I accept a booking?',
@@ -256,7 +256,22 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
       q: 'How do I change my preferred app language?',
       a: 'Go to Settings > App Language and pick your preferred language (English, Hindi, Hinglish, Marathi, etc.) to switch the entire interface language.'
     }
-  ];
+  ]);
+
+  useEffect(() => {
+    partnerService.getFaqs()
+      .then((res) => {
+        const list = res.data?.data || res.data || [];
+        if (Array.isArray(list) && list.length > 0) {
+          setFaqs(list.map((item) => ({
+            cat: item.category || 'General',
+            q: item.question,
+            a: item.answer
+          })));
+        }
+      })
+      .catch((err) => console.error('Error fetching partner FAQs:', err));
+  }, []);
 
   // Load initial settings preferences from user object
   useEffect(() => {
@@ -2745,7 +2760,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {faqItems
+                {faqs
                   .filter((item) => faqCategory === 'All' || item.cat === faqCategory)
                   .filter((item) => item.q.toLowerCase().includes(faqSearchQuery.toLowerCase()) || item.a.toLowerCase().includes(faqSearchQuery.toLowerCase()))
                   .map((item, idx) => {

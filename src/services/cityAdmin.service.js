@@ -13,4 +13,6 @@ export const cityAdminService = {
   assignBooking: (bookingId, partnerId) => axiosInstance.patch(`/city-admin/bookings/${bookingId}/assign`, { partnerId }),
   cancelBooking: (bookingId, reason) => axiosInstance.patch(`/city-admin/bookings/${bookingId}/cancel`, { reason }),
   getRevenue: () => axiosInstance.get('/city-admin/revenue'),
+  getTickets: (params) => axiosInstance.get('/city-admin/tickets', { params }),
+  updateTicketStatus: (id, data) => axiosInstance.put(`/city-admin/tickets/${id}`, data),
 };
