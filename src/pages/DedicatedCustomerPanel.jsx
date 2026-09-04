@@ -6,6 +6,7 @@ import PopularCategories from '../components/customer/PopularCategories';
 import FeaturedServices from '../components/customer/FeaturedServices';
 import CustomerHomeSections from '../components/customer/CustomerHomeSections';
 import CustomerProfileView from '../components/customer/CustomerProfileView';
+import CustomerAiChatView from '../components/customer/CustomerAiChatView';
 import CustomerWalletView from '../components/customer/CustomerWalletView';
 import ServiceDetailsModal from '../components/customer/ServiceDetailsModal';
 import CustomerBookingTrackingPage from './customer/CustomerBookingTrackingPage';
@@ -95,6 +96,7 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
 
   // Dedicated Full-Page Customer Tracking State
   const [activeTrackingBooking, setActiveTrackingBooking] = useState(null);
+  const [isAiChatActive, setIsAiChatActive] = useState(false);
 
   // Full Page Booking Flow State (No popup modal)
   const [isBookingFlowActive, setIsBookingFlowActive] = useState(false);
@@ -276,6 +278,19 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
     );
   }
 
+  if (isAiChatActive) {
+    return (
+      <CustomerAiChatView
+        currentUser={currentUser}
+        onBack={() => setIsAiChatActive(false)}
+        onBookService={(serviceToBook) => {
+          setIsAiChatActive(false);
+          handleOpenBookingWizard(serviceToBook);
+        }}
+      />
+    );
+  }
+
   if (activeTrackingBooking) {
     return (
       <CustomerBookingTrackingPage
@@ -311,9 +326,16 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
           <>
             {/* Dark Navy Hero Section */}
             <HomeBannerSlider
+              banners={dashboard?.banners || []}
               onSelectCategory={(cat) => {
                 setSelectedCategoryFilter(cat);
                 setActiveTab('services');
+              }}
+              onSelectService={(srv) => {
+                handleOpenServiceDetails(srv);
+              }}
+              onApplyCoupon={(code) => {
+                toast.success(`🎉 Offer Coupon '${code}' selected! Discount will apply at booking checkout.`);
               }}
             />
 
@@ -692,6 +714,7 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
             onLogout={onLogout}
             onNavigateTab={(tab) => setActiveTab(tab)}
             onBookService={(serviceToBook) => handleOpenBookingWizard(serviceToBook)}
+            onOpenAIChat={() => setIsAiChatActive(true)}
           />
         )}
 

@@ -4,6 +4,7 @@ import {
   Building2,
   MapPin,
   Tag,
+  Gift,
   Users,
   Briefcase,
   Grid,
@@ -18,7 +19,8 @@ import {
   User,
   Star,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  Image
 } from 'lucide-react';
 
 const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout, collapsed }) => {
@@ -27,6 +29,8 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout, collapsed }) => 
     { id: 'cityAdmins', label: 'CITY ADMINS', icon: Building2, badge: 'Assign' },
     { id: 'cities', label: 'CITY MANAGEMENT', icon: MapPin, badge: 'Dynamic' },
     { id: 'coupons', label: 'COUPONS & PROMOS', icon: Tag, badge: 'Offers' },
+    { id: 'banners', label: 'PROMOTIONAL BANNERS', icon: Image, badge: 'Hero Banners' },
+    { id: 'referral', label: 'REFERRAL PROGRAM', icon: Gift, badge: 'Rewards' },
     { id: 'customers', label: 'CUSTOMERS', icon: Users },
     { id: 'partners', label: 'PARTNERS', icon: Briefcase },
     { id: 'categories', label: 'CATEGORIES', icon: Grid },

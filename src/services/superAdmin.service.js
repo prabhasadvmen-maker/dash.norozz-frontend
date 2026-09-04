@@ -21,4 +21,12 @@ export const superAdminService = {
   // Platform & Referral Settings
   getSettings: () => axiosInstance.get('/super-admin/referral-settings'),
   updateSettings: (data) => axiosInstance.put('/super-admin/referral-settings', data),
+  getAllReferrals: () => axiosInstance.get('/super-admin/referrals'),
+
+  // Banner Management CRUD
+  getBanners: () => axiosInstance.get('/super-admin/banners'),
+  createBanner: (data) => axiosInstance.post('/super-admin/banners', data),
+  updateBanner: (id, data) => axiosInstance.put(`/super-admin/banners/${id}`, data),
+  deleteBanner: (id) => axiosInstance.delete(`/super-admin/banners/${id}`),
+  toggleBannerStatus: (id) => axiosInstance.patch(`/super-admin/banners/${id}/status`),
 };

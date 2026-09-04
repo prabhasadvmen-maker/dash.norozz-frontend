@@ -6,6 +6,8 @@ import PlatformAnalyticsGrid from '../components/superAdmin/PlatformAnalyticsGri
 import CityAdminManagement from '../components/superAdmin/CityAdminManagement';
 import CityManagementView from '../components/superAdmin/CityManagementView';
 import SuperAdminCouponsView from '../components/superAdmin/SuperAdminCouponsView';
+import SuperAdminBannersView from '../components/superAdmin/SuperAdminBannersView';
+import SuperAdminReferralView from '../components/superAdmin/SuperAdminReferralView';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import { useSuperAdmin } from '../hooks/useSuperAdmin.js';
 import { useCatalog } from '../hooks/useCatalog.js';
@@ -70,6 +72,8 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     cityAdmins: 'City Admins Management',
     cities: 'Dynamic City Operations',
     coupons: 'Coupons & Promos',
+    banners: 'Promotional Banners',
+    referral: 'Referral Program Setup',
     customers: 'Customer Directory',
     partners: 'Marketplace Partners',
     categories: 'Categories Directory',
@@ -516,6 +520,16 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
           {/* TAB 2.8: COUPONS & PROMOS */}
           {activeTab === 'coupons' && (
             <SuperAdminCouponsView />
+          )}
+
+          {/* TAB 2.85: PROMOTIONAL BANNERS */}
+          {activeTab === 'banners' && (
+            <SuperAdminBannersView />
+          )}
+
+          {/* TAB 2.9: REFERRAL PROGRAM MANAGER */}
+          {activeTab === 'referral' && (
+            <SuperAdminReferralView />
           )}
 
           {/* TAB 3: CUSTOMERS */}

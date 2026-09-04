@@ -2,6 +2,7 @@ import { axiosInstance } from '../api/axiosInstance.js';
 
 export const customerService = {
   getDashboard: () => axiosInstance.get('/customer/dashboard'),
+  getBanners: () => axiosInstance.get('/customer/banners'),
   getCategories: () => axiosInstance.get('/customer/categories'),
   getPopularServices: () => axiosInstance.get('/customer/services/popular'),
   getFeaturedServices: () => axiosInstance.get('/customer/services/featured'),
@@ -32,4 +33,9 @@ export const customerService = {
   // Coupon Validation & Application API
   applyCoupon: (data) => axiosInstance.post('/customer/coupons/apply', data),
   getSystemSettings: () => axiosInstance.get('/customer/system-settings'),
+
+  // Groq AI Support Chat API
+  sendAiChatMessage: (data) => axiosInstance.post('/customer/ai-chat', data),
+  getAiChatHistory: () => axiosInstance.get('/customer/ai-chat/history'),
+  clearAiChatHistory: () => axiosInstance.delete('/customer/ai-chat/history'),
 };

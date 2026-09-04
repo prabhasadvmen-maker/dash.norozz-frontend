@@ -23,7 +23,8 @@ import {
   Sparkles,
   ArrowRight,
   CheckCircle2,
-  Heart
+  Heart,
+  UserCheck
 } from 'lucide-react';
 import { useCustomer } from '../../hooks/useCustomer.js';
 import { customerService } from '../../services/customer.service.js';
@@ -35,6 +36,7 @@ const CustomerProfileView = ({
   onLogout,
   onNavigateTab,
   onBookService,
+  onOpenAIChat,
   initialSubTab = 'overview'
 }) => {
   const { profile, addresses: fetchedAddresses, deleteAddress, updateProfile, refetch } = useCustomer('profile');
@@ -74,6 +76,33 @@ const CustomerProfileView = ({
 
   // Copy Referral State
   const [copiedRef, setCopiedRef] = useState(false);
+
+  // Referral Data & Filtering State
+  const [referralData, setReferralData] = useState(null);
+  const [referralUserFilter, setReferralUserFilter] = useState('ALL');
+  const [loadingReferral, setLoadingReferral] = useState(false);
+
+  // Fetch Referral Data when active tab is 'referral'
+  useEffect(() => {
+    const fetchReferralData = async () => {
+      try {
+        setLoadingReferral(true);
+        const res = await customerService.getReferralData();
+        const data = res.data?.data || res.data;
+        if (data) {
+          setReferralData(data);
+        }
+      } catch (err) {
+        console.warn('Could not fetch customer referral data:', err);
+      } finally {
+        setLoadingReferral(false);
+      }
+    };
+
+    if (activeProfileTab === 'referral') {
+      fetchReferralData();
+    }
+  }, [activeProfileTab]);
 
   // Sync user data into edit form
   useEffect(() => {
@@ -237,7 +266,9 @@ const CustomerProfileView = ({
     }
   };
 
-  const referralCode = userData?.referralCode || `NRZ-REF-${(userData?.phone || '600653').slice(-6)}`;
+  const referralBonusAmount = referralData?.referralBonusAmount || referralData?.rewardPerReferral || 200;
+  const referralCode = referralData?.referralCode || userData?.referralCode || `NRZ-REF-${(userData?.phone || '600653').slice(-6)}`;
+  const referralList = referralData?.joinedList || referralData?.referralsList || [];
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 0 40px 0' }}>
@@ -737,28 +768,33 @@ const CustomerProfileView = ({
       {/* 5. SUB-TAB 3: REFER & EARN */}
       {activeProfileTab === 'referral' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          {/* Hero Banner */}
           <div style={{
             background: 'linear-gradient(135deg, #701a75 0%, #a21caf 60%, #c026d3 100%)',
             borderRadius: '24px',
             padding: '32px',
             color: '#ffffff',
-            boxShadow: '0 16px 36px rgba(162, 28, 175, 0.25)'
+            boxShadow: '0 16px 36px rgba(162, 28, 175, 0.25)',
+            position: 'relative',
+            overflow: 'hidden'
           }}>
             <div style={{ maxWidth: '600px' }}>
-              <span style={{ background: 'rgba(255, 255, 255, 0.2)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '800', textTransform: 'uppercase' }}>
-                🎁 NOROZZ REFERRAL PROGRAM
+              <span style={{ background: 'rgba(255, 255, 255, 0.2)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                🎁 NOROZZ CUSTOMER REFERRAL PROGRAM
               </span>
-              <h2 style={{ fontSize: '1.8rem', fontWeight: '900', margin: '12px 0 8px 0' }}>
-                Refer Friends & Earn ₹200 Cash!
+              <h2 style={{ fontSize: '1.8rem', fontWeight: '900', margin: '12px 0 8px 0', letterSpacing: '-0.5px' }}>
+                Refer Friends & Earn ₹{referralBonusAmount} Cash!
               </h2>
-              <p style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-                Invite your friends to NOROZZ. You get ₹200 in your Norozz Wallet as soon as they complete their 1st service booking!
+              <p style={{ fontSize: '0.9rem', opacity: 0.9, lineHeight: 1.5 }}>
+                Invite your friends and service technicians to join NOROZZ. You get ₹{referralBonusAmount} credited directly to your Norozz Wallet as soon as they complete their 1st booking!
               </p>
             </div>
 
+            {/* Code Box */}
             <div style={{ marginTop: '24px', background: 'rgba(0, 0, 0, 0.25)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '16px', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', opacity: 0.8, fontWeight: '700' }}>Your Referral Code</div>
+                <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.6px', opacity: 0.8, fontWeight: '700' }}>Your Referral Code</div>
                 <div style={{ fontSize: '1.5rem', fontWeight: '900', letterSpacing: '1px', color: '#fef08a' }}>{referralCode}</div>
               </div>
               <div style={{ display: 'flex', gap: '10px' }}>
@@ -775,7 +811,7 @@ const CustomerProfileView = ({
                 </button>
                 <button
                   onClick={() => {
-                    const text = `Use my code ${referralCode} to sign up on NOROZZ and get ₹200 off your 1st home service booking! Download: https://norozz.in`;
+                    const text = `Use my referral code ${referralCode} to sign up on NOROZZ and get flat discount on your 1st home service booking! Download/Book here: https://norozz.in`;
                     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
                   }}
                   style={{ padding: '10px 18px', background: '#25d366', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -785,13 +821,190 @@ const CustomerProfileView = ({
               </div>
             </div>
           </div>
+
+          {/* Referral Statistics Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+            <div style={{ background: '#ffffff', borderRadius: '18px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '700' }}>Total Referred Users</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#0f172a', marginTop: '4px' }}>
+                {referralData?.joinedCount ?? referralData?.stats?.joinedCount ?? 0}
+              </div>
+              <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px' }}>Joined using your code</div>
+            </div>
+
+            <div style={{ background: '#ffffff', borderRadius: '18px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '700' }}>Joined Technicians</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#16a34a', marginTop: '4px' }}>
+                {referralData?.joinedTechnicians ?? 0}
+              </div>
+              <div style={{ fontSize: '0.74rem', color: '#16a34a', marginTop: '2px' }}>Service Partners</div>
+            </div>
+
+            <div style={{ background: '#ffffff', borderRadius: '18px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '700' }}>Joined Customers</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#2563eb', marginTop: '4px' }}>
+                {referralData?.joinedCustomers ?? 0}
+              </div>
+              <div style={{ fontSize: '0.74rem', color: '#2563eb', marginTop: '2px' }}>Customer App Users</div>
+            </div>
+
+            <div style={{ background: '#ffffff', borderRadius: '18px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '700' }}>Total Bonus Earned</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#c026d3', marginTop: '4px' }}>
+                ₹{(referralData?.totalReferralBonusEarned ?? referralData?.stats?.earnedAmount ?? 0).toLocaleString('en-IN')}
+              </div>
+              <div style={{ fontSize: '0.74rem', color: '#c026d3', marginTop: '2px' }}>Credited to Wallet</div>
+            </div>
+
+            <div style={{ background: '#ffffff', borderRadius: '18px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '700' }}>Pending Earnings</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#d97706', marginTop: '4px' }}>
+                ₹{(referralData?.pendingEarnings ?? 0).toLocaleString('en-IN')}
+              </div>
+              <div style={{ fontSize: '0.74rem', color: '#d97706', marginTop: '2px' }}>Pending 1st Booking</div>
+            </div>
+          </div>
+
+          {/* How Referral Works */}
+          <div style={{ background: '#ffffff', borderRadius: '20px', padding: '24px', border: '1px solid #e2e8f0' }}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#0f172a', margin: '0 0 16px 0' }}>How the Referral Bonus Works</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+              <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontWeight: '800', color: '#2563eb', fontSize: '0.9rem' }}>1. Share Your Code</div>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>Share code {referralCode} via WhatsApp or Social Media.</div>
+              </div>
+              <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontWeight: '800', color: '#2563eb', fontSize: '0.9rem' }}>2. Friend Registers</div>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>Your friend registers using your referral code.</div>
+              </div>
+              <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontWeight: '800', color: '#2563eb', fontSize: '0.9rem' }}>3. 1st Booking Done</div>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>Friend completes their 1st service booking.</div>
+              </div>
+              <div style={{ padding: '14px', background: '#f0fdf4', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+                <div style={{ fontWeight: '800', color: '#16a34a', fontSize: '0.9rem' }}>4. Get ₹{referralBonusAmount} Cash!</div>
+                <div style={{ fontSize: '0.8rem', color: '#15803d', marginTop: '4px' }}>Instant ₹{referralBonusAmount} credited directly to your NOROZZ Wallet.</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Referred Users & Technicians Joined List */}
+          <div style={{ background: '#ffffff', borderRadius: '20px', padding: '24px', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <UserCheck size={20} color="#16a34a" /> Referred Users & Technicians ({referralList.length})
+              </h3>
+
+              {/* Filter Tabs */}
+              <div style={{ display: 'flex', gap: '6px', background: '#f1f5f9', padding: '4px', borderRadius: '10px' }}>
+                {['ALL', 'PARTNER', 'CUSTOMER'].map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setReferralUserFilter(f)}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.78rem',
+                      fontWeight: '800',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: referralUserFilter === f ? '#ffffff' : 'transparent',
+                      color: referralUserFilter === f ? '#0f172a' : '#64748b',
+                      boxShadow: referralUserFilter === f ? '0 2px 6px rgba(0,0,0,0.06)' : 'none'
+                    }}
+                  >
+                    {f === 'ALL' ? 'All Users' : f === 'PARTNER' ? 'Technicians' : 'Customers'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {referralList.length === 0 ? (
+              <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                <div style={{ fontWeight: '700', fontSize: '0.9rem', color: '#334155' }}>No Users Joined Yet</div>
+                <div style={{ fontSize: '0.8rem', marginTop: '4px' }}>Share your code <strong>{referralCode}</strong> with friends & technicians to earn ₹{referralBonusAmount} per referral!</div>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '0.76rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <th style={{ padding: '12px', borderRadius: '8px 0 0 8px' }}>USER / TECHNICIAN NAME</th>
+                      <th style={{ padding: '12px' }}>USER ROLE</th>
+                      <th style={{ padding: '12px' }}>PHONE / CONTACT</th>
+                      <th style={{ padding: '12px' }}>JOIN DATE</th>
+                      <th style={{ padding: '12px' }}>ACCOUNT STATUS</th>
+                      <th style={{ padding: '12px', borderRadius: '0 8px 8px 0' }}>REFERRAL BONUS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {referralList
+                      .filter((u) => referralUserFilter === 'ALL' || (u.role || 'customer').toUpperCase() === referralUserFilter)
+                      .map((u) => {
+                        const joinDateStr = u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recent';
+                        const isCredited = u.referralBonusStatus === 'credited';
+                        const isPartner = u.role === 'partner';
+                        return (
+                          <tr key={u._id || u.phone || Math.random()} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '12px' }}>
+                              <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '0.9rem' }}>{u.name || (isPartner ? 'Service Partner' : 'Customer User')}</div>
+                              {u.userId && <div style={{ fontSize: '0.72rem', color: '#64748b', fontFamily: 'monospace' }}>{u.userId}</div>}
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              <span style={{
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                fontSize: '0.7rem',
+                                fontWeight: '800',
+                                background: isPartner ? '#dcfce7' : '#f3e8ff',
+                                color: isPartner ? '#15803d' : '#6b21a8'
+                              }}>
+                                {isPartner ? 'TECHNICIAN' : 'CUSTOMER'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: '600' }}>{u.phone || u.email || 'N/A'}</td>
+                            <td style={{ padding: '12px', fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>{joinDateStr}</td>
+                            <td style={{ padding: '12px' }}>
+                              <span style={{
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                fontSize: '0.7rem',
+                                fontWeight: '800',
+                                background: u.kycStatus === 'approved' || u.status === 'active' ? '#dcfce7' : '#fef3c7',
+                                color: u.kycStatus === 'approved' || u.status === 'active' ? '#15803d' : '#b45309'
+                              }}>
+                                {(u.kycStatus || u.status || 'ACTIVE').toUpperCase()}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              <span style={{
+                                padding: '4px 10px',
+                                borderRadius: '9999px',
+                                fontSize: '0.78rem',
+                                fontWeight: '800',
+                                background: isCredited ? '#f0fdf4' : '#fffbeb',
+                                color: isCredited ? '#16a34a' : '#d97706',
+                                border: `1px solid ${isCredited ? '#bbf7d0' : '#fde68a'}`
+                              }}>
+                                {isCredited ? `✓ ₹${referralBonusAmount} Credited` : '⏳ Pending 1st Booking'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
         </div>
       )}
 
       {/* 6. SUB-TAB 4: HELP CENTER & SUPPORT */}
       {activeProfileTab === 'support' && (
         <div style={{ background: '#ffffff', borderRadius: '24px', padding: '24px', border: '1px solid #e2e8f0' }}>
-          <CustomerHelpCenterView onBack={() => setActiveProfileTab('overview')} />
+          <CustomerHelpCenterView onBack={() => setActiveProfileTab('overview')} onOpenAIChat={onOpenAIChat} />
         </div>
       )}
 

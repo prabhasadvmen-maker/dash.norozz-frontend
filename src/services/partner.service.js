@@ -31,4 +31,5 @@ export const partnerService = {
   addExtraService: (bookingId, data) => axiosInstance.post(`/partner/bookings/${bookingId}/add-extra-service`, data),
   getPayableAmount: (bookingId) => axiosInstance.get(`/partner/bookings/${bookingId}/payable-amount`),
   verifyExtraPayment: (bookingId, data) => axiosInstance.post(`/partner/bookings/${bookingId}/verify-extra-payment`, data),
+  getReferralData: () => axiosInstance.get('/partner/referral'),
 };
