@@ -101,14 +101,14 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
         const initialName = user?.name && !user.name.startsWith('Customer') && !user.name.startsWith('user_') ? user.name : '';
         const initialEmail = user?.email && !user.email.endsWith('@norozz.com') ? user.email : (emailOrPhone.includes('@') ? emailOrPhone : '');
         const initialPhone = user?.phone ? user.phone : (!emailOrPhone.includes('@') ? emailOrPhone : '');
-        
+
         setProfileName(initialName);
         setProfileEmail(initialEmail);
         setProfilePhone(initialPhone);
         setProfileDob(user?.dob || '');
         setProfileGender(user?.gender || '');
         setProfileImage(user?.profileImage || '');
-        
+
         setSuccessMessage('OTP Verified! Please complete your profile details.');
         setStep('profile');
       } else {
@@ -320,7 +320,7 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
       padding: '32px 24px'
     }}>
       <div className="glass-card" style={{ width: '100%', maxWidth: '440px', padding: '36px' }}>
-        
+
         {/* Branding Header */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <img
