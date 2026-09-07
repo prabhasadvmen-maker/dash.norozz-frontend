@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import SuperAdminNavbar from '../components/superAdmin/SuperAdminNavbar';
 import SuperAdminSidebar from '../components/superAdmin/SuperAdminSidebar';
 import AdminPackageManagementModal from '../components/admin/AdminPackageManagementModal';
@@ -42,6 +43,70 @@ import {
 } from 'lucide-react';
 
 const SuperAdminPanel = ({ currentUser, onLogout }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const getTabFromPath = (path) => {
+    const p = path.toLowerCase();
+    if (p.includes('/super-admin/city-admins')) return 'cityAdmins';
+    if (p.includes('/super-admin/city-management') || p.includes('/super-admin/cities')) return 'cities';
+    if (p.includes('/super-admin/support-tickets') || p.includes('/super-admin/tickets')) return 'tickets';
+    if (p.includes('/super-admin/coupons')) return 'coupons';
+    if (p.includes('/super-admin/promotional-banners') || p.includes('/super-admin/banners')) return 'banners';
+    if (p.includes('/super-admin/faqs')) return 'faqs';
+    if (p.includes('/super-admin/referral-program') || p.includes('/super-admin/referral')) return 'referral';
+    if (p.includes('/super-admin/customers')) return 'customers';
+    if (p.includes('/super-admin/partners')) return 'partners';
+    if (p.includes('/super-admin/categories')) return 'categories';
+    if (p.includes('/super-admin/sub-categories')) return 'subCategories';
+    if (p.includes('/super-admin/services')) return 'services';
+    if (p.includes('/super-admin/bookings')) return 'bookings';
+    if (p.includes('/super-admin/payments')) return 'payments';
+    if (p.includes('/super-admin/reviews')) return 'reviews';
+    if (p.includes('/super-admin/reports')) return 'reports';
+    if (p.includes('/super-admin/notifications')) return 'notifications';
+    if (p.includes('/super-admin/profile')) return 'profile';
+    if (p.includes('/super-admin/settings')) return 'settings';
+    return 'dashboard';
+  };
+
+  const activeTab = getTabFromPath(location.pathname);
+
+  const setActiveTab = (tabId) => {
+    const tabToPath = {
+      dashboard: '/super-admin/dashboard',
+      cityAdmins: '/super-admin/city-admins',
+      cities: '/super-admin/city-management',
+      tickets: '/super-admin/support-tickets',
+      coupons: '/super-admin/Coupons?tab=all',
+      banners: '/super-admin/promotional-banners',
+      faqs: '/super-admin/faqs',
+      referral: '/super-admin/referral-program',
+      customers: '/super-admin/customers',
+      partners: '/super-admin/partners',
+      categories: '/super-admin/categories',
+      subCategories: '/super-admin/sub-categories',
+      services: '/super-admin/services',
+      bookings: '/super-admin/bookings',
+      payments: '/super-admin/payments',
+      reviews: '/super-admin/reviews',
+      reports: '/super-admin/reports',
+      notifications: '/super-admin/notifications',
+      profile: '/super-admin/profile',
+      settings: '/super-admin/settings',
+    };
+    const targetPath = tabToPath[tabId] || '/super-admin/dashboard';
+    if (location.pathname + location.search !== targetPath) {
+      navigate(targetPath);
+    }
+  };
+
+  useEffect(() => {
+    if (location.pathname === '/super-admin' || location.pathname === '/super-admin/') {
+      navigate('/super-admin/dashboard', { replace: true });
+    }
+  }, [location.pathname, navigate]);
+
   const { dashboard, customers, partners, bookings, refetch } = useSuperAdmin();
   const {
     categories,
@@ -57,7 +122,6 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     createSkill,
     deleteSkill,
   } = useCatalog();
-  const [activeTab, setActiveTab] = useState('dashboard');
   const [refreshing, setRefreshing] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 

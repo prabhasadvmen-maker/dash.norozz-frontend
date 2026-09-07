@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Tag,
   Plus,
@@ -21,11 +22,18 @@ import { catalogService } from '../../services/catalog.service.js';
 import { toast } from '../../utils/toast.js';
 
 const SuperAdminCouponsView = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const paramTab = searchParams.get('tab');
+  const statusFilter = paramTab ? paramTab.toUpperCase() : 'ALL';
+
+  const setStatusFilter = (st) => {
+    setSearchParams({ tab: st.toLowerCase() });
+  };
+
   const [coupons, setCoupons] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
   const [activeDropdownId, setActiveDropdownId] = useState(null);
 
   // Modal State

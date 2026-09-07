@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import DedicatedCityNavbar from '../components/cityAdmin/DedicatedCityNavbar';
 import DedicatedCitySidebar from '../components/cityAdmin/DedicatedCitySidebar';
 import CityMetricCards from '../components/cityAdmin/CityMetricCards';
@@ -19,8 +20,49 @@ import {
 } from 'lucide-react';
 
 const CityAdminPanel = ({ currentUser, onLogout }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const getTabFromPath = (path) => {
+    const p = path.toLowerCase();
+    if (p.includes('/city-admin/partner-kyc') || p.includes('/city-admin/kyc')) return 'partnerKyc';
+    if (p.includes('/city-admin/partners')) return 'partners';
+    if (p.includes('/city-admin/bookings')) return 'bookings';
+    if (p.includes('/city-admin/payments')) return 'payments';
+    if (p.includes('/city-admin/reports')) return 'reports';
+    if (p.includes('/city-admin/support') || p.includes('/city-admin/help') || p.includes('/city-admin/tickets')) return 'support';
+    if (p.includes('/city-admin/profile')) return 'profile';
+    if (p.includes('/city-admin/settings')) return 'settings';
+    return 'dashboard';
+  };
+
+  const activeTab = getTabFromPath(location.pathname);
+
+  const setActiveTab = (tabId) => {
+    const tabToPath = {
+      dashboard: '/city-admin/dashboard',
+      partners: '/city-admin/partners',
+      partnerKyc: '/city-admin/partner-kyc',
+      bookings: '/city-admin/bookings',
+      payments: '/city-admin/payments',
+      reports: '/city-admin/reports',
+      support: '/city-admin/support-tickets',
+      profile: '/city-admin/profile',
+      settings: '/city-admin/settings',
+    };
+    const targetPath = tabToPath[tabId] || '/city-admin/dashboard';
+    if (location.pathname + location.search !== targetPath) {
+      navigate(targetPath);
+    }
+  };
+
+  useEffect(() => {
+    if (location.pathname === '/city-admin' || location.pathname === '/city-admin/') {
+      navigate('/city-admin/dashboard', { replace: true });
+    }
+  }, [location.pathname, navigate]);
+
   const { partners, revenue, refetch, approvePartner, rejectPartner, updateDocumentStatus, suspendPartner, activatePartner } = useCityAdmin();
-  const [activeTab, setActiveTab] = useState('dashboard');
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPartner, setSelectedPartner] = useState(null);
   const [partnerModalOpen, setPartnerModalOpen] = useState(false);

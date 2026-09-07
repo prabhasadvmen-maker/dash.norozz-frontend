@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   CalendarCheck,
   Clock,
@@ -16,19 +17,29 @@ import {
 import { usePartner } from '../../hooks/usePartner.js';
 import { useBookings } from '../../hooks/useBookings.js';
 import { partnerService } from '../../services/partner.service.js';
+import { useAuthContext } from '../../contexts/AuthContext.jsx';
 import PartnerCancelBookingModal from './PartnerCancelBookingModal.jsx';
+import { toast } from '../../utils/toast.js';
 
 const PartnerJobsTable = ({ onOpenFulfillment }) => {
+  const { currentUser } = useAuthContext();
   const { todayBookings, pendingBookings, completedBookings, cancelledBookings, allBookings } = usePartner('bookings');
   const { completeBooking } = useBookings();
 
-  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'upcoming' | 'completed' | 'cancelled'
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'all';
+
+  const handleTabClick = (tabId) => {
+    setSearchParams({ tab: tabId });
+  };
   const [completeModalOpen, setCompleteModalOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [selectedCancelJob, setSelectedCancelJob] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
   const [otpInput, setOtpInput] = useState('');
   const [fetchingDetailsId, setFetchingDetailsId] = useState(null);
+
+  const currentPartnerId = String(currentUser?._id || '');
 
   // Partner's own assigned/claimed bookings (Accepted, In Progress, Completed, Cancelled)
   const myAssignedBookings = useMemo(() => {
@@ -57,23 +68,32 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
     }
   };
 
+  const isJobCancelledForPartner = (b) => {
+    if (!b) return false;
+    const s = String(b.status || '').toLowerCase();
+    const isStatusCancelled = ['cancelled', 'refunded'].includes(s);
+    const wasCancelledByThisPartner = Array.isArray(b.cancelledByPartners) && b.cancelledByPartners.some((pId) => String(pId._id || pId) === currentPartnerId);
+    const isPartnerCancelledType = b.cancelledBy === 'partner' && (wasCancelledByThisPartner || !b.partner || String(b.partner._id || b.partner) === currentPartnerId);
+    return isStatusCancelled || wasCancelledByThisPartner || isPartnerCancelledType;
+  };
+
   const acceptedBookingsList = useMemo(() => {
-    return myAssignedBookings.filter((b) =>
-      ['Accepted', 'accepted', 'Assigned', 'assigned', 'On The Way', 'on_the_way', 'Started', 'started', 'in_progress'].includes(b.status)
-    );
-  }, [myAssignedBookings]);
+    return myAssignedBookings.filter((b) => {
+      const s = String(b.status || '').toLowerCase();
+      const isAcceptedStatus = ['accepted', 'assigned', 'on the way', 'on_the_way', 'started', 'in_progress'].includes(s);
+      return isAcceptedStatus && !isJobCancelledForPartner(b);
+    });
+  }, [myAssignedBookings, currentPartnerId]);
 
   const completedBookingsList = useMemo(() => {
     return myAssignedBookings.filter((b) =>
-      ['Completed', 'completed'].includes(b.status)
+      ['completed'].includes(String(b.status || '').toLowerCase())
     );
   }, [myAssignedBookings]);
 
   const cancelledBookingsList = useMemo(() => {
-    return myAssignedBookings.filter((b) =>
-      ['Cancelled', 'cancelled', 'Refunded', 'refunded'].includes(b.status)
-    );
-  }, [myAssignedBookings]);
+    return myAssignedBookings.filter((b) => isJobCancelledForPartner(b));
+  }, [myAssignedBookings, currentPartnerId]);
 
   // Current active display list
   const currentJobsList = useMemo(() => {
@@ -91,11 +111,6 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
         return myAssignedBookings;
     }
   }, [activeTab, myAssignedBookings, upcomingBookings, acceptedBookingsList, completedBookingsList, cancelledBookingsList]);
-
-  // Handle Tab Click - Instant In-Memory Filter Transition
-  const handleTabClick = (tabId) => {
-    setActiveTab(tabId);
-  };
 
   // Handle View Details Click - Fetch Single Booking Data via API
   const handleViewDetailsClick = async (job) => {
@@ -121,9 +136,40 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
     }
   };
 
-  const getStatusBadge = (status) => {
-    const s = String(status || '').toLowerCase();
-    if (s === 'completed') {
+  const getStatusBadge = (job) => {
+    const statusStr = typeof job === 'string' ? job : (job?.status || '');
+    const s = String(statusStr).toLowerCase();
+
+    if (typeof job === 'object' && (isJobCancelledForPartner(job) || ['cancelled', 'refunded'].includes(s))) {
+      let cancelledByText = 'Cancelled';
+      if (job.cancelledBy === 'partner' || (Array.isArray(job.cancelledByPartners) && job.cancelledByPartners.some((pId) => String(pId._id || pId) === currentPartnerId))) {
+        cancelledByText = 'Cancelled by Partner';
+      } else if (job.cancelledBy === 'customer') {
+        cancelledByText = 'Cancelled by Customer';
+      } else if (job.cancelledBy === 'admin') {
+        cancelledByText = 'Cancelled by Admin';
+      } else if (job.cancellationReason && job.cancellationReason.toLowerCase().includes('partner')) {
+        cancelledByText = 'Cancelled by Partner';
+      } else if (job.cancellationReason && job.cancellationReason.toLowerCase().includes('customer')) {
+        cancelledByText = 'Cancelled by Customer';
+      }
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+          <span className="badge badge-danger" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <XCircle size={12} /> CANCELLED
+          </span>
+          <span style={{ fontSize: '0.72rem', fontWeight: '800', color: '#b91c1c', background: '#fee2e2', padding: '2px 8px', borderRadius: '6px', border: '1px solid #fca5a5' }}>
+            {cancelledByText}
+          </span>
+          {job.cancellationReason && (
+            <div style={{ fontSize: '0.7rem', color: '#64748b', fontStyle: 'italic', maxWidth: '180px', lineHeight: '1.2' }}>
+              Reason: {job.cancellationReason}
+            </div>
+          )}
+        </div>
+      );
+    } else if (s === 'completed') {
       return <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><CheckCircle2 size={12} /> COMPLETED</span>;
     } else if (s === 'started' || s === 'in_progress') {
       return <span className="badge badge-blue" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Play size={12} /> IN PROGRESS</span>;
@@ -134,9 +180,13 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
     } else if (s === 'assigned') {
       return <span className="badge badge-purple" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><User size={12} /> ASSIGNED</span>;
     } else if (s === 'cancelled' || s === 'refunded') {
-      return <span className="badge badge-danger" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><XCircle size={12} /> CANCELLED</span>;
+      return (
+        <span className="badge badge-danger" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          <XCircle size={12} /> CANCELLED
+        </span>
+      );
     } else {
-      return <span className="badge badge-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Clock size={12} /> {status.toUpperCase()}</span>;
+      return <span className="badge badge-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Clock size={12} /> {String(statusStr).toUpperCase()}</span>;
     }
   };
 
@@ -285,11 +335,11 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
                       </div>
                     </td>
                     <td style={{ padding: '14px' }}>
-                      {getStatusBadge(job.status)}
+                      {getStatusBadge(job)}
                     </td>
                     <td style={{ padding: '14px' }}>
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                        {(job.status === 'Pending' || job.status === 'pending' || !job.partner) && (
+                        {(job.status === 'Pending' || job.status === 'pending' || !job.partner) && !isJobCancelledForPartner(job) && (
                           <button
                             type="button"
                             onClick={() => handleAcceptJob(job)}
@@ -300,7 +350,7 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
                             {acceptingId === job._id ? <Loader2 size={12} className="spin" /> : '✓ Accept Job'}
                           </button>
                         )}
-                        {['Accepted', 'accepted', 'Assigned', 'assigned', 'On The Way', 'on_the_way'].includes(job.status) && (
+                        {['Accepted', 'accepted', 'Assigned', 'assigned', 'On The Way', 'on_the_way'].includes(job.status) && !isJobCancelledForPartner(job) && (
                           <button
                             type="button"
                             onClick={() => {

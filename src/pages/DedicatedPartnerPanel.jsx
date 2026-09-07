@@ -25,9 +25,52 @@ import {
   Lock,
   ZapOff,
 } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const getTabFromPath = (path) => {
+    if (path.includes('/partner/bookings') || path.includes('/partner/booking')) return 'bookings';
+    if (path.includes('/partner/analytics')) return 'analytics';
+    if (path.includes('/partner/calendar')) return 'calendar';
+    if (path.includes('/partner/wallet')) return 'wallet';
+    if (path.includes('/partner/profile')) return 'profile';
+    if (path.includes('/partner/edit-profile')) return 'editProfile';
+    if (path.includes('/partner/documents')) return 'documents';
+    if (path.includes('/partner/bank-details')) return 'bankDetails';
+    if (path.includes('/partner/referral')) return 'referral';
+    if (path.includes('/partner/reviews')) return 'reviews';
+    if (path.includes('/partner/availability')) return 'availability';
+    if (path.includes('/partner/settings')) return 'settings';
+    if (path.includes('/partner/support')) return 'support';
+    return 'dashboard';
+  };
+
+  const activeTab = getTabFromPath(location.pathname);
+
+  const setActiveTab = (tabId) => {
+    const tabToPath = {
+      dashboard: '/partner/dashboard',
+      bookings: '/partner/bookings?tab=all',
+      analytics: '/partner/analytics',
+      calendar: '/partner/calendar',
+      wallet: '/partner/wallet',
+      profile: '/partner/profile',
+      editProfile: '/partner/edit-profile',
+      documents: '/partner/documents',
+      bankDetails: '/partner/bank-details',
+      referral: '/partner/referral',
+      reviews: '/partner/reviews',
+      availability: '/partner/availability',
+      settings: '/partner/settings',
+      support: '/partner/support',
+    };
+    const targetPath = tabToPath[tabId] || '/partner/dashboard';
+    navigate(targetPath);
+  };
+
   const { dashboard, todayBookings, updateAvailability, refetchAll, refetchAll: refetch } = usePartner(activeTab);
   const [refreshing, setRefreshing] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
