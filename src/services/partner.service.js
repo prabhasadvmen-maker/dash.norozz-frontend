@@ -34,4 +34,6 @@ export const partnerService = {
   getReferralData: () => axiosInstance.get('/partner/referral'),
   getFaqs: () => axiosInstance.get('/partner/faqs'),
   getOfferedServices: (params) => axiosInstance.get('/partner/offered-services', { params }),
+  cancelAcceptedBooking: (bookingId, data) => axiosInstance.post(`/partner/bookings/${bookingId}/cancel`, data),
+  getAnalytics: (period = 'thisMonth') => axiosInstance.get('/partner/analytics', { params: { period } }),
 };

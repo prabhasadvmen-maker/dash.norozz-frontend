@@ -208,9 +208,14 @@ const BookingModal = ({ isOpen, onClose, initialService, onBookingConfirmed, onN
 
     setApplyingCoupon(true);
     try {
+      const currentCatId = initialService?.category?._id || initialService?.category || initialService?.categoryId;
+      const currentSrvId = initialService?._id || initialService?.serviceId;
+
       const res = await customerService.applyCoupon({
         code: targetCode.trim(),
         bookingAmount: subtotal,
+        categoryId: currentCatId,
+        serviceId: currentSrvId,
       });
 
       const resData = res.data?.data || res.data;
@@ -1172,6 +1177,16 @@ const BookingModal = ({ isOpen, onClose, initialService, onBookingConfirmed, onN
                       <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#ffffff', marginBottom: '2px' }}>
                         {c.title}
                       </div>
+
+                      {c.applicableCategory ? (
+                        <div style={{ fontSize: '0.7rem', color: '#60a5fa', marginBottom: '4px', fontWeight: '800' }}>
+                          📁 Valid on {typeof c.applicableCategory === 'object' ? c.applicableCategory.name : 'selected category'} services only
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginBottom: '4px', fontWeight: '500' }}>
+                          🌐 Valid on all services
+                        </div>
+                      )}
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{c.subtitle}</span>

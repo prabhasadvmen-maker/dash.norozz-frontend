@@ -115,6 +115,10 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
   const [newSrvDuration, setNewSrvDuration] = useState('45 mins');
   const [newSrvDesc, setNewSrvDesc] = useState('');
   const [newSrvImage, setNewSrvImage] = useState('');
+  const [newSrvGallery, setNewSrvGallery] = useState([]);
+  const [newSrvVideos, setNewSrvVideos] = useState([]);
+  const [rawMediaFiles, setRawMediaFiles] = useState([]);
+  const [videoUrlInput, setVideoUrlInput] = useState('');
   const [newSrvPackages] = useState([
     { title: 'Basic Clean', price: 999, description: 'Mopping & basic vacuuming', features: 'Mopping & deep vacuuming\nBathroom dry wiping & cleaning\nLiving room basic dusting', isPopular: false },
     { title: 'Standard Deep Clean', price: 1499, description: 'Intense scrubbing & degreasing', features: 'Kitchen chimney + slab degreasing\nIntense bathroom wall scrubbing\nWet mop & mechanised floor scrub\nDry upholstery vacuuming', isPopular: true },
@@ -134,6 +138,9 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
   const [referralBonusAmount, setReferralBonusAmount] = useState(500);
   const [customerPlatformFeePercent, setCustomerPlatformFeePercent] = useState(5);
   const [partnerPlatformFeePercent, setPartnerPlatformFeePercent] = useState(10);
+  const [partnerCancellationPenaltyAmount, setPartnerCancellationPenaltyAmount] = useState(100);
+  const [maxDailyFreeCancellations, setMaxDailyFreeCancellations] = useState(3);
+  const [partnerOnboardingFee, setPartnerOnboardingFee] = useState(999);
   const [savingReferral, setSavingReferral] = useState(false);
   const [savingPlatformFee, setSavingPlatformFee] = useState(false);
   const [referralSuccessMsg, setReferralSuccessMsg] = useState('');
@@ -147,6 +154,9 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
         if (data.referralBonusAmount !== undefined) setReferralBonusAmount(data.referralBonusAmount);
         if (data.customerPlatformFeePercent !== undefined) setCustomerPlatformFeePercent(data.customerPlatformFeePercent);
         if (data.partnerPlatformFeePercent !== undefined) setPartnerPlatformFeePercent(data.partnerPlatformFeePercent);
+        if (data.partnerCancellationPenaltyAmount !== undefined) setPartnerCancellationPenaltyAmount(data.partnerCancellationPenaltyAmount);
+        if (data.maxDailyFreeCancellations !== undefined) setMaxDailyFreeCancellations(data.maxDailyFreeCancellations);
+        if (data.partnerOnboardingFee !== undefined) setPartnerOnboardingFee(data.partnerOnboardingFee);
       })
       .catch((err) => console.warn('Fetch settings error:', err));
   }, []);
@@ -159,6 +169,9 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
       const res = await superAdminService.updateSettings({
         customerPlatformFeePercent: Number(customerPlatformFeePercent),
         partnerPlatformFeePercent: Number(partnerPlatformFeePercent),
+        partnerCancellationPenaltyAmount: Number(partnerCancellationPenaltyAmount),
+        maxDailyFreeCancellations: Number(maxDailyFreeCancellations),
+        partnerOnboardingFee: Number(partnerOnboardingFee),
       });
       const data = res.data || {};
       if (data) {
@@ -269,11 +282,144 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
 
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
           setNewSrvImage(compressedBase64);
+          setNewSrvGallery((prev) => (prev.includes(compressedBase64) ? prev : [compressedBase64, ...prev]));
         };
         img.src = event.target.result;
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleSrvUnifiedMediaChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setRawMediaFiles((prev) => [...prev, ...files]);
+
+    files.forEach((file) => {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            const MAX_WIDTH = 1200;
+            const MAX_HEIGHT = 800;
+
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width *= MAX_HEIGHT / height;
+                height = MAX_HEIGHT;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.82);
+            setNewSrvGallery((prev) => [...prev, compressedBase64]);
+            setNewSrvImage((prev) => (prev ? prev : compressedBase64));
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      } else if (file.type.startsWith('video/')) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const videoData = event.target.result;
+          setNewSrvVideos((prev) => [...prev, videoData]);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  };
+
+  const handleSrvMultipleImagesChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    files.forEach((file) => {
+      if (!file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const MAX_WIDTH = 1200;
+          const MAX_HEIGHT = 800;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.82);
+          setNewSrvGallery((prev) => [...prev, compressedBase64]);
+          setNewSrvImage((prev) => (prev ? prev : compressedBase64));
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleSrvVideoFileChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const videoData = event.target.result;
+        setNewSrvVideos((prev) => [...prev, videoData]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleAddVideoUrl = () => {
+    if (!videoUrlInput.trim()) return;
+    setNewSrvVideos((prev) => [...prev, videoUrlInput.trim()]);
+    setVideoUrlInput('');
+  };
+
+  const handleRemoveGalleryImage = (index) => {
+    setNewSrvGallery((prev) => {
+      const updated = prev.filter((_, i) => i !== index);
+      if (updated.length > 0) {
+        setNewSrvImage(updated[0]);
+      } else {
+        setNewSrvImage('');
+      }
+      return updated;
+    });
+  };
+
+  const handleRemoveVideo = (index) => {
+    setNewSrvVideos((prev) => prev.filter((_, i) => i !== index));
   };
 
   const renderCategoryIcon = (cat) => {
@@ -386,17 +532,37 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     e.preventDefault();
     if (!newSrvName.trim() || !newSrvCategory || !newSrvSubCategory) return;
 
-    const res = await createService({
-      name: newSrvName.trim(),
-      category: newSrvCategory,
-      subCategory: newSrvSubCategory,
-      price: Number(newSrvPrice) || 0,
-      discount: Number(newSrvDiscount) || 0,
-      duration: newSrvDuration || '45 mins',
-      description: newSrvDesc.trim(),
-      image: newSrvImage,
-      thumbnail: newSrvImage,
-    });
+    const formData = new FormData();
+    formData.append('name', newSrvName.trim());
+    formData.append('category', newSrvCategory);
+    formData.append('subCategory', newSrvSubCategory);
+    formData.append('price', Number(newSrvPrice) || 0);
+    formData.append('discount', Number(newSrvDiscount) || 0);
+    formData.append('duration', newSrvDuration || '45 mins');
+    formData.append('description', newSrvDesc.trim());
+
+    if (rawMediaFiles && rawMediaFiles.length > 0) {
+      rawMediaFiles.forEach((file) => {
+        formData.append('files', file);
+      });
+    }
+
+    const externalVideos = newSrvVideos.filter((v) => !v.startsWith('data:video/'));
+    const externalGallery = newSrvGallery.filter((img) => !img.startsWith('data:image/'));
+
+    if (externalGallery.length > 0) {
+      formData.append('gallery', JSON.stringify(externalGallery));
+    }
+    if (externalVideos.length > 0) {
+      formData.append('videos', JSON.stringify(externalVideos));
+    }
+
+    if (rawMediaFiles.length === 0) {
+      if (newSrvGallery.length > 0) formData.append('gallery', JSON.stringify(newSrvGallery));
+      if (newSrvVideos.length > 0) formData.append('videos', JSON.stringify(newSrvVideos));
+    }
+
+    const res = await createService(formData);
 
     const createdSrv = res?.data?.data || res?.data || res;
     setNewSrvName('');
@@ -407,6 +573,10 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     setNewSrvDuration('45 mins');
     setNewSrvDesc('');
     setNewSrvImage('');
+    setNewSrvGallery([]);
+    setNewSrvVideos([]);
+    setRawMediaFiles([]);
+    setVideoUrlInput('');
     setSrvModalOpen(false);
 
     if (createdSrv?._id) {
@@ -1046,6 +1216,16 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
                               <span className="badge badge-purple" style={{ fontSize: '0.68rem' }}>{parentCatName || 'Category'}</span>
                               <span className="badge badge-success" style={{ fontSize: '0.68rem' }}>{parentSubCatName || 'SubCategory'}</span>
+                              {Array.isArray(srv.gallery) && srv.gallery.length > 0 && (
+                                <span className="badge badge-blue" style={{ fontSize: '0.68rem', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' }}>
+                                  🖼️ {srv.gallery.length} Photos
+                                </span>
+                              )}
+                              {((Array.isArray(srv.videos) && srv.videos.length > 0) || srv.videoUrl) && (
+                                <span className="badge badge-warning" style={{ fontSize: '0.68rem', background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a' }}>
+                                  🎥 {Array.isArray(srv.videos) && srv.videos.length > 0 ? srv.videos.length : 1} Video
+                                </span>
+                              )}
                             </div>
 
                             {srv.description && (
@@ -1389,6 +1569,57 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                     </span>
                   </div>
 
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '800', color: '#0f172a' }}>Max Free Cancellations Per Day (Partner)</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={maxDailyFreeCancellations}
+                      onChange={(e) => setMaxDailyFreeCancellations(e.target.value)}
+                      placeholder="e.g. 3"
+                      min={1}
+                      required
+                      style={{ fontSize: '1.1rem', fontWeight: '800' }}
+                    />
+                    <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                      Current: <strong>{maxDailyFreeCancellations} cancellations/day</strong> allowed for free before penalty & account suspension.
+                    </span>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '800', color: '#0f172a' }}>Partner Cancellation Penalty Fee (₹)</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={partnerCancellationPenaltyAmount}
+                      onChange={(e) => setPartnerCancellationPenaltyAmount(e.target.value)}
+                      placeholder="e.g. 100"
+                      min={0}
+                      required
+                      style={{ fontSize: '1.1rem', fontWeight: '800' }}
+                    />
+                    <span style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '4px', display: 'block', fontWeight: '700' }}>
+                      Charged starting from {Number(maxDailyFreeCancellations) + 1}th cancellation in 1 day + account automatically suspended.
+                    </span>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: '800', color: '#0f172a' }}>One-Time Partner Onboarding Fee (₹)</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={partnerOnboardingFee}
+                      onChange={(e) => setPartnerOnboardingFee(e.target.value)}
+                      placeholder="e.g. 999"
+                      min={0}
+                      required
+                      style={{ fontSize: '1.1rem', fontWeight: '800', color: '#16a34a' }}
+                    />
+                    <span style={{ fontSize: '0.75rem', color: '#16a34a', marginTop: '4px', display: 'block', fontWeight: '700' }}>
+                      Registration fee displayed on Step 6 of partner onboarding (includes 18% GST calculation).
+                    </span>
+                  </div>
+
                   {platformSuccessMsg && (
                     <div style={{ background: '#f0fdf4', color: '#15803d', padding: '10px 14px', border: '1px solid #bbf7d0', fontSize: '0.84rem', fontWeight: '800', borderRadius: '8px' }}>
                       ✓ {platformSuccessMsg}
@@ -1626,16 +1857,146 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                   <input type="text" className="form-input" placeholder="45 mins" value={newSrvDuration} onChange={(e) => setNewSrvDuration(e.target.value)} />
                 </div>
               </div>
-              <div className="form-group">
-                <label className="form-label">Service Image (Upload Photo / Banner)</label>
-                <input type="file" accept="image/*" className="form-input" onChange={handleSrvImageChange} />
-                {newSrvImage && (
-                  <div style={{ marginTop: '10px', textAlign: 'center' }}>
-                    <img
-                      src={newSrvImage}
-                      alt="Service Preview"
-                      style={{ width: '130px', height: '80px', borderRadius: '10px', objectFit: 'cover', border: '2px solid #2563eb', boxShadow: '0 4px 12px rgba(37,99,235,0.15)' }}
-                    />
+              {/* UNIFIED SINGLE MEDIA UPLOAD FIELD (IMAGES & VIDEOS) */}
+              <div className="form-group" style={{ background: '#f8fafc', padding: '18px', borderRadius: '16px', border: '1.5px dashed #2563eb' }}>
+                <label className="form-label" style={{ fontWeight: '800', color: '#0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <span>📁 Upload Service Media (Images & Videos)</span>
+                  <span style={{ fontSize: '0.78rem', color: '#2563eb', fontWeight: '800' }}>
+                    {newSrvGallery.length} Photo(s), {newSrvVideos.length} Video(s)
+                  </span>
+                </label>
+
+                {/* SINGLE UNIFIED FILE INPUT FOR BOTH IMAGES & VIDEOS */}
+                <input
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                  className="form-input"
+                  onChange={handleSrvUnifiedMediaChange}
+                  style={{ background: '#ffffff', cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '6px', display: 'block', fontWeight: '500' }}>
+                  Select photos and videos together in one go. First photo will automatically become main cover banner.
+                </span>
+
+                {/* OPTIONAL EXTERNAL VIDEO URL LINK INPUT */}
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Or paste Video URL (YouTube, MP4, Vimeo link)"
+                    value={videoUrlInput}
+                    onChange={(e) => setVideoUrlInput(e.target.value)}
+                    style={{ flex: 1, fontSize: '0.82rem', background: '#ffffff' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddVideoUrl}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: '10px',
+                      background: '#2563eb',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontWeight: '800',
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    + Add Link
+                  </button>
+                </div>
+
+                {/* MEDIA PREVIEW LIST / GRID */}
+                {(newSrvGallery.length > 0 || newSrvVideos.length > 0) && (
+                  <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px dashed #cbd5e1' }}>
+                    <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#475569', marginBottom: '8px' }}>
+                      SELECTED MEDIA PREVIEWS ({newSrvGallery.length + newSrvVideos.length} ITEMS)
+                    </div>
+
+                    {/* IMAGES PREVIEW GRID */}
+                    {newSrvGallery.length > 0 && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '8px', marginBottom: '10px' }}>
+                        {newSrvGallery.map((imgSrc, idx) => (
+                          <div key={idx} style={{ position: 'relative', width: '80px', height: '65px', borderRadius: '8px', overflow: 'hidden', border: idx === 0 ? '2px solid #10b981' : '1px solid #cbd5e1' }}>
+                            <img src={imgSrc} alt={`Image ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            {idx === 0 && (
+                              <span style={{ position: 'absolute', bottom: '0', left: '0', right: '0', background: '#10b981', color: '#ffffff', fontSize: '0.58rem', fontWeight: '900', textAlign: 'center', padding: '1px 0' }}>
+                                COVER
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveGalleryImage(idx)}
+                              style={{
+                                position: 'absolute',
+                                top: '2px',
+                                right: '2px',
+                                background: 'rgba(220, 38, 38, 0.9)',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '18px',
+                                height: '18px',
+                                fontSize: '0.65rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                              }}
+                              title="Remove Photo"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* VIDEOS PREVIEW LIST */}
+                    {newSrvVideos.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {newSrvVideos.map((vItem, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              background: '#ffffff',
+                              padding: '6px 10px',
+                              borderRadius: '8px',
+                              border: '1px solid #cbd5e1',
+                              fontSize: '0.8rem'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flex: 1 }}>
+                              <span>🎥</span>
+                              <span style={{ fontWeight: '700', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {vItem.startsWith('data:video/') ? `Uploaded Video File #${idx + 1}` : vItem}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveVideo(idx)}
+                              style={{
+                                background: '#fef2f2',
+                                color: '#dc2626',
+                                border: '1px solid #fecaca',
+                                borderRadius: '6px',
+                                padding: '2px 6px',
+                                fontSize: '0.7rem',
+                                fontWeight: '700',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

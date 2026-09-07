@@ -26,6 +26,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
+import { authService } from '../services/auth.service.js';
 import { catalogService } from '../services/catalog.service.js';
 import { cityService } from '../services/city.service.js';
 import { geoapifyService } from '../services/geoapify.service.js';
@@ -323,11 +324,10 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
 const getInitialStepFromUser = (user) => {
   if (!user) return 1;
 
-  // Step 1: Location Access
+  // Step 1: Location Access (Requires explicit GPS permission / saved coordinates)
   const isLocationSaved = Boolean(
     user.isLocationSaved ||
-    user.locationCoordinates?.lat ||
-    (user.address && user.assignedCity)
+    (user.locationCoordinates?.lat && user.locationCoordinates?.lng)
   );
   if (!isLocationSaved) return 1;
 
@@ -335,7 +335,7 @@ const getInitialStepFromUser = (user) => {
   const isCategorySelected = Boolean(
     user.isCategorySelected ||
     (user.categories && user.categories.length > 0) ||
-    user.category
+    (user.offeredServices && user.offeredServices.length > 0)
   );
   if (!isCategorySelected) return 2;
 
@@ -354,16 +354,15 @@ const getInitialStepFromUser = (user) => {
   );
   if (!isServiceAreaSet) return 4;
 
-  // Step 5: Document Upload (LAST STEP)
-  const isDocsUploaded = Boolean(
-    user.isDocumentsUploaded ||
-    (user.documents?.aadhaarFront && user.documents?.aadhaarBack) ||
-    user.documents?.aadhaarDoc ||
-    user.documents?.panDoc
-  );
+  // Step 5: Document Upload
+  const isDocsUploaded = Boolean(user.isDocumentsUploaded);
   if (!isDocsUploaded) return 5;
 
-  return 5;
+  // Step 6: Registration & Fees (One-Time Onboarding Fee)
+  const isOnboardingFeePaid = Boolean(user.isOnboardingFeePaid);
+  if (!isOnboardingFeePaid) return 6;
+
+  return 6;
 };
 
 const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) => {
@@ -376,22 +375,46 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     saveOnboardingWorkingHours,
     addCertification,
     deleteCertification,
+    payOnboardingFee,
     updatePartnerProfile,
     updateUser,
     isLoggingIn,
   } = useAuth();
 
-  // Step state with double-fallback: localStorage cache (for current user only) -> currentUser DB progress calculation -> default 1
+  // Step state with double-fallback: localStorage cache (validated against DB calculation) -> currentUser DB progress calculation
   const [step, setStep] = useState(() => {
+    const calculatedStep = getInitialStepFromUser(currentUser);
     const savedUserId = localStorage.getItem('partner_onboarding_user_id');
     const savedStep = localStorage.getItem('partner_onboarding_step');
     if (savedUserId === currentUser?._id && savedStep && !isNaN(Number(savedStep))) {
       const parsed = Number(savedStep);
-      if (parsed >= 1 && parsed <= 5) return parsed;
+      if (parsed >= 1 && parsed <= 6 && parsed <= calculatedStep) return parsed;
     }
-    return getInitialStepFromUser(currentUser);
+    return calculatedStep;
   });
   const [subStep, setSubStep] = useState('list'); // 'list' | 'aadhaar' | 'generic'
+
+  // Onboarding Fee & Registration Payment State
+  const [onboardingFeeInfo, setOnboardingFeeInfo] = useState({
+    totalAmount: 999,
+    baseRegistrationFee: 846.61,
+    gstAmount: 152.39,
+    currency: 'INR',
+  });
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('UPI');
+  const [processingFeePayment, setProcessingFeePayment] = useState(false);
+
+  useEffect(() => {
+    authService.getOnboardingFee()
+      .then((res) => {
+        const data = res.data?.data || res.data || {};
+        if (data.totalAmount) {
+          setOnboardingFeeInfo(data);
+        }
+      })
+      .catch((err) => console.warn('Onboarding fee fetch notice:', err));
+  }, []);
 
   // Persist current step to localStorage per user
   useEffect(() => {
@@ -1249,12 +1272,11 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
         console.warn('Background ZOOP verification trigger:', zErr);
       }
 
-      setSuccessMsg('🎉 Onboarding Complete! Redirecting to Partner Dashboard...');
+      setSuccessMsg('Documents saved! Proceeding to Registration & Fees...');
       setTimeout(() => {
-        if (onFinishOnboarding) {
-          onFinishOnboarding();
-        }
-      }, 800);
+        setStep(6);
+        setSubStep('list');
+      }, 500);
     } catch (err) {
       console.error('Batch Document Upload Error:', err);
       setError(err.response?.data?.message || err.message || 'Failed to upload documents');
@@ -1412,6 +1434,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
               { id: 3, label: '3. Experience' },
               { id: 4, label: '4. Area' },
               { id: 5, label: '5. Docs' },
+              { id: 6, label: '6. Fees' },
             ].map((s) => (
               <button
                 key={s.id}
@@ -1445,7 +1468,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
           <div style={{ height: '6px', width: '100%', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
             <div style={{
               height: '100%',
-              width: `${(step / 5) * 100}%`,
+              width: `${(step / 6) * 100}%`,
               background: 'linear-gradient(90deg, #16a34a 0%, #059669 100%)',
               transition: 'width 0.3s ease',
             }}></div>
@@ -2514,6 +2537,284 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
             >
               Continue
             </button>
+          </div>
+        )}
+
+        {/* STEP 6: REGISTRATION & FEES (ONE-TIME ONBOARDING FEE) */}
+        {step === 6 && (
+          <div style={{ padding: '24px' }}>
+            
+            {/* Green Top Progress Bar Line */}
+            <div style={{ height: '4px', width: '100%', background: '#16a34a', borderRadius: '4px', marginBottom: '20px' }} />
+
+            {/* Title & Fee Header */}
+            <div style={{ textAlign: 'center', marginBottom: '22px' }}>
+              <div style={{
+                display: 'inline-block',
+                background: '#f0fdf4',
+                color: '#16a34a',
+                border: '1px solid #bbf7d0',
+                padding: '6px 16px',
+                borderRadius: '20px',
+                fontSize: '0.74rem',
+                fontWeight: '800',
+                letterSpacing: '0.6px',
+                marginBottom: '10px'
+              }}>
+                ONE-TIME ONBOARDING FEE
+              </div>
+              <h2 style={{ fontSize: '2.5rem', fontWeight: '900', color: '#0f172a', margin: '4px 0 6px 0', letterSpacing: '-0.5px' }}>
+                ₹{onboardingFeeInfo.totalAmount || 999}
+              </h2>
+              <p style={{ color: '#64748b', fontSize: '0.84rem', margin: 0, lineHeight: '1.45', padding: '0 8px' }}>
+                Pay once to fully activate your partner account and start receiving local high-paying jobs.
+              </p>
+            </div>
+
+            {/* What is included Card */}
+            <div style={{
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '20px',
+              padding: '18px 20px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.02)',
+              marginBottom: '18px'
+            }}>
+              <div style={{ fontSize: '0.92rem', fontWeight: '800', color: '#0f172a', marginBottom: '14px' }}>
+                What is included:
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                  <div style={{ background: '#dcfce7', borderRadius: '50%', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
+                    <CheckCircle2 size={16} color="#16a34a" />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: '800', fontSize: '0.86rem', color: '#0f172a' }}>
+                      Background & Document Verification
+                    </div>
+                    <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px', lineHeight: '1.35' }}>
+                      Secure background check and government database verification.
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                  <div style={{ background: '#dcfce7', borderRadius: '50%', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
+                    <CheckCircle2 size={16} color="#16a34a" />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: '800', fontSize: '0.86rem', color: '#0f172a' }}>
+                      Professional Skill Certification
+                    </div>
+                    <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px', lineHeight: '1.35' }}>
+                      Digital badge and service certificate to boost customer trust.
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                  <div style={{ background: '#dcfce7', borderRadius: '50%', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
+                    <CheckCircle2 size={16} color="#16a34a" />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: '800', fontSize: '0.86rem', color: '#0f172a' }}>
+                      Partner Training & Support
+                    </div>
+                    <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px', lineHeight: '1.35' }}>
+                      Access to training modules and priority 24/7 partner support.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Billing Summary Box */}
+            <div style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '20px',
+              padding: '18px 20px',
+              marginBottom: '20px'
+            }}>
+              <div style={{ fontSize: '0.92rem', fontWeight: '800', color: '#0f172a', marginBottom: '12px' }}>
+                Billing Summary
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', color: '#64748b', marginBottom: '8px' }}>
+                <span>Base Registration Fee</span>
+                <span style={{ fontWeight: '700', color: '#334155' }}>₹{onboardingFeeInfo.baseRegistrationFee || '846.61'}</span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', color: '#64748b', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px dashed #cbd5e1' }}>
+                <span>GST (18%)</span>
+                <span style={{ fontWeight: '700', color: '#334155' }}>₹{onboardingFeeInfo.gstAmount || '152.39'}</span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.05rem', fontWeight: '900', color: '#0f172a' }}>
+                <span>Total Amount</span>
+                <span style={{ color: '#16a34a' }}>₹{onboardingFeeInfo.totalAmount || 999}.00</span>
+              </div>
+            </div>
+
+            {/* Refundable Policy Badge Indicator */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              fontSize: '0.78rem',
+              color: '#16a34a',
+              fontWeight: '700',
+              marginBottom: '22px'
+            }}>
+              <ShieldCheck size={16} color="#16a34a" /> Safe & Secure Refundable Payment Process
+            </div>
+
+            {/* Action Button */}
+            <button
+              type="button"
+              onClick={() => setShowPaymentModal(true)}
+              style={{
+                width: '100%',
+                padding: '16px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                color: '#ffffff',
+                border: 'none',
+                fontSize: '1.05rem',
+                fontWeight: '900',
+                cursor: 'pointer',
+                boxShadow: '0 8px 22px rgba(22, 163, 74, 0.35)',
+                transition: 'transform 0.15s ease',
+              }}
+            >
+              Continue to Payment
+            </button>
+          </div>
+        )}
+
+        {/* PAYMENT CHECKOUT MODAL FOR ONBOARDING FEE */}
+        {showPaymentModal && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.7)',
+            backdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '16px',
+          }}>
+            <div style={{
+              width: '100%',
+              maxWidth: '440px',
+              background: '#ffffff',
+              borderRadius: '24px',
+              padding: '24px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+                  Complete Account Registration
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowPaymentModal(false)}
+                  style={{ background: '#f1f5f9', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontWeight: '700' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '16px', padding: '14px', marginBottom: '18px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.78rem', color: '#15803d', fontWeight: '700' }}>Amount Payable</div>
+                <div style={{ fontSize: '2rem', fontWeight: '900', color: '#16a34a' }}>₹{onboardingFeeInfo.totalAmount || 999}</div>
+                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>One-Time Onboarding Fee (Incl. 18% GST)</div>
+              </div>
+
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: '800', color: '#334155', marginBottom: '8px' }}>
+                  Select Payment Option
+                </label>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {['UPI (GPay / PhonePe / Paytm)', 'Debit / Credit Card', 'Net Banking / Wallet'].map((method) => (
+                    <div
+                      key={method}
+                      onClick={() => setSelectedPaymentMethod(method)}
+                      style={{
+                        padding: '12px 16px',
+                        borderRadius: '12px',
+                        border: selectedPaymentMethod === method ? '2px solid #16a34a' : '1.5px solid #cbd5e1',
+                        background: selectedPaymentMethod === method ? '#f0fdf4' : '#ffffff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontWeight: '700',
+                        fontSize: '0.88rem',
+                        color: selectedPaymentMethod === method ? '#15803d' : '#334155',
+                      }}
+                    >
+                      <span>{method}</span>
+                      <div style={{
+                        width: '18px',
+                        height: '18px',
+                        borderRadius: '50%',
+                        border: selectedPaymentMethod === method ? '6px solid #16a34a' : '2px solid #94a3b8',
+                      }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  setProcessingFeePayment(true);
+                  try {
+                    await payOnboardingFee({ paymentMethod: selectedPaymentMethod });
+                    setShowPaymentModal(false);
+                    toast.success('🎉 Registration fee paid successfully!');
+                    setTimeout(() => {
+                      if (onFinishOnboarding) onFinishOnboarding();
+                    }, 800);
+                  } catch (pErr) {
+                    toast.error(pErr.message || 'Payment processing failed');
+                  } finally {
+                    setProcessingFeePayment(false);
+                  }
+                }}
+                disabled={processingFeePayment}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  borderRadius: '14px',
+                  background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontWeight: '800',
+                  fontSize: '0.96rem',
+                  cursor: processingFeePayment ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 14px rgba(22, 163, 74, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                }}
+              >
+                {processingFeePayment ? (
+                  <>
+                    <Loader2 size={18} className="spin" color="#ffffff" />
+                    Processing Payment...
+                  </>
+                ) : (
+                  `Pay ₹${onboardingFeeInfo.totalAmount || 999} & Complete Registration`
+                )}
+              </button>
+            </div>
           </div>
         )}
 

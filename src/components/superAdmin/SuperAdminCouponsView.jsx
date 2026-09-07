@@ -17,10 +17,12 @@ import {
   Power
 } from 'lucide-react';
 import { superAdminService } from '../../services/superAdmin.service.js';
+import { catalogService } from '../../services/catalog.service.js';
 import { toast } from '../../utils/toast.js';
 
 const SuperAdminCouponsView = () => {
   const [coupons, setCoupons] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -42,6 +44,7 @@ const SuperAdminCouponsView = () => {
     code: '',
     title: '',
     description: '',
+    applicableCategory: '',
     discountType: 'fixed',
     discountValue: '',
     maxDiscountAmount: '',
@@ -65,6 +68,13 @@ const SuperAdminCouponsView = () => {
 
   useEffect(() => {
     fetchCoupons();
+    catalogService
+      .getCategories()
+      .then((res) => {
+        const list = res.data?.data || res.data || [];
+        setCategories(Array.isArray(list) ? list : []);
+      })
+      .catch((err) => console.warn('Failed to load categories:', err));
   }, []);
 
   const handleOpenCreateModal = () => {
@@ -73,6 +83,7 @@ const SuperAdminCouponsView = () => {
       code: '',
       title: '',
       description: '',
+      applicableCategory: '',
       discountType: 'fixed',
       discountValue: '',
       maxDiscountAmount: '',
@@ -89,6 +100,7 @@ const SuperAdminCouponsView = () => {
       code: coupon.code || '',
       title: coupon.title || '',
       description: coupon.description || '',
+      applicableCategory: coupon.applicableCategory?._id || coupon.applicableCategory || '',
       discountType: coupon.discountType || 'fixed',
       discountValue: coupon.discountValue !== undefined ? String(coupon.discountValue) : '',
       maxDiscountAmount: coupon.maxDiscountAmount ? String(coupon.maxDiscountAmount) : '',
@@ -337,6 +349,17 @@ const SuperAdminCouponsView = () => {
                     <td style={{ padding: '16px 20px' }}>
                       <div style={{ fontWeight: '800', color: '#0f172a' }}>{c.title}</div>
                       {c.description && <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>{c.description}</div>}
+                      <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {c.applicableCategory ? (
+                          <span style={{ fontSize: '0.74rem', background: '#eff6ff', color: '#2563eb', padding: '3px 9px', borderRadius: '6px', fontWeight: '800', border: '1px solid #bfdbfe', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            📁 {typeof c.applicableCategory === 'object' ? c.applicableCategory.name : (categories.find(cat => cat._id === c.applicableCategory)?.name || 'Category Specific')}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.74rem', background: '#f8fafc', color: '#64748b', padding: '3px 9px', borderRadius: '6px', fontWeight: '700', border: '1px solid #e2e8f0', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            🌐 All Categories
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '16px 20px' }}>
                       <div style={{ fontWeight: '800', color: c.discountType === 'percentage' ? '#2563eb' : '#7c3aed' }}>
@@ -621,6 +644,38 @@ const SuperAdminCouponsView = () => {
                     outline: 'none',
                   }}
                 />
+              </div>
+
+              {/* APPLICABLE CATEGORY */}
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#475569', display: 'block', marginBottom: '6px' }}>
+                  APPLICABLE CATEGORY (OPTIONAL)
+                </label>
+                <select
+                  value={formData.applicableCategory}
+                  onChange={(e) => setFormData({ ...formData, applicableCategory: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: '12px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.88rem',
+                    fontWeight: '700',
+                    outline: 'none',
+                    background: '#ffffff',
+                    color: '#0f172a',
+                  }}
+                >
+                  <option value="">🌐 All Categories (Global Promo Code)</option>
+                  {categories.map((cat) => (
+                    <option key={cat._id} value={cat._id}>
+                      📁 {cat.name}
+                    </option>
+                  ))}
+                </select>
+                <span style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '4px', display: 'block', fontWeight: '500' }}>
+                  Select a category to restrict this promo code ONLY to that category's services. Leave empty for all categories.
+                </span>
               </div>
 
               {/* DISCOUNT TYPE & VALUE */}

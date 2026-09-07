@@ -624,9 +624,14 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
 
     setApplyingCoupon(true);
     try {
+      const currentCatId = service?.category?._id || service?.category || service?.categoryId;
+      const currentSrvId = service?._id || service?.serviceId;
+
       const res = await customerService.applyCoupon({
         code: targetCode.trim(),
         bookingAmount: subtotal,
+        categoryId: currentCatId,
+        serviceId: currentSrvId,
       });
 
       const resData = res.data?.data || res.data;
@@ -1709,6 +1714,16 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
                       <div style={{ fontSize: '0.9rem', fontWeight: '800', color: '#ffffff', marginBottom: '4px' }}>
                         {c.title}
                       </div>
+
+                      {c.applicableCategory ? (
+                        <div style={{ fontSize: '0.72rem', color: '#60a5fa', marginBottom: '6px', fontWeight: '800' }}>
+                          📁 Valid on {typeof c.applicableCategory === 'object' ? c.applicableCategory.name : 'selected category'} services only
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginBottom: '6px', fontWeight: '500' }}>
+                          🌐 Valid on all services
+                        </div>
+                      )}
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: '0.78rem', color: '#64748b' }}>{c.subtitle}</span>

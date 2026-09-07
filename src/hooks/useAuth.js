@@ -176,6 +176,15 @@ export const useAuth = () => {
     },
   });
 
+  const payOnboardingFeeMutation = useMutation({
+    mutationFn: (data) => authService.payOnboardingFee(data),
+    onSuccess: (res) => {
+      const user = res.data?.user || res.data;
+      if (user) updateUser(user);
+      toast.success('🎉 One-Time Onboarding Fee paid successfully!');
+    },
+  });
+
   const cityAdminLoginMutation = useMutation({
     mutationFn: (data) => authService.cityAdminLogin(data),
     onSuccess: (res) => {
@@ -221,6 +230,7 @@ export const useAuth = () => {
     saveOnboardingWorkingHours: saveOnboardingHoursMutation.mutateAsync,
     addCertification: addCertificationMutation.mutateAsync,
     deleteCertification: deleteCertificationMutation.mutateAsync,
+    payOnboardingFee: payOnboardingFeeMutation.mutateAsync,
     cityAdminLogin: cityAdminLoginMutation.mutateAsync,
     superAdminLogin: superAdminLoginMutation.mutateAsync,
     isLoggingIn:

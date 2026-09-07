@@ -11,6 +11,7 @@ import OnlineOfflineModal from '../components/partner/OnlineOfflineModal';
 import IncomingJobOfferModal from '../components/partner/IncomingJobOfferModal';
 import PartnerFulfillmentPage from './partner/PartnerFulfillmentPage';
 import PartnerProfileView from '../components/partner/PartnerProfileView';
+import PartnerAnalyticsView from '../components/partner/PartnerAnalyticsView';
 import { socketService } from '../services/socket.service.js';
 import { cityService } from '../services/city.service.js';
 import { catalogService } from '../services/catalog.service.js';
@@ -55,6 +56,8 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
 
   const kycStatus = dashboard?.kycStatus || currentUser?.kycStatus || 'pending';
   const isApproved = kycStatus === 'approved';
+  const partnerStatus = dashboard?.status || currentUser?.status || 'active';
+  const isSuspended = partnerStatus === 'suspended' || partnerStatus === 'blocked' || partnerStatus === 'inactive';
 
   const initialCityName = (typeof currentUser?.assignedCity === 'object' && currentUser?.assignedCity?.name)
     ? currentUser.assignedCity.name
@@ -125,8 +128,8 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
 
     // Listen for new real-time job offers
     socketService.onNewJobOffer((offer) => {
-      if (!isOnline || !isApproved) {
-        console.log('⛔ Ignoring job offer because partner is offline or not approved.');
+      if (!isOnline || !isApproved || isSuspended) {
+        console.log('⛔ Ignoring job offer because partner is offline, not approved, or suspended.');
         return;
       }
       console.log('⚡ Received real-time job offer:', offer);
@@ -196,6 +199,12 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
   };
 
   const handleConfirmToggleOnline = async () => {
+    if (isSuspended) {
+      toast.error('Your account is currently disabled/suspended. Please contact City Admin to reactivate.');
+      setOnlineModalOpen(false);
+      return;
+    }
+
     const nextStatus = !isOnline;
     setModalLoading(true);
 
@@ -277,6 +286,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
             <div>
               <h2 style={{ fontSize: '1.45rem', fontWeight: '900', margin: 0, color: '#0f172a' }}>
                 {activeTab === 'dashboard' && 'Technician Earnings & Bookings Overview'}
+                {activeTab === 'analytics' && 'Performance & Revenue Analytics'}
                 {activeTab === 'kycStatus' && 'Technician KYC Verification Status'}
                 {activeTab === 'bookings' && 'Assigned Customer Jobs & Earnings'}
                 {activeTab === 'calendar' && 'Service Schedule & Work Calendar'}
@@ -301,6 +311,35 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
           {/* TAB: DASHBOARD */}
           {activeTab === 'dashboard' && (
             <>
+              {isSuspended && (
+                <div
+                  style={{
+                    padding: '20px 24px',
+                    background: '#fef2f2',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1px solid #fecaca',
+                    color: '#991b1b',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '24px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <Lock size={28} color="#dc2626" />
+                    <div>
+                      <div style={{ fontWeight: '800', fontSize: '1.05rem' }}>⚠️ Your Account is Currently Disabled / Suspended</div>
+                      <div style={{ fontSize: '0.84rem', opacity: 0.95, marginTop: '2px' }}>
+                        New booking requests are paused because your daily cancellation limit was exceeded. Please contact your City Operations Admin to review and reactivate your account.
+                      </div>
+                    </div>
+                  </div>
+                  <button onClick={() => setActiveTab('support')} className="btn btn-sm" style={{ background: '#dc2626', color: '#ffffff', fontWeight: '700', borderRadius: '10px', padding: '8px 16px', border: 'none' }}>
+                    Contact City Admin
+                  </button>
+                </div>
+              )}
+
               {!isApproved ? (
                 /* PENDING KYC RESTRICTED DASHBOARD VIEW */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -414,6 +453,9 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
               </p>
             </div>
           )}
+
+          {/* PERFORMANCE ANALYTICS TAB */}
+          {activeTab === 'analytics' && <PartnerAnalyticsView currentUser={currentUser} />}
 
           {/* PROFILE & SUB TABS (PROFILE, EDIT PROFILE, DOCUMENTS, BANK DETAILS, REFERRAL, WALLET, SETTINGS) */}
           {activeTab === 'profile' && <PartnerProfileView partnerData={currentUser} initialSubTab="overview" onTabChange={(t) => setActiveTab(t)} onUpdateUser={onUpdateUser} />}

@@ -14,7 +14,8 @@ import {
   Settings,
   ShieldCheck,
   Lock,
-  Briefcase
+  Briefcase,
+  TrendingUp,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -44,6 +45,7 @@ const DedicatedPartnerSidebar = ({
 
   const baseItems = [
     { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard },
+    { id: 'analytics', label: 'ANALYTICS', icon: TrendingUp, badge: 'New' },
     { id: 'profile', label: 'PROFILE OVERVIEW', icon: User },
     { id: 'editProfile', label: 'EDIT PROFILE', icon: UserCheck },
     { id: 'documents', label: 'MY DOCUMENTS', icon: FileText },
@@ -53,6 +55,7 @@ const DedicatedPartnerSidebar = ({
   const fullItems = [
     { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard },
     { id: 'bookings', label: 'BOOKINGS', icon: CalendarCheck, badge: 'Jobs' },
+    { id: 'analytics', label: 'ANALYTICS', icon: TrendingUp, badge: 'Insights' },
     { id: 'calendar', label: 'CALENDAR', icon: Calendar },
     { id: 'wallet', label: 'WALLET & PAYOUTS', icon: Wallet, badge: 'Payouts' },
     { id: 'profile', label: 'PROFILE OVERVIEW', icon: User },

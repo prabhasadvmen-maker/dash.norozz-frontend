@@ -209,9 +209,10 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
   const [chatInputText, setChatInputText] = useState('');
 
   // Complaint Form State
+  const [partnerBookingsList, setPartnerBookingsList] = useState([]);
   const [complaintForm, setComplaintForm] = useState({
     complaintType: 'Payment Delay / Issue',
-    bookingId: 'Booking #NRZ-1922 - AC Service Deep Cleaning',
+    bookingId: '',
     description: '',
     screenshot: null,
     priority: 'Medium',
@@ -271,6 +272,35 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
         }
       })
       .catch((err) => console.error('Error fetching partner FAQs:', err));
+
+    // Fetch real partner bookings for complaint dropdown
+    partnerService.getAllBookings()
+      .then((res) => {
+        const bList = res.data?.data || res.data || [];
+        if (Array.isArray(bList) && bList.length > 0) {
+          setPartnerBookingsList(bList);
+          const firstB = bList[0];
+          const firstBNum = firstB.bookingId || firstB.bookingNumber || `NRZ-${firstB._id?.toString().slice(-4).toUpperCase()}`;
+          const firstSName = firstB.serviceName || firstB.service?.name || firstB.packageName || 'Service';
+          const defaultVal = `Booking #${firstBNum} - ${firstSName}`;
+          setComplaintForm((prev) => ({
+            ...prev,
+            bookingId: prev.bookingId || defaultVal
+          }));
+        } else {
+          setComplaintForm((prev) => ({
+            ...prev,
+            bookingId: prev.bookingId || 'General Partner Account Issue'
+          }));
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not fetch partner bookings for complaints dropdown:', err);
+        setComplaintForm((prev) => ({
+          ...prev,
+          bookingId: prev.bookingId || 'General Partner Account Issue'
+        }));
+      });
   }, []);
 
   // Load initial settings preferences from user object
@@ -3098,9 +3128,19 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                   onChange={(e) => setComplaintForm({ ...complaintForm, bookingId: e.target.value })}
                   style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '0.9rem', background: '#ffffff' }}
                 >
-                  <option value="Booking #NRZ-1922 - AC Service Deep Cleaning">Booking #NRZ-1922 - AC Service Deep Cleaning</option>
-                  <option value="Booking #NRZ-1918 - Full Home Cleaning">Booking #NRZ-1918 - Full Home Cleaning</option>
-                  <option value="General Partner Account Issue">General Partner Account Issue</option>
+                  {partnerBookingsList.length > 0 ? (
+                    partnerBookingsList.map((b) => {
+                      const bNum = b.bookingId || b.bookingNumber || `NRZ-${b._id?.toString().slice(-4).toUpperCase()}`;
+                      const sName = b.serviceName || b.service?.name || b.packageName || 'Service';
+                      const val = `Booking #${bNum} - ${sName}`;
+                      return (
+                        <option key={b._id || bNum} value={val}>
+                          {val} ({b.status || 'Active'})
+                        </option>
+                      );
+                    })
+                  ) : null}
+                  <option value="General Partner Account Issue">General Partner Account Issue (No Specific Booking)</option>
                 </select>
               </div>
 

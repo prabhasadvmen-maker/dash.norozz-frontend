@@ -16,6 +16,7 @@ import {
 import { usePartner } from '../../hooks/usePartner.js';
 import { useBookings } from '../../hooks/useBookings.js';
 import { partnerService } from '../../services/partner.service.js';
+import PartnerCancelBookingModal from './PartnerCancelBookingModal.jsx';
 
 const PartnerJobsTable = ({ onOpenFulfillment }) => {
   const { todayBookings, pendingBookings, completedBookings, cancelledBookings, allBookings } = usePartner('bookings');
@@ -23,6 +24,8 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
 
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'upcoming' | 'completed' | 'cancelled'
   const [completeModalOpen, setCompleteModalOpen] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [selectedCancelJob, setSelectedCancelJob] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
   const [otpInput, setOtpInput] = useState('');
   const [fetchingDetailsId, setFetchingDetailsId] = useState(null);
@@ -297,6 +300,29 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
                             {acceptingId === job._id ? <Loader2 size={12} className="spin" /> : '✓ Accept Job'}
                           </button>
                         )}
+                        {['Accepted', 'accepted', 'Assigned', 'assigned', 'On The Way', 'on_the_way'].includes(job.status) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedCancelJob(job);
+                              setCancelModalOpen(true);
+                            }}
+                            className="btn btn-outline-danger btn-sm"
+                            style={{
+                              borderRadius: '10px',
+                              padding: '6px 12px',
+                              fontWeight: '800',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              borderColor: '#fca5a5',
+                              color: '#dc2626',
+                              background: '#fef2f2',
+                            }}
+                          >
+                            <XCircle size={13} /> Cancel
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleViewDetailsClick(job)}
@@ -369,6 +395,21 @@ const PartnerJobsTable = ({ onOpenFulfillment }) => {
           </div>
         </div>
       )}
+
+      {/* PARTNER CANCEL BOOKING MODAL */}
+      <PartnerCancelBookingModal
+        isOpen={cancelModalOpen}
+        booking={selectedCancelJob}
+        onClose={() => {
+          setCancelModalOpen(false);
+          setSelectedCancelJob(null);
+        }}
+        onSuccess={() => {
+          setCancelModalOpen(false);
+          setSelectedCancelJob(null);
+          window.location.reload();
+        }}
+      />
 
     </div>
   );

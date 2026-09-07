@@ -25,13 +25,15 @@ import {
   ExternalLink,
   Share2,
   Download,
-  Printer
+  Printer,
+  XCircle,
 } from 'lucide-react';
 import { toast } from '../../utils/toast.js';
 import { useBookings } from '../../hooks/useBookings.js';
 import { axiosInstance } from '../../api/axiosInstance.js';
 import { partnerService } from '../../services/partner.service.js';
 import { geoapifyService } from '../../services/geoapify.service.js';
+import PartnerCancelBookingModal from '../../components/partner/PartnerCancelBookingModal.jsx';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import LiveChatModal from '../../components/common/LiveChatModal.jsx';
@@ -202,6 +204,7 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
   const [voiceCallOpen, setVoiceCallOpen] = useState(false);
   const [isIncomingCall, setIsIncomingCall] = useState(false);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const socketRef = useRef(null);
 
   const bookingIdStr = booking?._id || booking?.id;
@@ -719,9 +722,32 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
             </div>
           </div>
 
-          <span style={{ padding: '8px 16px', fontSize: '0.85rem', fontWeight: '800', background: '#f3e8ff', color: '#7c3aed', borderRadius: '12px', border: '1px solid #e9d5ff' }}>
-            STEP {step} OF 11
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {step <= 4 && (
+              <button
+                type="button"
+                onClick={() => setCancelModalOpen(true)}
+                style={{
+                  padding: '8px 14px',
+                  fontWeight: '800',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#fef2f2',
+                  border: '1px solid #fca5a5',
+                  borderRadius: '12px',
+                  color: '#dc2626',
+                  cursor: 'pointer',
+                  fontSize: '0.84rem',
+                }}
+              >
+                <XCircle size={15} /> Cancel Booking
+              </button>
+            )}
+            <span style={{ padding: '8px 16px', fontSize: '0.85rem', fontWeight: '800', background: '#f3e8ff', color: '#7c3aed', borderRadius: '12px', border: '1px solid #e9d5ff' }}>
+              STEP {step} OF 11
+            </span>
+          </div>
         </div>
       </header>
 
@@ -2038,6 +2064,17 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
           </div>
         </div>
       )}
+
+      {/* PARTNER CANCEL BOOKING MODAL */}
+      <PartnerCancelBookingModal
+        isOpen={cancelModalOpen}
+        booking={currentBooking}
+        onClose={() => setCancelModalOpen(false)}
+        onSuccess={() => {
+          setCancelModalOpen(false);
+          if (onBack) onBack();
+        }}
+      />
     </div>
   );
 };

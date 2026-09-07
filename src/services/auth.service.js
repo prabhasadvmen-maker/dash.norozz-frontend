@@ -28,6 +28,8 @@ export const authService = {
   saveOnboardingWorkingHours: (data, config = {}) => axiosInstance.post('/partner/auth/onboarding/working-hours', data, config),
   addCertification: (data, config = {}) => axiosInstance.post('/partner/auth/certifications', data, config),
   deleteCertification: (certId) => axiosInstance.delete(`/partner/auth/certifications/${certId}`),
+  getOnboardingFee: () => axiosInstance.get('/partner/auth/onboarding-fee'),
+  payOnboardingFee: (data, config = {}) => axiosInstance.post('/partner/auth/onboarding/pay-fee', data, config),
   partnerLogout: () => axiosInstance.post('/partner/auth/logout'),
   getKycStatus: () => axiosInstance.get('/partner/auth/kyc-status'),
 

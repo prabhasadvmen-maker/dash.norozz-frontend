@@ -80,27 +80,25 @@ function AppContent() {
         );
       }
 
-      // Check exact completion of all 5 onboarding steps: Location, Category, Skills, Service Area, Documents
+      // Check exact completion of all 6 onboarding steps: Location, Category, Skills, Service Area, Documents, Registration Fee
       const isLocationSaved = Boolean(currentUser.isLocationSaved || (currentUser.locationCoordinates?.lat && currentUser.locationCoordinates?.lng));
       const isCategorySelected = Boolean(currentUser.isCategorySelected || (currentUser.offeredServices && currentUser.offeredServices.length > 0));
       const isSkillsUpdated = Boolean(currentUser.isSkillsUpdated || (currentUser.skills && currentUser.skills.length > 0));
       const isServiceAreaSet = Boolean(currentUser.isServiceAreaSet || (currentUser.localities && currentUser.localities.length > 0));
       const isDocumentsUploaded = Boolean(currentUser.isDocumentsUploaded);
+      const isOnboardingFeePaid = Boolean(currentUser.isOnboardingFeePaid);
 
       const isAllOnboardingCompleted = Boolean(
         isLocationSaved &&
         isCategorySelected &&
         isSkillsUpdated &&
         isServiceAreaSet &&
-        isDocumentsUploaded
+        isDocumentsUploaded &&
+        isOnboardingFeePaid
       );
 
-      const isKycDone = Boolean(
-        currentUser.kycStatus === 'approved' ||
-        (currentUser.isKycSubmitted === true && isAllOnboardingCompleted)
-      );
-
-      if (!isKycDone && !skipOnboarding) {
+      // Dashboard navigation MUST occur ONLY when ALL 6 onboarding steps are DONE (isAllOnboardingCompleted === true)
+      if (!isAllOnboardingCompleted && !skipOnboarding) {
         return (
           <ProtectedRoute allowedRoles={['partner']}>
             <Suspense fallback={<PageFallback />}>
