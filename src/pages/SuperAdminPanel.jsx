@@ -11,6 +11,7 @@ import SuperAdminBannersView from '../components/superAdmin/SuperAdminBannersVie
 import SuperAdminFaqsView from '../components/superAdmin/SuperAdminFaqsView';
 import SuperAdminTicketsView from '../components/superAdmin/SuperAdminTicketsView';
 import SuperAdminReferralView from '../components/superAdmin/SuperAdminReferralView';
+import SuperAdminLegalPoliciesView from '../components/superAdmin/SuperAdminLegalPoliciesView';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import { useSuperAdmin } from '../hooks/useSuperAdmin.js';
 import { useCatalog } from '../hooks/useCatalog.js';
@@ -55,6 +56,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     if (p.includes('/super-admin/promotional-banners') || p.includes('/super-admin/banners')) return 'banners';
     if (p.includes('/super-admin/faqs')) return 'faqs';
     if (p.includes('/super-admin/referral-program') || p.includes('/super-admin/referral')) return 'referral';
+    if (p.includes('/super-admin/legal-policies') || p.includes('/super-admin/privacy-terms')) return 'legalPolicies';
     if (p.includes('/super-admin/customers')) return 'customers';
     if (p.includes('/super-admin/partners')) return 'partners';
     if (p.includes('/super-admin/categories')) return 'categories';
@@ -82,6 +84,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
       banners: '/super-admin/promotional-banners',
       faqs: '/super-admin/faqs',
       referral: '/super-admin/referral-program',
+      legalPolicies: '/super-admin/legal-policies',
       customers: '/super-admin/customers',
       partners: '/super-admin/partners',
       categories: '/super-admin/categories',
@@ -141,6 +144,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     banners: 'Promotional Banners',
     faqs: 'FAQs Management',
     referral: 'Referral Program Setup',
+    legalPolicies: 'Privacy Policy & Terms Rich Text Manager',
     customers: 'Customer Directory',
     partners: 'Marketplace Partners',
     categories: 'Categories Directory',
@@ -777,6 +781,11 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
           {/* TAB 2.9: REFERRAL PROGRAM MANAGER */}
           {activeTab === 'referral' && (
             <SuperAdminReferralView />
+          )}
+
+          {/* TAB 2.95: LEGAL & PRIVACY POLICY RICH TEXT MANAGER */}
+          {activeTab === 'legalPolicies' && (
+            <SuperAdminLegalPoliciesView />
           )}
 
           {/* TAB 3: CUSTOMERS */}

@@ -35,6 +35,7 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout, collapsed }) => 
     { id: 'banners', label: 'PROMOTIONAL BANNERS', icon: Image, badge: 'Hero Banners' },
     { id: 'faqs', label: 'FAQS MANAGEMENT', icon: HelpCircle, badge: 'Customer & Partner' },
     { id: 'referral', label: 'REFERRAL PROGRAM', icon: Gift, badge: 'Rewards' },
+    { id: 'legalPolicies', label: 'PRIVACY & TERMS', icon: ShieldCheck, badge: 'Policy Editor' },
     { id: 'customers', label: 'CUSTOMERS', icon: Users },
     { id: 'partners', label: 'PARTNERS', icon: Briefcase },
     { id: 'categories', label: 'CATEGORIES', icon: Grid },

@@ -61,6 +61,7 @@ import {
 import { catalogService } from '../../services/catalog.service.js';
 import { cityService } from '../../services/city.service.js';
 import { partnerService } from '../../services/partner.service.js';
+import { axiosInstance } from '../../api/axiosInstance.js';
 import { toast } from '../../utils/toast.js';
 
 const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTabChange, onUpdateUser }) => {
@@ -345,6 +346,28 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
         .catch((err) => console.error('Failed to load chat messages:', err));
     }
   }, [activeSubTab, settingsScreen]);
+
+  const [liveTermsContent, setLiveTermsContent] = useState('');
+  const [livePrivacyContent, setLivePrivacyContent] = useState('');
+
+  useEffect(() => {
+    if (settingsScreen === 'terms' && !liveTermsContent) {
+      axiosInstance.get('/policies/partner/terms_and_conditions')
+        .then((res) => {
+          const data = res.data?.data || res.data;
+          if (data?.content) setLiveTermsContent(data.content);
+        })
+        .catch(() => {});
+    }
+    if (settingsScreen === 'privacy' && !livePrivacyContent) {
+      axiosInstance.get('/policies/partner/privacy_policy')
+        .then((res) => {
+          const data = res.data?.data || res.data;
+          if (data?.content) setLivePrivacyContent(data.content);
+        })
+        .catch(() => {});
+    }
+  }, [settingsScreen]);
 
   // Sync settings preferences to backend
   const handleToggleSetting = async (category, key, value) => {
@@ -2709,25 +2732,31 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
               </div>
 
               <div style={{ padding: '20px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0', maxHeight: '420px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '0.86rem', color: '#334155', lineHeight: 1.6 }}>
-                <div>
-                  <h4 style={{ fontWeight: '800', color: '#0f172a', margin: '0 0 6px 0' }}>1. Introduction</h4>
-                  <p style={{ margin: 0 }}>Welcome to Platform. These Terms and Conditions govern your access to and use of our mobile application and related services. By accessing or using the platform, you agree to be bound by these terms.</p>
-                </div>
+                {liveTermsContent ? (
+                  <div dangerouslySetInnerHTML={{ __html: liveTermsContent }} />
+                ) : (
+                  <>
+                    <div>
+                      <h4 style={{ fontWeight: '800', color: '#0f172a', margin: '0 0 6px 0' }}>1. Introduction</h4>
+                      <p style={{ margin: 0 }}>Welcome to Platform. These Terms and Conditions govern your access to and use of our mobile application and related services. By accessing or using the platform, you agree to be bound by these terms.</p>
+                    </div>
 
-                <div>
-                  <h4 style={{ fontWeight: '800', color: '#0f172a', margin: '0 0 6px 0' }}>2. User Agreement</h4>
-                  <p style={{ margin: 0 }}>You must be at least 18 years of age and hold the legal capacity to enter into binding agreements to use this platform. You agree to provide accurate, current, and complete registration information and to maintain the security of your credentials at all times.</p>
-                </div>
+                    <div>
+                      <h4 style={{ fontWeight: '800', color: '#0f172a', margin: '0 0 6px 0' }}>2. User Agreement</h4>
+                      <p style={{ margin: 0 }}>You must be at least 18 years of age and hold the legal capacity to enter into binding agreements to use this platform. You agree to provide accurate, current, and complete registration information and to maintain the security of your credentials at all times.</p>
+                    </div>
 
-                <div>
-                  <h4 style={{ fontWeight: '800', color: '#0f172a', margin: '0 0 6px 0' }}>3. Privacy Policy Summary</h4>
-                  <p style={{ margin: 0 }}>Your privacy is highly important to us. Our platform collects, uses, and safeguards your location, documents, and profile data in accordance with our official Privacy Policy. We do not sell your personal data to third parties.</p>
-                </div>
+                    <div>
+                      <h4 style={{ fontWeight: '800', color: '#0f172a', margin: '0 0 6px 0' }}>3. Privacy Policy Summary</h4>
+                      <p style={{ margin: 0 }}>Your privacy is highly important to us. Our platform collects, uses, and safeguards your location, documents, and profile data in accordance with our official Privacy Policy. We do not sell your personal data to third parties.</p>
+                    </div>
 
-                <div>
-                  <h4 style={{ fontWeight: '800', color: '#0f172a', margin: '0 0 6px 0' }}>4. Intellectual Property</h4>
-                  <p style={{ margin: 0 }}>All code, software, interfaces, designs, brand marks, database assets, and graphic logos contained within this mobile application are the sole property of the company and protected by international intellectual property laws.</p>
-                </div>
+                    <div>
+                      <h4 style={{ fontWeight: '800', color: '#0f172a', margin: '0 0 6px 0' }}>4. Intellectual Property</h4>
+                      <p style={{ margin: 0 }}>All code, software, interfaces, designs, brand marks, database assets, and graphic logos contained within this mobile application are the sole property of the company and protected by international intellectual property laws.</p>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: '12px' }}>
@@ -2892,6 +2921,13 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                     </div>
                     <ChevronRight size={18} color="#94a3b8" />
                   </button>
+
+                  {livePrivacyContent && (
+                    <div style={{ padding: '18px', background: '#f8fafc', borderRadius: '14px', border: '1px solid #e2e8f0', fontSize: '0.84rem', lineHeight: '1.6', color: '#334155', maxHeight: '300px', overflowY: 'auto', marginTop: '6px' }}>
+                      <div style={{ fontSize: '0.76rem', fontWeight: '800', color: '#16a34a', textTransform: 'uppercase', marginBottom: '8px' }}>📜 Official Live Partner Privacy Policy</div>
+                      <div dangerouslySetInnerHTML={{ __html: livePrivacyContent }} />
+                    </div>
+                  )}
                 </div>
               </div>
 
