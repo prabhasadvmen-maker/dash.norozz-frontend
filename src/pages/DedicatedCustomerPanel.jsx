@@ -9,6 +9,7 @@ import CustomerProfileView from '../components/customer/CustomerProfileView';
 import CustomerAiChatView from '../components/customer/CustomerAiChatView';
 import CustomerWalletView from '../components/customer/CustomerWalletView';
 import ServiceDetailsModal from '../components/customer/ServiceDetailsModal';
+import StarterPackBanner from '../components/customer/StarterPackBanner';
 import CustomerBookingTrackingPage from './customer/CustomerBookingTrackingPage';
 import BookingFlowPage from './customer/BookingFlowPage';
 import CustomerServiceDetailPage from './customer/CustomerServiceDetailPage';
@@ -244,8 +245,11 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
     };
   }, [currentUser?._id]);
 
-  const handleOpenBookingWizard = (service) => {
+  const [appliedStarterPack, setAppliedStarterPack] = useState(null);
+
+  const handleOpenBookingWizard = (service, starterPack = null) => {
     setSelectedBookingService(service || { name: 'Full Home Deep Cleaning', price: 1499, category: 'Home Deep Cleaning' });
+    setAppliedStarterPack(starterPack);
     setIsBookingFlowActive(true);
   };
 
@@ -269,6 +273,7 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
       <BookingFlowPage
         service={selectedBookingService}
         currentUser={currentUser}
+        appliedStarterPack={appliedStarterPack}
         onBackToServices={() => setIsBookingFlowActive(false)}
         onNavigateToBookings={() => {
           setIsBookingFlowActive(false);
@@ -339,6 +344,13 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
               }}
             />
 
+            {/* Starter Pack Offer Banner for New Users */}
+            <StarterPackBanner
+              onSelectStarterPack={(pack) => {
+                handleOpenBookingWizard(null, pack);
+              }}
+            />
+
             {/* What are you looking for today? 6-Card Category Grid */}
             <PopularCategories
               selectedCategory={selectedCategoryFilter}
@@ -366,10 +378,10 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
               /* VIEW A: MAIN CATEGORIES DIRECTORY (NO BOTTOM PACKAGES SECTION) */
               <div>
                 <div style={{ marginBottom: '20px' }}>
-                  <h2 style={{ fontSize: '1.4rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)' }}>
+                  <h2 style={{ fontSize: '1.4rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>
                     All Service Categories
                   </h2>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                  <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '4px 0 0 0' }}>
                     Click any service category below to view all available packages
                   </p>
                 </div>
@@ -394,10 +406,10 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
                     <ArrowLeft size={16} /> Back to Categories
                   </button>
                   <div>
-                    <h2 style={{ fontSize: '1.3rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)' }}>
+                    <h2 style={{ fontSize: '1.3rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>
                       {typeof selectedCategoryFilter === 'object' ? selectedCategoryFilter.name : selectedCategoryFilter} Services
                     </h2>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
+                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '2px 0 0 0' }}>
                       Choose a service package below to view details and book
                     </p>
                   </div>
@@ -405,7 +417,7 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
 
                 {/* Grid of Available Services under this Category */}
                 {isCategoryServicesLoading ? (
-                  <div className="mui-card" style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <div className="mui-card" style={{ padding: '36px', textAlign: 'center', color: '#64748b' }}>
                     <Loader2 size={24} className="spin" style={{ margin: '0 auto 10px auto', color: '#2563eb' }} />
                     <div>Fetching latest services from backend for {typeof selectedCategoryFilter === 'object' ? selectedCategoryFilter.name : selectedCategoryFilter}...</div>
                   </div>
@@ -484,10 +496,10 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
 
                             {/* Card Content Area */}
                             <div style={{ padding: '16px 16px 8px 16px' }}>
-                              <h4 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '6px', lineHeight: 1.3 }}>
+                              <h4 style={{ fontSize: '1rem', fontWeight: '800', color: '#0f172a', marginBottom: '6px', lineHeight: 1.3 }}>
                                 {title}
                               </h4>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: '#64748b', marginBottom: '10px' }}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '600' }}>
                                   ⏱️ {duration}
                                 </span>
@@ -511,8 +523,8 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
                             justify: 'space-between'
                           }}>
                             <div>
-                              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700' }}>Starting from</div>
-                              <span style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--text-primary)' }}>{price}</span>
+                              <div style={{ fontSize: '0.68rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Starting from</div>
+                              <span style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a' }}>{price}</span>
                             </div>
                             <button
                               onClick={(e) => {
@@ -564,7 +576,7 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
             <div>
               {/* HEADER TITLE & NEW BOOKING BUTTON */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-                <h2 style={{ fontSize: '1.4rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)' }}>
+                <h2 style={{ fontSize: '1.4rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>
                   My Bookings ({activeList.length})
                 </h2>
                 <button onClick={() => handleOpenBookingWizard()} className="btn btn-primary btn-sm" style={{ fontWeight: '800' }}>
@@ -627,14 +639,14 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
               {/* BOOKINGS LIST FOR SELECTED TAB */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {activeList.length === 0 ? (
-                  <div className="mui-card" style={{ padding: '36px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <div className="mui-card" style={{ padding: '36px 20px', textAlign: 'center', color: '#64748b' }}>
                     <div style={{ fontSize: '2.2rem', marginBottom: '8px' }}>
                       {bookingFilterTab === 'pending' && '⏳'}
                       {bookingFilterTab === 'working' && '⚙️'}
                       {bookingFilterTab === 'completed' && '✅'}
                       {bookingFilterTab === 'canceled' && '❌'}
                     </div>
-                    <div style={{ fontWeight: '800', fontSize: '1.05rem', color: 'var(--text-primary)', marginBottom: '4px' }}>
+                    <div style={{ fontWeight: '800', fontSize: '1.05rem', color: '#0f172a', marginBottom: '4px' }}>
                       No {bookingFilterTab.charAt(0).toUpperCase() + bookingFilterTab.slice(1)} Bookings
                     </div>
                     <div style={{ fontSize: '0.84rem' }}>
@@ -667,15 +679,15 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
                           <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#2563eb' }}>
                             BOOKING REF: {bRef}
                           </div>
-                          <div style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--text-primary)', marginTop: '2px' }}>
+                          <div style={{ fontSize: '1rem', fontWeight: '800', color: '#0f172a', marginTop: '2px' }}>
                             {sTitle}
                           </div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                          <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>
                             {sDate} • {sSlot} • Status: {b.status}
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-primary)' }}>
+                          <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a' }}>
                             ₹{sAmount}
                           </div>
                           <span

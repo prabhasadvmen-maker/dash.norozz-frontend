@@ -46,4 +46,8 @@ export const superAdminService = {
   getAllPolicies: () => axiosInstance.get('/super-admin/policies'),
   getPolicy: (targetApp, type) => axiosInstance.get(`/super-admin/policies/${targetApp}/${type}`),
   savePolicy: (targetApp, type, data) => axiosInstance.post(`/super-admin/policies/${targetApp}/${type}`, data),
+
+  // Starter Pack Management (New User Offers)
+  getStarterPack: () => axiosInstance.get('/super-admin/starter-pack'),
+  updateStarterPack: (data) => axiosInstance.put('/super-admin/starter-pack', data),
 };

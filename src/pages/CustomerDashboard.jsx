@@ -192,12 +192,12 @@ const CustomerDashboard = ({ currentUser, onLogout, selectedCity }) => {
               ].map((b) => (
                 <div key={b.id} className="mui-card" style={{ padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <div style={{ fontSize: '0.78rem', fontWeight: '800', color: 'var(--accent-blue)' }}>BOOKING ID: {b.id}</div>
-                    <div style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--text-primary)', marginTop: '2px' }}>{b.title}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>{b.date} • Assigned: {b.partner}</div>
+                    <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#2563eb' }}>BOOKING ID: {b.id}</div>
+                    <div style={{ fontSize: '1rem', fontWeight: '800', color: '#0f172a', marginTop: '2px' }}>{b.title}</div>
+                    <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>{b.date} • Assigned: {b.partner}</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-primary)' }}>{b.price}</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a' }}>{b.price}</div>
                     <span className={`badge ${b.status === 'Completed' ? 'badge-success' : 'badge-blue'}`} style={{ marginTop: '4px' }}>{b.status}</span>
                   </div>
                 </div>

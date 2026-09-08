@@ -12,6 +12,7 @@ import SuperAdminFaqsView from '../components/superAdmin/SuperAdminFaqsView';
 import SuperAdminTicketsView from '../components/superAdmin/SuperAdminTicketsView';
 import SuperAdminReferralView from '../components/superAdmin/SuperAdminReferralView';
 import SuperAdminLegalPoliciesView from '../components/superAdmin/SuperAdminLegalPoliciesView';
+import SuperAdminStarterPackView from '../components/superAdmin/SuperAdminStarterPackView';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import { useSuperAdmin } from '../hooks/useSuperAdmin.js';
 import { useCatalog } from '../hooks/useCatalog.js';
@@ -53,6 +54,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     if (p.includes('/super-admin/city-management') || p.includes('/super-admin/cities')) return 'cities';
     if (p.includes('/super-admin/support-tickets') || p.includes('/super-admin/tickets')) return 'tickets';
     if (p.includes('/super-admin/coupons')) return 'coupons';
+    if (p.includes('/super-admin/starter-pack') || p.includes('/super-admin/starterpack')) return 'starterPack';
     if (p.includes('/super-admin/promotional-banners') || p.includes('/super-admin/banners')) return 'banners';
     if (p.includes('/super-admin/faqs')) return 'faqs';
     if (p.includes('/super-admin/referral-program') || p.includes('/super-admin/referral')) return 'referral';
@@ -81,6 +83,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
       cities: '/super-admin/city-management',
       tickets: '/super-admin/support-tickets',
       coupons: '/super-admin/Coupons?tab=all',
+      starterPack: '/super-admin/starter-pack',
       banners: '/super-admin/promotional-banners',
       faqs: '/super-admin/faqs',
       referral: '/super-admin/referral-program',
@@ -788,6 +791,11 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
             <SuperAdminLegalPoliciesView />
           )}
 
+          {/* TAB 2.98: STARTER PACK OFFER MANAGER */}
+          {activeTab === 'starterPack' && (
+            <SuperAdminStarterPackView />
+          )}
+
           {/* TAB 3: CUSTOMERS */}
           {activeTab === 'customers' && (
             <div style={{
@@ -1344,7 +1352,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '800' }}>
                       <th style={{ padding: '12px' }}>BOOKING REF</th>
                       <th style={{ padding: '12px' }}>CUSTOMER</th>
                       <th style={{ padding: '12px' }}>SERVICE</th>
@@ -1365,7 +1373,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                         const refCode = b.bookingNumber || b.bookingId || (b._id ? b._id.substring(0, 8).toUpperCase() : 'NZ-BOOKING');
 
                         return (
-                          <tr key={b._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                          <tr key={b._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                             <td style={{ padding: '12px', fontWeight: '800', color: '#2563eb' }}>{refCode}</td>
                             <td style={{ padding: '12px', fontWeight: '700' }}>{custName}</td>
                             <td style={{ padding: '12px' }}>{srvTitle}</td>
@@ -1513,7 +1521,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
-                      <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '800' }}>
                         <th style={{ padding: '12px' }}>REVIEWER</th>
                         <th style={{ padding: '12px' }}>REVIEWEE</th>
                         <th style={{ padding: '12px' }}>RATING</th>
@@ -1530,7 +1538,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                         </tr>
                       ) : (
                         liveReviews.map((rev) => (
-                          <tr key={rev._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                          <tr key={rev._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                             <td style={{ padding: '12px' }}>
                               <div style={{ fontWeight: '800', fontSize: '0.88rem', color: '#0f172a' }}>{rev.reviewerName}</div>
                               <span className={`badge ${rev.reviewerRole === 'CUSTOMER' ? 'badge-blue' : 'badge-purple'}`} style={{ fontSize: '0.65rem' }}>

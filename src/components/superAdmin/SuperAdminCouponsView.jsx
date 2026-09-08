@@ -278,9 +278,12 @@ const SuperAdminCouponsView = () => {
               width: '100%',
               padding: '10px 14px 10px 40px',
               borderRadius: '12px',
-              border: '1px solid var(--border-light)',
+              border: '1px solid #cbd5e1',
               fontSize: '0.88rem',
               outline: 'none',
+              color: '#0f172a',
+              background: '#f8fafc',
+              fontWeight: '600'
             }}
           />
         </div>
@@ -609,6 +612,8 @@ const SuperAdminCouponsView = () => {
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px',
                     outline: 'none',
+                    color: '#0f172a',
+                    background: '#f8fafc',
                   }}
                 />
               </div>
@@ -630,6 +635,9 @@ const SuperAdminCouponsView = () => {
                     border: '1px solid #cbd5e1',
                     fontSize: '0.88rem',
                     outline: 'none',
+                    color: '#0f172a',
+                    background: '#f8fafc',
+                    fontWeight: '600',
                   }}
                 />
               </div>
@@ -650,6 +658,9 @@ const SuperAdminCouponsView = () => {
                     border: '1px solid #cbd5e1',
                     fontSize: '0.88rem',
                     outline: 'none',
+                    color: '#0f172a',
+                    background: '#f8fafc',
+                    fontWeight: '600',
                   }}
                 />
               </div>
@@ -729,6 +740,9 @@ const SuperAdminCouponsView = () => {
                       border: '1px solid #cbd5e1',
                       fontSize: '0.88rem',
                       outline: 'none',
+                      color: '#0f172a',
+                      background: '#f8fafc',
+                      fontWeight: '700',
                     }}
                   />
                 </div>
@@ -753,6 +767,9 @@ const SuperAdminCouponsView = () => {
                       border: '1px solid #cbd5e1',
                       fontSize: '0.88rem',
                       outline: 'none',
+                      color: '#0f172a',
+                      background: '#f8fafc',
+                      fontWeight: '700',
                     }}
                   />
                 </div>
@@ -774,6 +791,9 @@ const SuperAdminCouponsView = () => {
                       border: '1px solid #cbd5e1',
                       fontSize: '0.88rem',
                       outline: 'none',
+                      color: '#0f172a',
+                      background: '#f8fafc',
+                      fontWeight: '700',
                     }}
                   />
                 </div>
@@ -798,6 +818,9 @@ const SuperAdminCouponsView = () => {
                       border: '1px solid #cbd5e1',
                       fontSize: '0.88rem',
                       outline: 'none',
+                      color: '#0f172a',
+                      background: '#f8fafc',
+                      fontWeight: '700',
                     }}
                   />
                 </div>

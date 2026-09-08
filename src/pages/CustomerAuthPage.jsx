@@ -444,7 +444,7 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
               fontSize: '0.85rem'
             }}>
               <div>
-                <span style={{ color: 'var(--text-secondary)' }}>OTP sent to: </span>
+                <span style={{ color: '#475569', fontWeight: '600' }}>OTP sent to: </span>
                 <strong style={{ color: '#0f172a' }}>{emailOrPhone}</strong>
               </div>
               <button

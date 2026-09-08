@@ -339,7 +339,9 @@ const SuperAdminLegalPoliciesView = () => {
                 border: '1px solid #cbd5e1',
                 fontSize: '0.9rem',
                 fontWeight: '700',
-                outline: 'none'
+                outline: 'none',
+                color: '#0f172a',
+                background: '#f8fafc',
               }}
             />
           </div>
@@ -360,7 +362,9 @@ const SuperAdminLegalPoliciesView = () => {
                 border: '1px solid #cbd5e1',
                 fontSize: '0.9rem',
                 fontWeight: '700',
-                outline: 'none'
+                outline: 'none',
+                color: '#0f172a',
+                background: '#f8fafc',
               }}
             />
           </div>

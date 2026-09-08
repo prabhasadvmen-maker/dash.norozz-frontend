@@ -44,4 +44,8 @@ export const customerService = {
   // Support Tickets API
   createTicket: (data) => axiosInstance.post('/customer/tickets', data),
   getTickets: () => axiosInstance.get('/customer/tickets'),
+
+  // Starter Pack New User Offer API
+  getStarterPack: () => axiosInstance.get('/customer/starter-pack'),
+  claimStarterPack: (data) => axiosInstance.post('/customer/starter-pack/claim', data),
 };

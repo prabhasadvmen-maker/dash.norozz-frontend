@@ -32,6 +32,7 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout, collapsed }) => 
     { id: 'cities', label: 'CITY MANAGEMENT', icon: MapPin, badge: 'Dynamic' },
     { id: 'tickets', label: 'SUPPORT TICKETS', icon: Headphones, badge: 'Helpdesk' },
     { id: 'coupons', label: 'COUPONS & PROMOS', icon: Tag, badge: 'Offers' },
+    { id: 'starterPack', label: 'STARTER PACK', icon: Sparkles, badge: 'New User' },
     { id: 'banners', label: 'PROMOTIONAL BANNERS', icon: Image, badge: 'Hero Banners' },
     { id: 'faqs', label: 'FAQS MANAGEMENT', icon: HelpCircle, badge: 'Customer & Partner' },
     { id: 'referral', label: 'REFERRAL PROGRAM', icon: Gift, badge: 'Rewards' },

@@ -229,7 +229,7 @@ const AddressMapPicker = ({ onLocationSelect, onMapReady, onLocateGps, isLocatin
   );
 };
 
-const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToBookings }) => {
+const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToBookings, appliedStarterPack }) => {
   const { createBooking, payBooking } = useBookings();
   const { addresses, refetchCustomer } = useCustomer();
   const { updateUser } = useAuth();
@@ -448,7 +448,8 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
   const activeAddressObj = savedAddresses.find((a) => a.id === selectedAddressId) || savedAddresses[0] || { address: currentUser?.address || 'Please add delivery address' };
 
   // Calculations: Selected package price takes HIGHEST priority!
-  const subtotal = currentPackage?.price || service?.finalPrice || service?.price || 799;
+  const baseSubtotal = currentPackage?.price || service?.finalPrice || service?.price || 799;
+  const subtotal = appliedStarterPack ? Number(appliedStarterPack.offerPrice || 139) : baseSubtotal;
   const platformFee = Math.round(subtotal * (customerPlatformFeePercent / 100));
   const couponDiscountVal = appliedCoupon ? (appliedCoupon.discountAmount ?? (appliedCoupon.discount || 0)) : 0;
   const totalAmount = Math.max(0, subtotal + platformFee - couponDiscountVal);

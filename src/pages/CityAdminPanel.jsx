@@ -232,7 +232,7 @@ const CityAdminPanel = ({ currentUser, onLogout }) => {
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
-                      <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '800' }}>
                         <th style={{ padding: '12px' }}>TECHNICIAN NAME</th>
                         <th style={{ padding: '12px' }}>SKILL CATEGORY</th>
                         <th style={{ padding: '12px' }}>EMAIL</th>
@@ -241,14 +241,14 @@ const CityAdminPanel = ({ currentUser, onLogout }) => {
                     </thead>
                     <tbody>
                       {partners.length === 0 ? (
-                        <tr><td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No partners registered in {assignedCity}.</td></tr>
+                        <tr><td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>No partners registered in {assignedCity}.</td></tr>
                       ) : (
                         partners.map((p) => (
                           <tr
                             key={p._id}
                             onClick={() => setSelectedPartner(p)}
                             style={{
-                              borderBottom: '1px solid var(--border-light)',
+                              borderBottom: '1px solid #f1f5f9',
                               cursor: 'pointer',
                               transition: 'background-color 0.15s ease',
                             }}
