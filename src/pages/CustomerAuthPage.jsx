@@ -147,7 +147,9 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
       setSecOtpSent(true);
       toast.success(`Verification OTP sent to ${val.trim()}`);
     } catch (err) {
-      setError(err.message || `Failed to send verification OTP to ${targetField}.`);
+      const msg = err.response?.data?.message || err.message || `Failed to send verification OTP to ${targetField}.`;
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSecLoading(false);
     }

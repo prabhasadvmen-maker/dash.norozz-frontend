@@ -586,6 +586,31 @@ const DedicatedCustomerNavbar = ({
                   <span style={{ fontSize: '0.7rem', fontWeight: '800', color: '#059669', background: '#ecfdf5', padding: '1px 6px', borderRadius: '6px' }}>₹{currentUser?.walletBalance || 0}</span>
                 </button>
 
+                {/* Notifications & Alerts */}
+                <button
+                  type="button"
+                  onClick={() => handleTabClick('notifications')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#0f172a',
+                    fontWeight: '600',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <Bell size={16} color="#7c3aed" /> Push Notifications & Alerts
+                </button>
+
                 {/* 3. Customer Profile */}
                 <button
                   type="button"
@@ -835,6 +860,32 @@ const DedicatedCustomerNavbar = ({
                   })}
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setNotificationsOpen(false);
+                  handleTabClick('notifications');
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '14px',
+                  fontWeight: '800',
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(124,58,237,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <Bell size={16} /> Open Push Notifications Center
+              </button>
             </div>
 
           </div>

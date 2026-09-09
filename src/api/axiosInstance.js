@@ -45,7 +45,7 @@ axiosInstance.interceptors.response.use(
     const message = error.response?.data?.message || error.message || 'An unexpected error occurred';
 
     // Auto Refresh Token on 401 Unauthorized (if not retried yet)
-    if (status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/login') && !originalRequest.url?.includes('/auth/customer/login')) {
+    if (status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/login') && !originalRequest.url?.includes('/auth/customer/login') && !originalRequest.url?.includes('/super-admin/')) {
       originalRequest._retry = true;
       try {
         const refreshRes = await axios.post(

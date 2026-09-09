@@ -13,6 +13,7 @@ import SuperAdminTicketsView from '../components/superAdmin/SuperAdminTicketsVie
 import SuperAdminReferralView from '../components/superAdmin/SuperAdminReferralView';
 import SuperAdminLegalPoliciesView from '../components/superAdmin/SuperAdminLegalPoliciesView';
 import SuperAdminStarterPackView from '../components/superAdmin/SuperAdminStarterPackView';
+import SuperAdminNotificationsView from '../components/superAdmin/SuperAdminNotificationsView';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import { useSuperAdmin } from '../hooks/useSuperAdmin.js';
 import { useCatalog } from '../hooks/useCatalog.js';
@@ -1593,14 +1594,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
 
           {/* TAB 11: NOTIFICATIONS */}
           {activeTab === 'notifications' && (
-            <div className="mui-card" style={{ padding: '26px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Bell size={20} color="#7c3aed" /> System Broadcasts & Notifications
-              </h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Send global operational broadcasts to City Admins, Partners, or Customers.
-              </p>
-            </div>
+            <SuperAdminNotificationsView />
           )}
 
           {/* TAB 12: SETTINGS */}

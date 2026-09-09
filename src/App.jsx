@@ -88,28 +88,28 @@ const PublicAuthLayout = ({ children }) => {
           <nav className="enterprise-portal-nav">
             <button
               type="button"
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/user/login')}
               className={`enterprise-nav-btn ${activeView === 'customer' ? 'active' : ''}`}
             >
               <Smartphone size={15} /> Customer App
             </button>
             <button
               type="button"
-              onClick={() => navigate('/partner')}
+              onClick={() => navigate('/partner/login')}
               className={`enterprise-nav-btn ${activeView === 'partner' ? 'active' : ''}`}
             >
               <Briefcase size={15} /> Partner Portal
             </button>
             <button
               type="button"
-              onClick={() => navigate('/city-admin')}
+              onClick={() => navigate('/city-admin/login')}
               className={`enterprise-nav-btn ${activeView === 'cityAdmin' ? 'active' : ''}`}
             >
               <Building2 size={15} /> City Admin
             </button>
             <button
               type="button"
-              onClick={() => navigate('/super-admin')}
+              onClick={() => navigate('/super-admin/login')}
               className={`enterprise-nav-btn ${activeView === 'superAdmin' ? 'active' : ''}`}
             >
               <Crown size={15} /> Super Admin
@@ -187,7 +187,59 @@ function AppContent() {
     <Suspense fallback={<PageFallback />}>
       <Routes>
         {/* ============================================================ */}
-        {/* PUBLIC / UNAUTHENTICATED PORTAL ROUTES WITH URL SWITCHING */}
+        {/* EXPLICIT PUBLIC LOGIN / AUTH ROUTES (NO BOUNCE REDIRECTS)    */}
+        {/* ============================================================ */}
+        <Route
+          path="/login"
+          element={
+            <PublicAuthLayout>
+              <CustomerAuthPage />
+            </PublicAuthLayout>
+          }
+        />
+        <Route
+          path="/user/login"
+          element={
+            <PublicAuthLayout>
+              <CustomerAuthPage />
+            </PublicAuthLayout>
+          }
+        />
+        <Route
+          path="/customer/login"
+          element={
+            <PublicAuthLayout>
+              <CustomerAuthPage />
+            </PublicAuthLayout>
+          }
+        />
+        <Route
+          path="/partner/login"
+          element={
+            <PublicAuthLayout>
+              <PartnerAuthPage />
+            </PublicAuthLayout>
+          }
+        />
+        <Route
+          path="/city-admin/login"
+          element={
+            <PublicAuthLayout>
+              <CityAdminLoginPage />
+            </PublicAuthLayout>
+          }
+        />
+        <Route
+          path="/super-admin/login"
+          element={
+            <PublicAuthLayout>
+              <SuperAdminLoginPage />
+            </PublicAuthLayout>
+          }
+        />
+
+        {/* ============================================================ */}
+        {/* PORTAL DASHBOARD ROUTES & AUTH FALLBACKS                    */}
         {/* ============================================================ */}
 
         {/* 1. CUSTOMER PORTAL */}
@@ -195,16 +247,16 @@ function AppContent() {
           path="/"
           element={
             currentUser ? (
-              userRole === 'superadmin' ? (
-                <Navigate to="/super-admin" replace />
-              ) : userRole === 'admin' || userRole === 'cityAdmin' ? (
-                <Navigate to="/city-admin" replace />
-              ) : userRole === 'partner' ? (
-                <Navigate to="/partner" replace />
-              ) : (
+              userRole === 'customer' ? (
                 <ProtectedRoute allowedRoles={['customer']}>
                   <DedicatedCustomerPanel currentUser={currentUser} onLogout={logout} />
                 </ProtectedRoute>
+              ) : userRole === 'superadmin' ? (
+                <Navigate to="/super-admin" replace />
+              ) : userRole === 'admin' || userRole === 'cityAdmin' ? (
+                <Navigate to="/city-admin" replace />
+              ) : (
+                <Navigate to="/partner" replace />
               )
             ) : (
               <PublicAuthLayout>
@@ -227,8 +279,6 @@ function AppContent() {
               <ProtectedRoute allowedRoles={['partner']}>
                 <PartnerPortalGuard currentUser={currentUser} logout={logout} updateUser={updateUser} />
               </ProtectedRoute>
-            ) : currentUser && userRole !== 'partner' ? (
-              <Navigate to="/" replace />
             ) : (
               <PublicAuthLayout>
                 <PartnerAuthPage />
@@ -245,8 +295,6 @@ function AppContent() {
               <ProtectedRoute allowedRoles={['admin', 'cityAdmin']}>
                 <CityAdminPanel currentUser={currentUser} onLogout={logout} />
               </ProtectedRoute>
-            ) : currentUser && userRole !== 'admin' && userRole !== 'cityAdmin' ? (
-              <Navigate to="/" replace />
             ) : (
               <PublicAuthLayout>
                 <CityAdminLoginPage />
@@ -263,8 +311,6 @@ function AppContent() {
               <ProtectedRoute allowedRoles={['superadmin']}>
                 <SuperAdminPanel currentUser={currentUser} onLogout={logout} />
               </ProtectedRoute>
-            ) : currentUser && userRole !== 'superadmin' ? (
-              <Navigate to="/" replace />
             ) : (
               <PublicAuthLayout>
                 <SuperAdminLoginPage />

@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { requestPermissionAndGetToken } from '../firebase.js';
+import { axiosInstance } from '../api/axiosInstance.js';
 
 const AuthContext = createContext(null);
 
@@ -63,6 +65,18 @@ export const AuthProvider = ({ children }) => {
       try {
         setToken(storedToken);
         setCurrentUser(JSON.parse(storedUser));
+
+        // Already logged in user ka FCM token register karo
+        setTimeout(async () => {
+          try {
+            const { requestPermissionAndGetToken } = await import('../firebase.js');
+            const fcmToken = await requestPermissionAndGetToken();
+            await axiosInstance.post('/notifications/save-token', { token: fcmToken });
+          } catch {
+            // Silently ignore
+          }
+        }, 2000);
+
       } catch (err) {
         sessionStorage.removeItem('norozz_token');
         sessionStorage.removeItem('norozz_user');
@@ -95,6 +109,16 @@ export const AuthProvider = ({ children }) => {
         sessionStorage.setItem('norozz_user', JSON.stringify(sanitizeUserForStorage(userData)));
       } catch (e) {}
     }
+
+    // Register FCM token silently after login
+    setTimeout(async () => {
+      try {
+        const fcmToken = await requestPermissionAndGetToken();
+        await axiosInstance.post('/notifications/save-token', { token: fcmToken });
+      } catch {
+        // Silently ignore — user may have denied notification permission
+      }
+    }, 2000);
   };
 
   const loginNewTab = (userData, accessToken) => {

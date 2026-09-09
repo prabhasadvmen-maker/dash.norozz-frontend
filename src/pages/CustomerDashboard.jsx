@@ -6,6 +6,7 @@ import FeaturedServices from '../components/customer/FeaturedServices';
 import CustomerHomeSections from '../components/customer/CustomerHomeSections';
 import CustomerProfileView from '../components/customer/CustomerProfileView';
 import CustomerWalletView from '../components/customer/CustomerWalletView';
+import CustomerNotificationsView from '../components/customer/CustomerNotificationsView';
 import { useAuth } from '../hooks/useAuth.js';
 import { authService } from '../services/auth.service.js';
 import { geoapifyService } from '../services/geoapify.service.js';
@@ -213,25 +214,14 @@ const CustomerDashboard = ({ currentUser, onLogout, selectedCity }) => {
 
         {/* SCREEN 4: NOTIFICATIONS */}
         {activeTab === 'notifications' && (
-          <div>
-            <h2 style={{ fontSize: '1.4rem', fontWeight: '800', marginBottom: '16px' }}>Notifications & Alerts</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {[
-                { title: 'Technician Dispatched!', time: '10 mins ago', desc: 'Rajesh Kumar (AC Specialist) is on the way to your address.' },
-                { title: '50% OFF Summer Voucher Added', time: '2 hours ago', desc: 'Use promo code SUMMERAC to get 50% discount.' },
-                { title: 'Booking #UC-98213 Confirmed', time: 'Yesterday', desc: 'Your home cleaning service has been confirmed.' }
-              ].map((n, i) => (
-                <div key={i} className="mui-card" style={{ padding: '16px', display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                  <Bell size={20} color="#2563eb" style={{ marginTop: '2px', flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontWeight: '800', fontSize: '0.9rem' }}>{n.title}</div>
-                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{n.desc}</div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>{n.time}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <CustomerNotificationsView
+            onNavigate={(path) => {
+              if (path.includes('wallet')) setActiveTab('wallet');
+              else if (path.includes('bookings')) setActiveTab('bookings');
+              else if (path.includes('offers')) setActiveTab('home');
+              else setActiveTab('home');
+            }}
+          />
         )}
 
         {/* SCREEN 5: PROFILE */}
