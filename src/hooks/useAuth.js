@@ -1,10 +1,12 @@
 import { useMutation } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/auth.service.js';
 import { useAuthContext } from '../contexts/AuthContext.jsx';
 import { toast } from '../utils/toast.js';
 
 export const useAuth = () => {
   const { login, logout, currentUser, isAuthenticated, role, updateUser } = useAuthContext();
+  const navigate = useNavigate();
 
   const customerLoginMutation = useMutation({
     mutationFn: (data) => authService.customerLogin(data),
@@ -13,6 +15,7 @@ export const useAuth = () => {
       const token = res.data?.accessToken;
       login(user, token);
       toast.success(`Welcome back, ${user.name || 'Customer'}!`);
+      navigate('/', { replace: true });
     },
   });
 
@@ -32,6 +35,7 @@ export const useAuth = () => {
       if (!isNewUser) {
         login(user, token);
         toast.success(`Welcome back, ${user.name || 'Customer'}!`);
+        navigate('/', { replace: true });
       }
     },
   });
@@ -43,6 +47,7 @@ export const useAuth = () => {
       const token = res.data?.accessToken;
       login(user, token);
       toast.success('Customer account created successfully!');
+      navigate('/', { replace: true });
     },
   });
 
@@ -53,6 +58,7 @@ export const useAuth = () => {
       const token = res.data?.accessToken;
       login(user, token);
       toast.success(`Welcome back Partner, ${user.name || 'Agency'}!`);
+      navigate('/partner/dashboard', { replace: true });
     },
   });
 
@@ -63,6 +69,7 @@ export const useAuth = () => {
       const token = res.data?.accessToken;
       login(user, token);
       toast.success('Partner application submitted successfully!');
+      navigate('/partner/dashboard', { replace: true });
     },
   });
 
@@ -82,6 +89,7 @@ export const useAuth = () => {
       if (isProfileCompleted) {
         login(user, token);
         toast.success(`Welcome back Partner, ${user.name || 'Partner'}!`);
+        navigate('/partner/dashboard', { replace: true });
       }
     },
   });
@@ -192,6 +200,7 @@ export const useAuth = () => {
       const token = res.data?.accessToken;
       login(user, token);
       toast.success(`City Admin Logged In: ${user.assignedCity || 'Delhi NCR'}`);
+      navigate('/city-admin/dashboard', { replace: true });
     },
   });
 
@@ -202,6 +211,7 @@ export const useAuth = () => {
       const token = res.data?.accessToken;
       login(user, token);
       toast.success('Super Admin Master Portal Access Granted');
+      navigate('/super-admin/dashboard', { replace: true });
     },
   });
 

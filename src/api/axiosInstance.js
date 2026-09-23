@@ -75,9 +75,13 @@ axiosInstance.interceptors.response.use(
       return Promise.reject(error.response?.data || { message: rateLimitMsg });
     }
 
-    // Suppress toast for silent profile checks if unauthenticated
-    if (status !== 401 || originalRequest.url?.includes('/auth/login')) {
-      toast.error(message);
+    // Suppress toast for 401s on auth/login and super-admin routes
+    const isSuperAdminRoute = originalRequest.url?.includes('/super-admin/');
+    const isAuthLoginRoute = originalRequest.url?.includes('/auth/login');
+    if (status !== 401 || isAuthLoginRoute) {
+      if (!isSuperAdminRoute || status !== 401) {
+        toast.error(message);
+      }
     }
 
     return Promise.reject(error.response?.data || { message });

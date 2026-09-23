@@ -4,30 +4,36 @@ import { toast } from '../utils/toast.js';
 
 export const useSuperAdmin = () => {
   const queryClient = useQueryClient();
+  const isAuthenticated = !!(sessionStorage.getItem('norozz_token') || localStorage.getItem('norozz_token'));
 
   const dashboardQuery = useQuery({
     queryKey: ['superAdmin', 'dashboard'],
     queryFn: () => superAdminService.getDashboard(),
+    enabled: isAuthenticated,
   });
 
   const cityAdminsQuery = useQuery({
     queryKey: ['superAdmin', 'cityAdmins'],
     queryFn: () => superAdminService.getCityAdmins(),
+    enabled: isAuthenticated,
   });
 
   const customersQuery = useQuery({
     queryKey: ['superAdmin', 'customers'],
     queryFn: () => superAdminService.getCustomers(),
+    enabled: isAuthenticated,
   });
 
   const partnersQuery = useQuery({
     queryKey: ['superAdmin', 'partners'],
     queryFn: () => superAdminService.getPartners(),
+    enabled: isAuthenticated,
   });
 
   const bookingsQuery = useQuery({
     queryKey: ['superAdmin', 'bookings'],
     queryFn: () => superAdminService.getBookings(),
+    enabled: isAuthenticated,
   });
 
   const createCityAdminMutation = useMutation({
