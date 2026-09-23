@@ -13,6 +13,8 @@ dist-ssr
 *.local
 .env
 .env.local
+*.json.local
+norozz-firebase-adminsdk-fbsvc-d0e7486310.json
 
 # Editor directories and files
 .vscode/*
