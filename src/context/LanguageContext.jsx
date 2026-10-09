@@ -164,8 +164,16 @@ export const LanguageProvider = ({ children }) => {
 
   // Effect: Run DOM Translation on Language Change and setup MutationObserver
   useEffect(() => {
-    // Initial scan of full document body
-    translateDOMTree(document.body, currentLanguage);
+    // Initial scan — defer to idle time so it doesn't block first paint
+    let initialIdleId = null;
+    if (typeof requestIdleCallback !== 'undefined') {
+      initialIdleId = requestIdleCallback(
+        () => translateDOMTree(document.body, currentLanguage),
+        { timeout: 2000 }
+      );
+    } else {
+      translateDOMTree(document.body, currentLanguage);
+    }
 
     // Setup MutationObserver to translate newly added nodes dynamically
     if (observerRef.current) observerRef.current.disconnect();
@@ -174,7 +182,7 @@ export const LanguageProvider = ({ children }) => {
       return;
     }
 
-    let timeoutDebounce = null;
+    let idleCallbackId = null;
     observerRef.current = new MutationObserver((mutations) => {
       if (isTranslatingRef.current) return;
 
@@ -195,10 +203,15 @@ export const LanguageProvider = ({ children }) => {
       }
 
       if (hasNewUnprocessedText) {
-        clearTimeout(timeoutDebounce);
-        timeoutDebounce = setTimeout(() => {
+        if (idleCallbackId) cancelIdleCallback(idleCallbackId);
+        if (typeof requestIdleCallback !== 'undefined') {
+          idleCallbackId = requestIdleCallback(
+            () => translateDOMTree(document.body, currentLanguage),
+            { timeout: 1500 }
+          );
+        } else {
           translateDOMTree(document.body, currentLanguage);
-        }, 400);
+        }
       }
     });
 
@@ -209,7 +222,8 @@ export const LanguageProvider = ({ children }) => {
 
     return () => {
       if (observerRef.current) observerRef.current.disconnect();
-      clearTimeout(timeoutDebounce);
+      if (idleCallbackId && typeof cancelIdleCallback !== 'undefined') cancelIdleCallback(idleCallbackId);
+      if (initialIdleId && typeof cancelIdleCallback !== 'undefined') cancelIdleCallback(initialIdleId);
     };
   }, [currentLanguage, translateDOMTree]);
 

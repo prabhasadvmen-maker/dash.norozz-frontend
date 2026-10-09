@@ -29,6 +29,7 @@ export const superAdminService = {
   updateBanner: (id, data) => axiosInstance.put(`/super-admin/banners/${id}`, data),
   deleteBanner: (id) => axiosInstance.delete(`/super-admin/banners/${id}`),
   toggleBannerStatus: (id) => axiosInstance.patch(`/super-admin/banners/${id}/status`),
+  getPresignedUrl: (data) => axiosInstance.post('/media/presigned-url', data),
 
   // FAQ Management CRUD
   getFaqs: (params) => axiosInstance.get('/super-admin/faqs', { params }),

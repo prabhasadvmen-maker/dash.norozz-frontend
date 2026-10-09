@@ -15,7 +15,12 @@ import {
   Link,
   Tag,
   ArrowRight,
-  Eye
+  Eye,
+  Wind,
+  Home,
+  Wrench,
+  Scissors,
+  Zap
 } from 'lucide-react';
 import { superAdminService } from '../../services/superAdmin.service.js';
 import { catalogService } from '../../services/catalog.service.js';
@@ -43,6 +48,7 @@ const SuperAdminBannersView = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBanner, setEditingBanner] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -126,6 +132,40 @@ const SuperAdminBannersView = () => {
       displayOrder: banner.displayOrder !== undefined ? banner.displayOrder : 0,
     });
     setModalOpen(true);
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      setUploadingImage(true);
+      
+      const response = await superAdminService.getPresignedUrl({
+        fileName: file.name,
+        mimeType: file.type,
+        folder: 'banners'
+      });
+      
+      const responseData = response?.data?.data || response?.data;
+      const { presignedUrl, publicUrl } = responseData;
+
+      await fetch(presignedUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type,
+        },
+        body: file
+      });
+
+      setFormData(prev => ({ ...prev, imageUrl: publicUrl }));
+      toast.success('Image uploaded successfully!');
+    } catch (error) {
+      console.error('Upload Error:', error);
+      toast.error('Failed to upload image. Please try again.');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -220,6 +260,92 @@ const SuperAdminBannersView = () => {
         >
           <Plus size={18} /> Create New Banner
         </button>
+      </div>
+
+      {/* QUICK START TEMPLATES */}
+      <div style={{ background: '#f8fafc', borderRadius: '18px', padding: '16px 20px', border: '1px solid #e2e8f0' }}>
+        <div style={{ fontSize: '0.76rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Zap size={13} color="#64748b" /> Quick Start — Banner Templates
+        </div>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          {[
+            {
+              icon: <Wind size={15} color="#0284c7" />,
+              label: 'AC Foam Jet Cleaning',
+              title: 'AC Foam Jet Deep Cleaning',
+              subtitle: 'Book 2-in-1 Foam Jet AC Cleaning at flat 50% OFF',
+              badgeText: 'SUMMER SPECIAL',
+              gradientBg: 'linear-gradient(135deg, #083344 0%, #0e7490 50%, #0284c7 100%)',
+              targetType: 'service',
+            },
+            {
+              icon: <Home size={15} color="#2563eb" />,
+              label: 'Home Deep Cleaning',
+              title: 'Full Home Deep Cleaning',
+              subtitle: 'Complete 3BHK sanitization starting at ₹1,999',
+              badgeText: 'BESTSELLER',
+              gradientBg: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #7c3aed 100%)',
+              targetType: 'category',
+            },
+            {
+              icon: <Wrench size={15} color="#059669" />,
+              label: 'Appliance Repair',
+              title: 'Expert Appliance Repair',
+              subtitle: 'Same-day repair for AC, Fridge, Washing Machine & more',
+              badgeText: 'SAME DAY',
+              gradientBg: 'linear-gradient(135deg, #09331E 0%, #064e3b 50%, #0f172a 100%)',
+              targetType: 'category',
+            },
+            {
+              icon: <Scissors size={15} color="#c026d3" />,
+              label: 'Salon at Home',
+              title: 'Salon & Beauty at Home',
+              subtitle: 'Professional salon services at your doorstep',
+              badgeText: 'FLAT 30% OFF',
+              gradientBg: 'linear-gradient(135deg, #701a75 0%, #a21caf 60%, #c026d3 100%)',
+              targetType: 'category',
+            },
+          ].map((tpl, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => {
+                setEditingBanner(null);
+                setFormData({
+                  title: tpl.title,
+                  subtitle: tpl.subtitle,
+                  badgeText: tpl.badgeText,
+                  imageUrl: '',
+                  gradientBg: tpl.gradientBg,
+                  targetType: tpl.targetType,
+                  targetValue: '',
+                  couponCode: '',
+                  isActive: true,
+                  displayOrder: banners.length,
+                });
+                setModalOpen(true);
+              }}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '10px',
+                border: '1px solid #e2e8f0',
+                background: '#ffffff',
+                fontSize: '0.82rem',
+                fontWeight: '700',
+                color: '#334155',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#93c5fd'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+            >
+              {tpl.icon} {tpl.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* STATS CARDS */}
@@ -718,15 +844,27 @@ const SuperAdminBannersView = () => {
 
                 <div>
                   <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#475569', display: 'block', marginBottom: '6px' }}>
-                    OPTIONAL IMAGE URL
+                    Upload Image URL (Optional)
                   </label>
-                  <input
-                    type="url"
-                    value={formData.imageUrl}
-                    onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                    placeholder="https://images.unsplash.com/..."
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none' }}
-                  />
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      type="url"
+                      value={formData.imageUrl}
+                      onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                      placeholder="https://... or click Upload"
+                      style={{ flex: 1, padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none' }}
+                    />
+                    <label style={{ cursor: 'pointer', padding: '10px 14px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '10px', fontSize: '0.85rem', fontWeight: '700', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '70px' }}>
+                      {uploadingImage ? <Loader2 size={16} className="spin" /> : 'Upload'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={uploadingImage}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
 

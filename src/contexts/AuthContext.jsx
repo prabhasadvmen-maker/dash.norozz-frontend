@@ -34,7 +34,6 @@ const safeSaveUserToStorage = (user) => {
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
-  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -57,30 +56,14 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
-    // 2. Read tab-isolated sessionStorage first, fallback to localStorage
-    const storedToken = sessionStorage.getItem('norozz_token') || localStorage.getItem('norozz_token');
+    // Read user from sessionStorage first, fallback to localStorage
     const storedUser = sessionStorage.getItem('norozz_user') || localStorage.getItem('norozz_user');
 
-    if (storedToken && storedUser) {
+    if (storedUser) {
       try {
-        setToken(storedToken);
         setCurrentUser(JSON.parse(storedUser));
-
-        // Already logged in user ka FCM token register karo
-        setTimeout(async () => {
-          try {
-            const { requestPermissionAndGetToken } = await import('../firebase.js');
-            const fcmToken = await requestPermissionAndGetToken();
-            await axiosInstance.post('/notifications/save-token', { token: fcmToken });
-          } catch {
-            // Silently ignore
-          }
-        }, 2000);
-
       } catch (err) {
-        sessionStorage.removeItem('norozz_token');
         sessionStorage.removeItem('norozz_user');
-        localStorage.removeItem('norozz_token');
         localStorage.removeItem('norozz_user');
       }
     }
@@ -94,31 +77,14 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('norozz_logout', handleAutoLogout);
   }, []);
 
-  const login = (userData, accessToken) => {
+  const login = (userData) => {
     setCurrentUser(userData);
-    setToken(accessToken);
-    if (accessToken) {
-      try {
-        sessionStorage.setItem('norozz_token', accessToken);
-        localStorage.setItem('norozz_token', accessToken);
-      } catch (e) {}
-    }
     if (userData) {
       safeSaveUserToStorage(userData);
       try {
         sessionStorage.setItem('norozz_user', JSON.stringify(sanitizeUserForStorage(userData)));
       } catch (e) {}
     }
-
-    // Register FCM token silently after login
-    setTimeout(async () => {
-      try {
-        const fcmToken = await requestPermissionAndGetToken();
-        await axiosInstance.post('/notifications/save-token', { token: fcmToken });
-      } catch {
-        // Silently ignore — user may have denied notification permission
-      }
-    }, 2000);
   };
 
   const loginNewTab = (userData, accessToken) => {
@@ -136,11 +102,8 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     setCurrentUser(null);
-    setToken(null);
     try {
-      sessionStorage.removeItem('norozz_token');
       sessionStorage.removeItem('norozz_user');
-      localStorage.removeItem('norozz_token');
       localStorage.removeItem('norozz_user');
     } catch (e) {}
   };
@@ -160,7 +123,6 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         currentUser,
-        token,
         role: currentUser?.role || null,
         loading,
         login,

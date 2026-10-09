@@ -11,9 +11,8 @@ export const useAuth = () => {
   const customerLoginMutation = useMutation({
     mutationFn: (data) => authService.customerLogin(data),
     onSuccess: (res) => {
-      const user = res.data?.user || res.data;
-      const token = res.data?.accessToken;
-      login(user, token);
+      const user = res.data?.user;
+      login(user);
       toast.success(`Welcome back, ${user.name || 'Customer'}!`);
       navigate('/', { replace: true });
     },
@@ -29,11 +28,10 @@ export const useAuth = () => {
   const otpLoginVerifyMutation = useMutation({
     mutationFn: (data) => authService.verifyOtpLogin(data),
     onSuccess: (res) => {
-      const user = res.data?.user || res.data;
-      const token = res.data?.accessToken;
-      const isNewUser = res.data?.isNewUser || res.isNewUser;
+      const user = res.data?.user;
+      const isNewUser = res.data?.isNewUser;
       if (!isNewUser) {
-        login(user, token);
+        login(user);
         toast.success(`Welcome back, ${user.name || 'Customer'}!`);
         navigate('/', { replace: true });
       }
@@ -43,9 +41,8 @@ export const useAuth = () => {
   const customerSignupMutation = useMutation({
     mutationFn: (data) => authService.customerSignup(data),
     onSuccess: (res) => {
-      const user = res.data?.user || res.data;
-      const token = res.data?.accessToken;
-      login(user, token);
+      const user = res.data?.user;
+      login(user);
       toast.success('Customer account created successfully!');
       navigate('/', { replace: true });
     },
@@ -54,9 +51,8 @@ export const useAuth = () => {
   const partnerLoginMutation = useMutation({
     mutationFn: (data) => authService.partnerLogin(data),
     onSuccess: (res) => {
-      const user = res.data?.user || res.data;
-      const token = res.data?.accessToken;
-      login(user, token);
+      const user = res.data?.user;
+      login(user);
       toast.success(`Welcome back Partner, ${user.name || 'Agency'}!`);
       navigate('/partner/dashboard', { replace: true });
     },
@@ -65,9 +61,8 @@ export const useAuth = () => {
   const partnerSignupMutation = useMutation({
     mutationFn: (data) => authService.partnerSignup(data),
     onSuccess: (res) => {
-      const user = res.data?.user || res.data;
-      const token = res.data?.accessToken;
-      login(user, token);
+      const user = res.data?.user;
+      login(user);
       toast.success('Partner application submitted successfully!');
       navigate('/partner/dashboard', { replace: true });
     },
@@ -83,11 +78,10 @@ export const useAuth = () => {
   const partnerOtpVerifyMutation = useMutation({
     mutationFn: (data) => authService.verifyPartnerOtpLogin(data),
     onSuccess: (res) => {
-      const user = res.data?.user || res.data;
-      const token = res.data?.accessToken;
-      const isProfileCompleted = res.data?.isProfileCompleted ?? res.isProfileCompleted;
+      const user = res.data?.user;
+      const isProfileCompleted = res.data?.isProfileCompleted;
       if (isProfileCompleted) {
-        login(user, token);
+        login(user);
         toast.success(`Welcome back Partner, ${user.name || 'Partner'}!`);
         navigate('/partner/dashboard', { replace: true });
       }
@@ -196,9 +190,8 @@ export const useAuth = () => {
   const cityAdminLoginMutation = useMutation({
     mutationFn: (data) => authService.cityAdminLogin(data),
     onSuccess: (res) => {
-      const user = res.data?.user || res.data;
-      const token = res.data?.accessToken;
-      login(user, token);
+      const user = res.data?.user;
+      login(user);
       toast.success(`City Admin Logged In: ${user.assignedCity || 'Delhi NCR'}`);
       navigate('/city-admin/dashboard', { replace: true });
     },
@@ -207,9 +200,8 @@ export const useAuth = () => {
   const superAdminLoginMutation = useMutation({
     mutationFn: (data) => authService.superAdminLogin(data),
     onSuccess: (res) => {
-      const user = res.data?.user || res.data;
-      const token = res.data?.accessToken;
-      login(user, token);
+      const user = res.data?.user;
+      login(user);
       toast.success('Super Admin Master Portal Access Granted');
       navigate('/super-admin/dashboard', { replace: true });
     },

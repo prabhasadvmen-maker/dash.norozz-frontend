@@ -16,17 +16,10 @@ export const axiosInstance = axios.create({
  */
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = sessionStorage.getItem('norozz_token') || localStorage.getItem('norozz_token');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-
     // Auto-remove default 'application/json' Content-Type for FormData payloads
-    // so Axios/Browser can automatically generate 'multipart/form-data; boundary=...'
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
     }
-
     return config;
   },
   (error) => Promise.reject(error)
@@ -44,26 +37,14 @@ axiosInstance.interceptors.response.use(
     const status = error.response?.status;
     const message = error.response?.data?.message || error.message || 'An unexpected error occurred';
 
-    // Auto Refresh Token on 401 Unauthorized (if not retried yet)
-    if (status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/login') && !originalRequest.url?.includes('/auth/customer/login') && !originalRequest.url?.includes('/super-admin/')) {
+    if (status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/login')) {
       originalRequest._retry = true;
       try {
-        const refreshRes = await axios.post(
-          `${API_BASE_URL}/customer/auth/refresh-token`,
-          {},
-          { withCredentials: true }
-        );
-
-        if (refreshRes.data?.data?.accessToken) {
-          const newToken = refreshRes.data.data.accessToken;
-          localStorage.setItem('norozz_token', newToken);
-          originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-          return axiosInstance(originalRequest);
-        }
+        await axios.post(`${API_BASE_URL}/auth/customer/refresh-token`, {}, { withCredentials: true });
+        return axiosInstance(originalRequest);
       } catch {
-        // Refresh token failed -> Clear session & auto logout
-        localStorage.removeItem('norozz_token');
         localStorage.removeItem('norozz_user');
+        sessionStorage.removeItem('norozz_user');
         window.dispatchEvent(new Event('norozz_logout'));
       }
     }
