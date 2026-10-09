@@ -41,6 +41,7 @@ export const superAdminService = {
   // Support Tickets Management CRUD
   getTickets: (params) => axiosInstance.get('/super-admin/tickets', { params }),
   updateTicketStatus: (id, data) => axiosInstance.put(`/super-admin/tickets/${id}`, data),
+  replyToTicket: (id, message) => axiosInstance.post(`/super-admin/tickets/${id}/reply`, { message }),
   deleteTicket: (id) => axiosInstance.delete(`/super-admin/tickets/${id}`),
 
   // Legal Policies Management CRUD
