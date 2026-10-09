@@ -12,7 +12,8 @@ export const useAuth = () => {
     mutationFn: (data) => authService.customerLogin(data),
     onSuccess: (res) => {
       const user = res.data?.user;
-      login(user);
+      const token = res.data?.accessToken;
+      login(user, token);
       toast.success(`Welcome back, ${user.name || 'Customer'}!`);
       navigate('/', { replace: true });
     },
@@ -29,9 +30,10 @@ export const useAuth = () => {
     mutationFn: (data) => authService.verifyOtpLogin(data),
     onSuccess: (res) => {
       const user = res.data?.user;
+      const token = res.data?.accessToken;
       const isNewUser = res.data?.isNewUser;
       if (!isNewUser) {
-        login(user);
+        login(user, token);
         toast.success(`Welcome back, ${user.name || 'Customer'}!`);
         navigate('/', { replace: true });
       }
@@ -42,7 +44,8 @@ export const useAuth = () => {
     mutationFn: (data) => authService.customerSignup(data),
     onSuccess: (res) => {
       const user = res.data?.user;
-      login(user);
+      const token = res.data?.accessToken;
+      login(user, token);
       toast.success('Customer account created successfully!');
       navigate('/', { replace: true });
     },
@@ -52,7 +55,8 @@ export const useAuth = () => {
     mutationFn: (data) => authService.partnerLogin(data),
     onSuccess: (res) => {
       const user = res.data?.user;
-      login(user);
+      const token = res.data?.accessToken;
+      login(user, token);
       toast.success(`Welcome back Partner, ${user.name || 'Agency'}!`);
       navigate('/partner/dashboard', { replace: true });
     },
@@ -62,7 +66,8 @@ export const useAuth = () => {
     mutationFn: (data) => authService.partnerSignup(data),
     onSuccess: (res) => {
       const user = res.data?.user;
-      login(user);
+      const token = res.data?.accessToken;
+      login(user, token);
       toast.success('Partner application submitted successfully!');
       navigate('/partner/dashboard', { replace: true });
     },
@@ -79,9 +84,10 @@ export const useAuth = () => {
     mutationFn: (data) => authService.verifyPartnerOtpLogin(data),
     onSuccess: (res) => {
       const user = res.data?.user;
+      const token = res.data?.accessToken;
       const isProfileCompleted = res.data?.isProfileCompleted;
       if (isProfileCompleted) {
-        login(user);
+        login(user, token);
         toast.success(`Welcome back Partner, ${user.name || 'Partner'}!`);
         navigate('/partner/dashboard', { replace: true });
       }
@@ -191,7 +197,8 @@ export const useAuth = () => {
     mutationFn: (data) => authService.cityAdminLogin(data),
     onSuccess: (res) => {
       const user = res.data?.user;
-      login(user);
+      const token = res.data?.accessToken;
+      login(user, token);
       toast.success(`City Admin Logged In: ${user.assignedCity || 'Delhi NCR'}`);
       navigate('/city-admin/dashboard', { replace: true });
     },

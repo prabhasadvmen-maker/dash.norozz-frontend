@@ -16,7 +16,10 @@ export const axiosInstance = axios.create({
  */
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Auto-remove default 'application/json' Content-Type for FormData payloads
+    const token = sessionStorage.getItem('norozz_token') || localStorage.getItem('norozz_token');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
     }

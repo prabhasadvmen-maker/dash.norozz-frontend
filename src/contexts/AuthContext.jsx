@@ -57,6 +57,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     // Read user from sessionStorage first, fallback to localStorage
+    const storedToken = sessionStorage.getItem('norozz_token') || localStorage.getItem('norozz_token');
     const storedUser = sessionStorage.getItem('norozz_user') || localStorage.getItem('norozz_user');
 
     if (storedUser) {
@@ -77,8 +78,14 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('norozz_logout', handleAutoLogout);
   }, []);
 
-  const login = (userData) => {
+  const login = (userData, accessToken) => {
     setCurrentUser(userData);
+    if (accessToken) {
+      try {
+        sessionStorage.setItem('norozz_token', accessToken);
+        localStorage.setItem('norozz_token', accessToken);
+      } catch (e) {}
+    }
     if (userData) {
       safeSaveUserToStorage(userData);
       try {
@@ -103,7 +110,9 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setCurrentUser(null);
     try {
+      sessionStorage.removeItem('norozz_token');
       sessionStorage.removeItem('norozz_user');
+      localStorage.removeItem('norozz_token');
       localStorage.removeItem('norozz_user');
     } catch (e) {}
   };
