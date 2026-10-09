@@ -7,7 +7,7 @@ import { useAuthContext } from '../../contexts/AuthContext.jsx';
 import { toast } from '../../utils/toast.js';
 
 const CityAdminManagement = () => {
-  const { cityAdmins, createCityAdmin, updateCityAdminStatus, impersonateCityAdmin, deleteCityAdmin } = useSuperAdmin();
+  const { cityAdmins, createCityAdmin, updateCityAdminStatus, impersonateCityAdmin, deleteCityAdmin, cityAdminsLoading, cityAdminsError } = useSuperAdmin();
   const { login, loginNewTab } = useAuthContext();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' | 'edit' | 'resetPassword'
@@ -78,7 +78,7 @@ const CityAdminManagement = () => {
   };
 
   const handleToggleStatus = async (admin) => {
-    const newStatus = admin.status === 'active' ? 'inactive' : 'active';
+    const newStatus = admin.status === 'active' ? 'blocked' : 'active';
     await updateCityAdminStatus({ id: admin._id, status: newStatus });
   };
 
@@ -211,7 +211,20 @@ const CityAdminManagement = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredAdmins.length === 0 ? (
+            {cityAdminsLoading ? (
+              <tr>
+                <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
+                  <Loader2 size={20} className="spin" style={{ display: 'inline-block', marginRight: '8px' }} />
+                  Loading city admins...
+                </td>
+              </tr>
+            ) : cityAdminsError ? (
+              <tr>
+                <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#dc2626', fontWeight: '600' }}>
+                  Error: {cityAdminsError?.message || 'Failed to load city admins. Check console.'}
+                </td>
+              </tr>
+            ) : filteredAdmins.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontWeight: '600' }}>
                   No City Admins found. Click 'Create City Admin' to add one.

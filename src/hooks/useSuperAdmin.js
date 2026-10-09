@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { superAdminService } from '../services/superAdmin.service.js';
 import { toast } from '../utils/toast.js';
+import { useAuthContext } from '../contexts/AuthContext.jsx';
 
 export const useSuperAdmin = () => {
   const queryClient = useQueryClient();
-  const isAuthenticated = !!(sessionStorage.getItem('norozz_token') || localStorage.getItem('norozz_token'));
+  const { isAuthenticated } = useAuthContext();
 
   const dashboardQuery = useQuery({
     queryKey: ['superAdmin', 'dashboard'],
@@ -72,12 +73,30 @@ export const useSuperAdmin = () => {
     mutationFn: (id) => superAdminService.impersonateCityAdmin(id),
   });
 
+  // Normalize response — axiosInstance interceptor returns response.data directly
+  // so shape is { statusCode, success, message, data: [...] }
+  const normalizeCityAdmins = (raw) => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw.data)) return raw.data;
+    return [];
+  };
+
+  const normalizeList = (raw) => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw.data)) return raw.data;
+    return [];
+  };
+
   return {
-    dashboard: dashboardQuery.data?.data || null,
-    cityAdmins: cityAdminsQuery.data?.data || [],
-    customers: customersQuery.data?.data || [],
-    partners: partnersQuery.data?.data || [],
-    bookings: bookingsQuery.data?.data || [],
+    dashboard: dashboardQuery.data?.data || dashboardQuery.data || null,
+    cityAdmins: normalizeCityAdmins(cityAdminsQuery.data),
+    customers: normalizeList(customersQuery.data),
+    partners: normalizeList(partnersQuery.data),
+    bookings: normalizeList(bookingsQuery.data),
+    cityAdminsError: cityAdminsQuery.error,
+    cityAdminsLoading: cityAdminsQuery.isLoading,
     isLoading:
       dashboardQuery.isLoading ||
       cityAdminsQuery.isLoading ||

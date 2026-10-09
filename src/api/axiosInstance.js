@@ -42,10 +42,17 @@ axiosInstance.interceptors.response.use(
 
     if (status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/login')) {
       originalRequest._retry = true;
-      try {
-        await axios.post(`${API_BASE_URL}/auth/customer/refresh-token`, {}, { withCredentials: true });
-        return axiosInstance(originalRequest);
-      } catch {
+      const isSuperAdminReq = originalRequest.url?.includes('/super-admin/');
+      if (!isSuperAdminReq) {
+        try {
+          await axios.post(`${API_BASE_URL}/auth/customer/refresh-token`, {}, { withCredentials: true });
+          return axiosInstance(originalRequest);
+        } catch {
+          localStorage.removeItem('norozz_user');
+          sessionStorage.removeItem('norozz_user');
+          window.dispatchEvent(new Event('norozz_logout'));
+        }
+      } else {
         localStorage.removeItem('norozz_user');
         sessionStorage.removeItem('norozz_user');
         window.dispatchEvent(new Event('norozz_logout'));
