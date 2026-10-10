@@ -9,7 +9,7 @@ import {
 import { useCityAdmin } from '../../hooks/useCityAdmin.js';
 
 const CityMetricCards = ({ selectedCity }) => {
-  const { dashboard, partners, bookings, isLoading } = useCityAdmin();
+  const { dashboard, partners, bookings, isLoading } = useCityAdmin(selectedCity);
 
   const totalBookings = dashboard?.totalBookings !== undefined ? dashboard.totalBookings : bookings.length;
   const pendingOrders = dashboard?.pendingBookings !== undefined ? dashboard.pendingBookings : bookings.filter((b) => ['pending', 'Pending', 'assigned', 'Assigned'].includes(b.status)).length;
@@ -22,7 +22,6 @@ const CityMetricCards = ({ selectedCity }) => {
   const commission = dashboard?.cityCommission !== undefined ? dashboard.cityCommission : Math.round(revenueGmv * 0.20);
 
   const activePartnersCount = partners.filter((p) => (p.kycStatus || '').toLowerCase() === 'approved').length;
-  const displayPartnersCount = partners.length;
   const cityCustomersCount = dashboard?.metrics?.cityCustomers !== undefined ? dashboard.metrics.cityCustomers : (dashboard?.cityCustomers || 0);
 
   const cards = [
@@ -60,7 +59,7 @@ const CityMetricCards = ({ selectedCity }) => {
     },
     {
       title: 'Active Partners',
-      value: Number(activePartnersCount > 0 ? activePartnersCount : displayPartnersCount).toLocaleString(),
+      value: Number(activePartnersCount).toLocaleString(),
       icon: Briefcase,
       color: '#2563eb',
       bgColor: '#eff6ff',

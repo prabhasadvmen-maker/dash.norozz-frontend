@@ -25,7 +25,7 @@ import {
 const CityAdminDashboard = ({ currentUser, onLogout, selectedCity }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [notification, setNotification] = useState({ message: '', type: '' });
-  const { partners, customers, isLoading } = useCityAdmin();
+  const { partners, customers, isLoading } = useCityAdmin(selectedCity);
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });

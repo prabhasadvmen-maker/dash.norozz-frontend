@@ -58,7 +58,9 @@ export const useAuth = () => {
       const token = res.data?.accessToken;
       login(user, token);
       toast.success(`Welcome back Partner, ${user.name || 'Agency'}!`);
-      navigate('/partner/dashboard', { replace: true });
+      setTimeout(() => {
+        navigate('/partner/dashboard', { replace: true });
+      }, 100);
     },
   });
 
@@ -69,7 +71,9 @@ export const useAuth = () => {
       const token = res.data?.accessToken;
       login(user, token);
       toast.success('Partner application submitted successfully!');
-      navigate('/partner/dashboard', { replace: true });
+      setTimeout(() => {
+        navigate('/partner/dashboard', { replace: true });
+      }, 100);
     },
   });
 
@@ -89,7 +93,9 @@ export const useAuth = () => {
       if (isProfileCompleted) {
         login(user, token);
         toast.success(`Welcome back Partner, ${user.name || 'Partner'}!`);
-        navigate('/partner/dashboard', { replace: true });
+        setTimeout(() => {
+          navigate('/partner/dashboard', { replace: true });
+        }, 100);
       }
     },
   });

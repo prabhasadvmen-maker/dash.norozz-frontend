@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Phone,
   ArrowLeft,
@@ -36,6 +37,7 @@ import { cityService } from '../services/city.service.js';
 import { geoapifyService } from '../services/geoapify.service.js';
 
 const PartnerAuthPage = ({ initialStep = 'phone' }) => {
+  const navigate = useNavigate();
   const {
     requestPartnerOtp,
     verifyPartnerOtp,
@@ -224,6 +226,9 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
     } else {
       // Log in partner user so App.jsx renders PartnerOnboardingPage for missing steps (Location, Category, Skills, Area, Docs)
       login(userObj, token);
+      setTimeout(() => {
+        navigate('/partner', { replace: true });
+      }, 100);
     }
   };
 
@@ -337,6 +342,11 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
     }
 
     try {
+      // Ensure token is stored so that axiosInstance includes the Authorization header
+      if (pendingUser && pendingToken) {
+        login(pendingUser, pendingToken);
+      }
+
       const formData = new FormData();
       formData.append('name', name.trim());
       formData.append('email', email.trim());
@@ -353,8 +363,13 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
       const updatedUser = res.data?.user || res.user || { ...pendingUser, name: name.trim(), email: email.trim() };
       setPendingUser(updatedUser);
 
-      // Log in to trigger PartnerOnboardingPage (Step 1: Allow Location Access)
+      // Log in with the fully updated user data so App.jsx routes correctly
       login(updatedUser, pendingToken);
+      
+      // Add a slight delay to allow React state to settle before navigating
+      setTimeout(() => {
+        navigate('/partner', { replace: true });
+      }, 100);
     } catch (err) {
       console.error('Failed to submit partner profile FormData:', err);
       setError(err.message || 'Failed to update profile. Please try again.');

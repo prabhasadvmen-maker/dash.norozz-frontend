@@ -18,11 +18,24 @@ const TOKEN_KEYS = [
   'norozz_token', // legacy fallback
 ];
 
-const getActiveToken = () => {
+const getActiveToken = (url) => {
   // Impersonation tab: sessionStorage only (tab-local)
   // Normal tab: localStorage only
   const isImpersonationTab = sessionStorage.getItem('norozz_impersonation_tab') === '1';
   const storage = isImpersonationTab ? sessionStorage : localStorage;
+
+  let preferredKey = null;
+  if (url) {
+    if (url.includes('/partner/')) preferredKey = 'partner_token';
+    else if (url.includes('/super-admin/')) preferredKey = 'superadmin_token';
+    else if (url.includes('/city-admin/')) preferredKey = 'cityadmin_token';
+    else if (url.includes('/customer/')) preferredKey = 'user_token';
+  }
+
+  if (preferredKey) {
+    const t = storage.getItem(preferredKey);
+    if (t) return t;
+  }
 
   for (const key of TOKEN_KEYS) {
     const t = storage.getItem(key);
@@ -41,7 +54,7 @@ const clearAllTokens = () => {
 // ─── Request Interceptor ─────────────────────────────────────────────────────
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = getActiveToken();
+    const token = getActiveToken(config.url);
     if (token) config.headers['Authorization'] = `Bearer ${token}`;
     if (config.data instanceof FormData) delete config.headers['Content-Type'];
     return config;

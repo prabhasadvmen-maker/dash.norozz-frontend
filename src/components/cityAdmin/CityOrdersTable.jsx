@@ -1,72 +1,22 @@
 import React from 'react';
-import { ShoppingBag, Clock, CheckCircle2, AlertCircle, Eye, MapPin, Search } from 'lucide-react';
+import { ShoppingBag, Clock, CheckCircle2, AlertCircle, Eye, MapPin, Search, Loader2 } from 'lucide-react';
+import { useCityAdmin } from '../../hooks/useCityAdmin.js';
 
 const CityOrdersTable = ({ selectedCity }) => {
-  const cityOrders = [
-    {
-      id: 'DEL-9912',
-      customer: 'Aarav Gupta',
-      service: 'AC Jet Deep Cleaning',
-      partner: 'Rajesh Kumar (Active)',
-      locality: 'Connaught Place, Delhi',
-      amount: '₹1,299',
-      status: 'In Progress',
-      time: 'Today, 03:15 PM'
-    },
-    {
-      id: 'DEL-9911',
-      customer: 'Simran Kaur',
-      service: 'Full Home Deep Cleaning',
-      partner: 'CleanPro Services',
-      locality: 'South Extension, Delhi',
-      amount: '₹4,499',
-      status: 'Completed',
-      time: 'Today, 01:30 PM'
-    },
-    {
-      id: 'DEL-9910',
-      customer: 'Nikhil Saxena',
-      phone: '+91 98112 33445',
-      service: 'Tap Leakage & Pipe Repair',
-      partner: 'Amitabh Verma',
-      locality: 'Dwarka Sector 10, Delhi',
-      amount: '₹699',
-      status: 'Completed',
-      time: 'Today, 11:00 AM'
-    },
-    {
-      id: 'DEL-9909',
-      customer: 'Meera Chawla',
-      service: 'Salon Glow Facial',
-      partner: 'Priya Sharma',
-      locality: 'Vasant Kunj, Delhi',
-      amount: '₹2,199',
-      status: 'Pending Partner',
-      time: 'Today, 05:00 PM'
-    },
-    {
-      id: 'DEL-9908',
-      customer: 'Rahul Verma',
-      service: 'Washing Machine Inspection',
-      partner: 'Unassigned',
-      locality: 'Rohini Sector 7, Delhi',
-      amount: '₹499',
-      status: 'Cancelled',
-      time: 'Yesterday'
-    },
-  ];
+  const { bookings, isLoading } = useCityAdmin(selectedCity);
 
   const getStatusBadge = (status) => {
-    switch (status) {
-      case 'Completed':
-        return <span className="badge badge-success"><CheckCircle2 size={12} /> COMPLETED</span>;
-      case 'In Progress':
-        return <span className="badge badge-blue"><Clock size={12} /> IN PROGRESS</span>;
-      case 'Pending Partner':
-        return <span className="badge badge-warning"><Clock size={12} /> PENDING DISPATCH</span>;
-      default:
-        return <span className="badge badge-danger"><AlertCircle size={12} /> CANCELLED</span>;
+    const statusLower = (status || '').toLowerCase();
+    if (statusLower === 'completed' || statusLower === 'confirmed') {
+      return <span className="badge badge-success"><CheckCircle2 size={12} /> COMPLETED</span>;
     }
+    if (statusLower === 'in progress' || statusLower === 'assigned') {
+      return <span className="badge badge-blue"><Clock size={12} /> IN PROGRESS</span>;
+    }
+    if (statusLower === 'pending') {
+      return <span className="badge badge-warning"><Clock size={12} /> PENDING DISPATCH</span>;
+    }
+    return <span className="badge badge-danger"><AlertCircle size={12} /> CANCELLED</span>;
   };
 
   return (
@@ -94,57 +44,70 @@ const CityOrdersTable = ({ selectedCity }) => {
         </div>
       </div>
 
-      {/* Orders Table */}
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-              <th style={{ padding: '12px 14px' }}>ORDER ID</th>
-              <th style={{ padding: '12px 14px' }}>CUSTOMER</th>
-              <th style={{ padding: '12px 14px' }}>SERVICE</th>
-              <th style={{ padding: '12px 14px' }}>ASSIGNED PARTNER</th>
-              <th style={{ padding: '12px 14px' }}>LOCALITY</th>
-              <th style={{ padding: '12px 14px' }}>AMOUNT</th>
-              <th style={{ padding: '12px 14px' }}>STATUS</th>
-              <th style={{ padding: '12px 14px' }}>ACTION</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cityOrders.map((order) => (
-              <tr key={order.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                <td style={{ padding: '14px', fontWeight: '800', color: 'var(--accent-blue)', fontSize: '0.85rem' }}>
-                  {order.id}
-                </td>
-                <td style={{ padding: '14px', fontWeight: '700', fontSize: '0.88rem', color: 'var(--text-primary)' }}>
-                  {order.customer}
-                </td>
-                <td style={{ padding: '14px', fontWeight: '700', fontSize: '0.88rem', color: 'var(--text-primary)' }}>
-                  {order.service}
-                </td>
-                <td style={{ padding: '14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                  {order.partner}
-                </td>
-                <td style={{ padding: '14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <MapPin size={12} color="#2563eb" /> {order.locality}
-                  </div>
-                </td>
-                <td style={{ padding: '14px', fontWeight: '800', color: 'var(--text-primary)', fontSize: '0.88rem' }}>
-                  {order.amount}
-                </td>
-                <td style={{ padding: '14px' }}>
-                  {getStatusBadge(order.status)}
-                </td>
-                <td style={{ padding: '14px' }}>
-                  <button className="btn btn-secondary btn-sm" title="View Order Details">
-                    <Eye size={14} color="#7c3aed" /> Details
-                  </button>
-                </td>
+      {/* Loading State */}
+      {isLoading ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+          <Loader2 size={24} className="spin" style={{ display: 'inline-block' }} />
+          <p style={{ marginTop: '12px' }}>Loading orders...</p>
+        </div>
+      ) : bookings.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+          <ShoppingBag size={32} style={{ opacity: 0.5, marginBottom: '12px' }} />
+          <p>No orders in {selectedCity} yet</p>
+        </div>
+      ) : (
+        /* Orders Table */
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                <th style={{ padding: '12px 14px' }}>ORDER ID</th>
+                <th style={{ padding: '12px 14px' }}>CUSTOMER</th>
+                <th style={{ padding: '12px 14px' }}>SERVICE</th>
+                <th style={{ padding: '12px 14px' }}>ASSIGNED PARTNER</th>
+                <th style={{ padding: '12px 14px' }}>LOCALITY</th>
+                <th style={{ padding: '12px 14px' }}>AMOUNT</th>
+                <th style={{ padding: '12px 14px' }}>STATUS</th>
+                <th style={{ padding: '12px 14px' }}>ACTION</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {bookings.map((order) => (
+                <tr key={order._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                  <td style={{ padding: '14px', fontWeight: '800', color: 'var(--accent-blue)', fontSize: '0.85rem' }}>
+                    {order.bookingId || order._id?.substring(0, 8)}
+                  </td>
+                  <td style={{ padding: '14px', fontWeight: '700', fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                    {order.customer?.name || 'Customer'}
+                  </td>
+                  <td style={{ padding: '14px', fontWeight: '700', fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                    {order.service?.name || 'Service'}
+                  </td>
+                  <td style={{ padding: '14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                    {order.partner?.name || 'Unassigned'}
+                  </td>
+                  <td style={{ padding: '14px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <MapPin size={12} color="#2563eb" /> {order.address?.city || selectedCity}
+                    </div>
+                  </td>
+                  <td style={{ padding: '14px', fontWeight: '800', color: 'var(--text-primary)', fontSize: '0.88rem' }}>
+                    ₹{Number(order.totalAmount || order.amount || 0).toLocaleString()}
+                  </td>
+                  <td style={{ padding: '14px' }}>
+                    {getStatusBadge(order.status)}
+                  </td>
+                  <td style={{ padding: '14px' }}>
+                    <button className="btn btn-secondary btn-sm" title="View Order Details">
+                      <Eye size={14} color="#7c3aed" /> Details
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
     </div>
   );

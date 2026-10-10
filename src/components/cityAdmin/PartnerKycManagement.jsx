@@ -5,7 +5,7 @@ import { catalogService } from '../../services/catalog.service.js';
 import PartnerKycDetailPage from './PartnerKycDetailPage';
 
 const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
-  const { partners, approvePartner, rejectPartner, updateDocumentStatus, suspendPartner, activatePartner } = useCityAdmin();
+  const { partners, approvePartner, rejectPartner, updateDocumentStatus, suspendPartner, activatePartner } = useCityAdmin(assignedCity);
   const [selectedPartner, setSelectedPartner] = useState(null);
   const [categoryMap, setCategoryMap] = useState({});
 
@@ -25,20 +25,8 @@ const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
   }, []);
 
   const getDisplayCategory = (partner) => {
-    const rawCat = partner.category;
-    if (rawCat && !rawCat.match(/^[0-9a-fA-F]{24}$/)) {
-      return rawCat;
-    }
-    if (rawCat && categoryMap[rawCat]) {
-      return categoryMap[rawCat];
-    }
-    if (Array.isArray(partner.categories) && partner.categories.length > 0) {
-      const names = partner.categories
-        .map((c) => (typeof c === 'object' && c?.name ? c.name : categoryMap[String(c)] || null))
-        .filter(Boolean);
-      if (names.length > 0) return names.join(', ');
-    }
-    return 'General Service Technician';
+    // Backend already returns formatted category string
+    return partner.category || 'General Service Technician';
   };
 
   const handleApprove = async (partnerId) => {
