@@ -7,36 +7,51 @@ const UpcomingBookingCard = ({ booking, onViewAllClick, onOpenFulfillment }) => 
   const { updateBookingStatus, completeBooking } = useBookings();
   const [jobStarted, setJobStarted] = useState(false);
 
-  // Fallback demo data matching the reference image layout if no live booking
-  const activeBooking = booking
-    ? {
-        rawId: booking._id,
-        id: booking.bookingId || booking.bookingNumber || `UC-${booking._id?.toString().slice(-5).toUpperCase()}`,
-        serviceTitle: booking.packageName || booking.service?.name || booking.serviceTitle || 'AC Service & Gas Charge',
-        slotTime: booking.timeSlot || booking.bookingTimeSlot || '10:30 AM',
-        customerName: booking.customer?.name || 'Customer',
-        customerPhone: booking.customer?.phone || '',
-        address: typeof booking.address === 'object'
-          ? `${booking.address?.addressLine ? booking.address.addressLine + ', ' : ''}${booking.address?.city || booking.city || 'Delhi NCR'}`
-          : (booking.address || booking.city || 'HSR Layout Sector 2, Bengaluru'),
-        status: booking.status || 'Accepted',
-        completionOtp: booking.completionOtp || '2847',
-      }
-    : {
-        rawId: 'demo-1',
-        id: 'NZP-B-8902',
-        serviceTitle: 'AC Service & Gas Charge',
-        slotTime: '10:30 AM',
-        customerName: 'Rohan Deshmukh',
-        customerPhone: '+91 98765 43210',
-        address: 'Flat 402, Building 3B, HSR Layout Sector 2, Bengaluru',
-        status: 'Accepted',
-        completionOtp: '2847',
-      };
+  if (!booking) {
+    return (
+      <div style={{ marginBottom: '24px' }}>
+        <h3 style={{ fontSize: '1.15rem', fontWeight: '900', margin: '0 0 12px 0', color: '#0f172a' }}>
+          Upcoming Booking
+        </h3>
+        <div
+          style={{
+            background: '#ffffff',
+            borderRadius: 'var(--radius-lg)',
+            padding: '24px',
+            border: '1px dashed #cbd5e1',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            textAlign: 'center'
+          }}
+        >
+          <CheckCircle2 size={32} color="#94a3b8" />
+          <div style={{ fontWeight: '800', color: '#475569', fontSize: '1.05rem' }}>No Upcoming Jobs</div>
+          <div style={{ color: '#64748b', fontSize: '0.86rem' }}>You are all caught up! Stay online to receive new requests.</div>
+        </div>
+      </div>
+    );
+  }
+
+  const activeBooking = {
+    rawId: booking._id,
+    id: booking.bookingId || booking.bookingNumber || `UC-${booking._id?.toString().slice(-5).toUpperCase()}`,
+    serviceTitle: booking.packageName || booking.service?.name || booking.serviceTitle || 'AC Service & Gas Charge',
+    slotTime: booking.timeSlot || booking.bookingTimeSlot || '10:30 AM',
+    customerName: booking.customer?.name || 'Customer',
+    customerPhone: booking.customer?.phone || '',
+    address: typeof booking.address === 'object'
+      ? `${booking.address?.addressLine ? booking.address.addressLine + ', ' : ''}${booking.address?.city || booking.city || 'Delhi NCR'}`
+      : (booking.address || booking.city || 'HSR Layout Sector 2, Bengaluru'),
+    status: booking.status || 'Accepted',
+    completionOtp: booking.completionOtp || '2847',
+  };
 
   const handleNavigate = () => {
     if (onOpenFulfillment) {
-      onOpenFulfillment(booking || activeBooking);
+      onOpenFulfillment(activeBooking);
     } else {
       toast.info(`Opening Google Maps Navigation for ${activeBooking.customerName}...`);
       window.open(`https://maps.google.com/?q=${encodeURIComponent(activeBooking.address)}`, '_blank');

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { axiosInstance } from '../api/axiosInstance.js';
 import PartnerSidebar from '../components/partner/PartnerSidebar';
 import PartnerMetricCards from '../components/partner/PartnerMetricCards';
 import PartnerWalletCard from '../components/partner/PartnerWalletCard';
@@ -24,6 +25,14 @@ import {
 const PartnerDashboard = ({ currentUser, onLogout }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [notification, setNotification] = useState({ message: '', type: '' });
+
+  // BUG 1 FIX: Mark partner online in DB when dashboard mounts, offline on unmount
+  useEffect(() => {
+    axiosInstance.patch('/auto-assignment/partner-availability', { isOnline: true, isAvailable: true }).catch(() => {});
+    return () => {
+      axiosInstance.patch('/auto-assignment/partner-availability', { isOnline: false, isAvailable: false }).catch(() => {});
+    };
+  }, []);
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });

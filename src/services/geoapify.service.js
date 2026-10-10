@@ -1,6 +1,7 @@
 import { axiosInstance } from '../api/axiosInstance.js';
 
-export const GEOAPIFY_API_KEY = import.meta.env.VITE_GEOAPIFY_API_KEY || '2ecb147800e2472eab47bbfeaf5d010a';
+// BUG 10 FIX: API key must come from environment variable only — never hardcode in source
+export const GEOAPIFY_API_KEY = import.meta.env.VITE_GEOAPIFY_API_KEY || '';
 
 export const geoapifyService = {
   apiKey: GEOAPIFY_API_KEY,

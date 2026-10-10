@@ -214,7 +214,12 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
     const socket = socketService.connect();
     socketRef.current = socket;
 
-    socket.emit('join_partner', { partnerId: currentUser?._id || currentUser?.id });
+    socket.emit('join_partner', {
+      partnerId: currentUser?._id || currentUser?.id,
+      // BUG 3 FIX: Pass category & city so partner joins the correct dispatch room
+      category: currentUser?.category,
+      city: currentUser?.assignedCity?.name || (typeof currentUser?.assignedCity === 'string' ? currentUser.assignedCity : null) || currentUser?.city || 'Jaunpur',
+    });
     socket.emit('join_chat_room', { bookingId: bookingIdStr });
 
     const handleIncomingCall = (data) => {
@@ -1089,11 +1094,6 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                 <p style={{ fontSize: '0.85rem', color: '#475569', margin: '6px 0 0 0', fontWeight: '600' }}>
                   Ask customer <strong>{custName}</strong> for the 4-digit OTP sent to their mobile app/SMS.
                 </p>
-              </div>
-
-              {/* Target Customer OTP Reference Badge */}
-              <div style={{ padding: '12px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '14px', color: '#059669', fontSize: '0.88rem', fontWeight: '800' }}>
-                💡 Customer's 4-digit OTP: <span style={{ fontFamily: 'monospace', fontSize: '1.15rem', letterSpacing: '3px' }}>{String(currentBooking?.completionOtp || '2847')}</span>
               </div>
 
               {/* 4-Digit Blank Input Boxes */}

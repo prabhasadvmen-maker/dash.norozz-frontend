@@ -14,7 +14,7 @@ const PartnerMetricCards = () => {
   const { dashboard, todayBookings, wallet, isLoading } = usePartner('dashboard');
 
   const todayEarnings = dashboard?.metrics?.todayEarnings ?? wallet?.todayEarnings ?? 0;
-  const bookingsCount = dashboard?.todayBookingsCount ?? todayBookings?.length ?? 0;
+  const bookingsCount = dashboard?.metrics?.todayBookingsCount ?? dashboard?.todayBookingsCount ?? todayBookings?.length ?? 0;
   const rating = dashboard?.metrics?.rating ?? dashboard?.rating ?? 5.0;
 
   const cards = [

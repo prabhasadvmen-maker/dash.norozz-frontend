@@ -12,9 +12,11 @@ import IncomingJobOfferModal from '../components/partner/IncomingJobOfferModal';
 import PartnerFulfillmentPage from './partner/PartnerFulfillmentPage';
 import PartnerProfileView from '../components/partner/PartnerProfileView';
 import PartnerAnalyticsView from '../components/partner/PartnerAnalyticsView';
+import PartnerCalendarView from '../components/partner/PartnerCalendarView';
 import { socketService } from '../services/socket.service.js';
 import { cityService } from '../services/city.service.js';
 import { catalogService } from '../services/catalog.service.js';
+import { axiosInstance } from '../api/axiosInstance.js';
 import { usePartner } from '../hooks/usePartner.js';
 import { toast } from '../utils/toast.js';
 import {
@@ -157,6 +159,22 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
       }
     }).catch(() => {});
   }, [currentUser]);
+
+  // BUG 2 FIX: Mark partner as ONLINE in DB via REST API when they open the dashboard
+  useEffect(() => {
+    if (!currentUser?._id) return;
+
+    // Go online on mount
+    axiosInstance.patch('/auto-assignment/partner-availability', { isOnline: true, isAvailable: true })
+      .then(() => console.log('✅ Partner marked ONLINE via REST API on dashboard mount.'))
+      .catch((err) => console.warn('Could not mark partner online via REST:', err?.response?.data?.message || err.message));
+
+    // Go offline on unmount (page close / logout)
+    return () => {
+      axiosInstance.patch('/auto-assignment/partner-availability', { isOnline: false, isAvailable: false })
+        .catch(() => {}); // Best-effort: page may be unloading
+    };
+  }, [currentUser?._id]);
 
   // Real-Time Socket.io Connection Effect
   useEffect(() => {
@@ -513,14 +531,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
           {isApproved && (
             <>
               {activeTab === 'bookings' && <PartnerJobsTable onOpenFulfillment={handleOpenFulfillment} />}
-              {activeTab === 'calendar' && (
-                <div className="mui-card" style={{ padding: '26px' }}>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Calendar size={20} color="#2563eb" /> Job Schedule & Dispatch Calendar
-                  </h3>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Interactive calendar dispatch view.</p>
-                </div>
-              )}
+              {activeTab === 'calendar' && <PartnerCalendarView onOpenFulfillment={handleOpenFulfillment} />}
               {activeTab === 'reviews' && (
                 <div className="mui-card" style={{ padding: '26px' }}>
                   <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>

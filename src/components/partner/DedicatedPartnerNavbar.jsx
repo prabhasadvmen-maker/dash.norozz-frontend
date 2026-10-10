@@ -73,8 +73,14 @@ const DedicatedPartnerNavbar = ({
           }}>
             NOROZZ Technician Portal
           </h1>
-          <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Briefcase size={12} color="#10b981" /> {partnerName} ({displayCategory}) • <MapPin size={12} color="#2563eb" /> {cityName || 'Delhi NCR'}
+          <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+              <Briefcase size={12} color="#10b981" /> {partnerName} ({displayCategory})
+            </span>
+            <span style={{ color: '#cbd5e1' }}>•</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+              <MapPin size={12} color="#2563eb" /> {cityName || 'Delhi NCR'}
+            </span>
           </div>
         </div>
       </div>

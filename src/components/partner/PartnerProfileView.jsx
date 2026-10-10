@@ -151,11 +151,11 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
   const bank = user.bankDetails || {};
   const [bankForm, setBankForm] = useState({
     accountHolderName: bank.accountHolderName || user.name || '',
-    bankName: bank.bankName || 'HDFC Bank',
+    bankName: bank.bankName || '',
     accountNumber: bank.accountNumber || '',
     confirmAccountNumber: bank.accountNumber || '',
     ifscCode: bank.ifscCode || '',
-    upiId: bank.upiId || `${user.phone || '8726600653'}@paytm`,
+    upiId: bank.upiId || '',
   });
 
   // Settings Navigation & Screens State
@@ -1572,8 +1572,36 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
               return (
                 <div key={item.key} style={{ padding: '20px', border: '1px solid #e2e8f0', borderRadius: '18px', background: '#f8fafc', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <div style={{ fontWeight: '800', fontSize: '0.94rem', color: '#0f172a' }}>{item.label}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        {/* Inline Thumbnail Preview */}
+                        <div 
+                          onClick={() => handleOpenDocPreview(item.label, docUrl, item.key, docStatus, rejectionReason)}
+                          style={{ 
+                            width: '48px', 
+                            height: '48px', 
+                            borderRadius: '10px', 
+                            overflow: 'hidden', 
+                            border: '1px solid #cbd5e1',
+                            cursor: 'pointer',
+                            flexShrink: 0
+                          }}
+                        >
+                          <img 
+                            src={docUrl} 
+                            alt={item.label} 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_KYC_IMAGE; }}
+                          />
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: '800', fontSize: '0.94rem', color: '#0f172a' }}>{item.label}</div>
+                          <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px' }}>{item.desc}</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                       {docStatus === 'approved' && (
                         <span style={{ fontSize: '0.74rem', fontWeight: '800', background: '#dcfce7', color: '#15803d', padding: '4px 10px', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                           <CheckCircle2 size={12} /> Verified & Approved
@@ -1590,33 +1618,31 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: '0.76rem', color: '#64748b' }}>{item.desc}</div>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
-                    {/* Always visible Preview Document button */}
-                    <div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <button
                         type="button"
                         onClick={() => handleOpenDocPreview(item.label, docUrl, item.key, docStatus, rejectionReason)}
                         style={{ color: '#0284c7', background: 'none', border: 'none', padding: 0, fontSize: '0.84rem', fontWeight: '800', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                       >
-                        <Eye size={16} /> Preview Document
+                        <Eye size={16} /> Enlarge Image
                       </button>
                     </div>
 
                     {/* Status specific actions */}
                     {docStatus === 'approved' ? (
-                      <div style={{ padding: '8px 12px', background: '#f0fdf4', borderRadius: '10px', border: '1px solid #bbf7d0', fontSize: '0.78rem', color: '#166534', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ padding: '10px 12px', background: '#f0fdf4', borderRadius: '10px', border: '1px solid #bbf7d0', fontSize: '0.78rem', color: '#166534', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Lock size={14} /> Document Verified (Re-upload Disabled)
                       </div>
                     ) : docStatus === 'rejected' ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <div style={{ padding: '8px 12px', background: '#fef2f2', borderRadius: '10px', border: '1px solid #fee2e2', fontSize: '0.78rem', color: '#991b1b', fontWeight: '600' }}>
-                          <strong>Rejection Reason:</strong> {rejectionReason}
+                          <strong>Reason:</strong> {rejectionReason}
                         </div>
                         <label style={{ fontSize: '0.78rem', fontWeight: '800', color: '#dc2626', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <Upload size={14} /> Re-upload Clear Document File:
+                          <Upload size={14} /> Re-upload Clear Image:
                         </label>
                         <input
                           type="file"
@@ -1626,9 +1652,9 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                         />
                       </div>
                     ) : (
-                      <div>
-                        <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#1e293b', display: 'block', marginBottom: '6px' }}>
-                          Select File to Upload / Update:
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#1e293b' }}>
+                          Select File to Update:
                         </label>
                         <input
                           type="file"
@@ -1684,23 +1710,29 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
           }}>
             <div>
               <div style={{ fontSize: '0.8rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.8px', opacity: 0.9 }}>
-                Verified Settlement Account
+                {bankForm.accountNumber ? 'Verified Settlement Account' : 'Settlement Account Pending'}
               </div>
               <div style={{ fontSize: '1.4rem', fontWeight: '900', marginTop: '4px' }}>
-                {bankForm.bankName || 'HDFC Bank'}
+                {bankForm.bankName || 'No Bank Added'}
               </div>
               <div style={{ fontSize: '0.9rem', opacity: 0.9, marginTop: '4px' }}>
-                Account Holder: <strong>{bankForm.accountHolderName || user.name || 'monu'}</strong>
+                Account Holder: <strong>{bankForm.accountHolderName || user.name || 'Not Provided'}</strong>
               </div>
               <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-                Account Number: <strong>{bankForm.accountNumber ? `•••• •••• ${bankForm.accountNumber.slice(-4)}` : '•••• •••• 4920'}</strong> | IFSC: <strong>{bankForm.ifscCode || 'HDFC0001234'}</strong>
+                Account Number: <strong>{bankForm.accountNumber ? `•••• •••• ${bankForm.accountNumber.slice(-4)}` : 'Not Provided'}</strong> | IFSC: <strong>{bankForm.ifscCode || 'Not Provided'}</strong>
               </div>
             </div>
             <div style={{ background: 'rgba(255, 255, 255, 0.2)', padding: '12px 18px', borderRadius: '14px', backdropFilter: 'blur(10px)', textAlign: 'right' }}>
               <div style={{ fontSize: '0.74rem', fontWeight: '700', textTransform: 'uppercase' }}>Auto Payout Status</div>
-              <div style={{ fontSize: '0.95rem', fontWeight: '900', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                <CheckCircle2 size={16} /> ACTIVE & VERIFIED
-              </div>
+              {bankForm.accountNumber ? (
+                <div style={{ fontSize: '0.95rem', fontWeight: '900', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                  <CheckCircle2 size={16} /> ACTIVE & VERIFIED
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.95rem', fontWeight: '900', color: '#fde047', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                  <AlertCircle size={16} /> SETUP REQUIRED
+                </div>
+              )}
             </div>
           </div>
 
@@ -1729,7 +1761,9 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                   value={bankForm.bankName}
                   onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })}
                   style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', background: '#ffffff' }}
+                  required
                 >
+                  <option value="" disabled>Select Bank</option>
                   <option value="HDFC Bank">HDFC Bank</option>
                   <option value="State Bank of India (SBI)">State Bank of India (SBI)</option>
                   <option value="ICICI Bank">ICICI Bank</option>
