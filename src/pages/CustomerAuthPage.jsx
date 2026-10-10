@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Smartphone, Mail, Phone, User, Calendar, Camera, ArrowRight, Loader2, AlertCircle, KeyRound, Edit2, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Smartphone, Mail, Phone, User, Calendar, Camera, ArrowRight, Loader2, AlertCircle, KeyRound, Edit2, ShieldCheck, CheckCircle2, Sparkles } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { authService } from '../services/auth.service.js';
 import { toast } from '../utils/toast.js';
