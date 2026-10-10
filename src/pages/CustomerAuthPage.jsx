@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Smartphone, Mail, Phone, User, Calendar, Camera, ArrowRight, Loader2, AlertCircle, Sparkles, KeyRound, Edit2, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Smartphone, Mail, Phone, User, Calendar, Camera, ArrowRight, Loader2, AlertCircle, KeyRound, Edit2, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { authService } from '../services/auth.service.js';
 import { toast } from '../utils/toast.js';
@@ -299,12 +299,6 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
     }
   };
 
-  const handleQuickFillCustomer = () => {
-    const demoUser = 'ananya.test@norozz.com';
-    setEmailOrPhone(demoUser);
-    handleSendOtp(null, demoUser);
-  };
-
   const handleResetStep = () => {
     setStep('request');
     setOtp('');
@@ -413,7 +407,7 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
               <input
                 type="text"
                 className="form-input"
-                placeholder="e.g. ananya.test@norozz.com or 9876543210"
+                placeholder="e.g. yourname@gmail.com or 9876543210"
                 value={emailOrPhone}
                 onChange={(e) => setEmailOrPhone(e.target.value)}
                 required
@@ -578,7 +572,7 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
               <input
                 type="text"
                 className="form-input"
-                placeholder="e.g. Rahul Sharma"
+                placeholder="Enter email or phone"
                 value={profileName}
                 onChange={(e) => setProfileName(e.target.value)}
                 required
@@ -640,7 +634,7 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
               <input
                 type="email"
                 className="form-input"
-                placeholder="rahul@gmail.com"
+                placeholder="your@email.com"
                 value={profileEmail}
                 onChange={(e) => { setProfileEmail(e.target.value); setIsEmailVerified(false); }}
                 required
@@ -703,7 +697,7 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
               <input
                 type="tel"
                 className="form-input"
-                placeholder="9876543210"
+                placeholder="10-digit mobile number"
                 value={profilePhone}
                 onChange={(e) => { setProfilePhone(e.target.value); setIsPhoneVerified(false); }}
                 required
@@ -761,20 +755,7 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
           </form>
         )}
 
-        {/* Quick Demo Auto-Fill */}
-        {step !== 'profile' && (
-          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-light)', textAlign: 'center' }}>
-            <button
-              type="button"
-              onClick={handleQuickFillCustomer}
-              className="btn btn-secondary btn-sm"
-              style={{ width: '100%', fontSize: '0.82rem' }}
-              disabled={loading}
-            >
-              <Sparkles size={14} color="#2563eb" /> Quick Auto-Fill Customer Credentials
-            </button>
-          </div>
-        )}
+
 
       </div>
     </div>

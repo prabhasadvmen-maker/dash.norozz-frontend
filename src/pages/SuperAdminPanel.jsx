@@ -116,7 +116,6 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
 
   const { dashboard, customers, partners, bookings, refetch } = useSuperAdmin();
   const {
-    categories,
     subCategories,
     services,
     skills,
@@ -219,8 +218,6 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
   const [platformSuccessMsg, setPlatformSuccessMsg] = useState('');
 
   useEffect(() => {
-    const token = sessionStorage.getItem('norozz_token') || localStorage.getItem('norozz_token');
-    if (!token) return;
     superAdminService
       .getSettings()
       .then((res) => {

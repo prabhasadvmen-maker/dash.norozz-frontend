@@ -142,7 +142,7 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout, collapsed }) => 
       <div style={{
         flex: 1,
         overflowY: 'auto',
-        padding: collapsed ? '0 10px 12px 10px' : '0 16px 12px 16px',
+        padding: collapsed ? '16px 10px 12px 10px' : '16px 16px 12px 16px',
         display: 'flex',
         flexDirection: 'column',
         gap: '5px'

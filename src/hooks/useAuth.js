@@ -196,8 +196,8 @@ export const useAuth = () => {
   const cityAdminLoginMutation = useMutation({
     mutationFn: (data) => authService.cityAdminLogin(data),
     onSuccess: (res) => {
-      const user = res.data?.user;
-      const token = res.data?.accessToken;
+      const user  = res.data?.user || res.user;
+      const token = res.data?.accessToken || res.accessToken;
       login(user, token);
       toast.success(`City Admin Logged In: ${user.assignedCity || 'Delhi NCR'}`);
       navigate('/city-admin/dashboard', { replace: true });
@@ -207,8 +207,9 @@ export const useAuth = () => {
   const superAdminLoginMutation = useMutation({
     mutationFn: (data) => authService.superAdminLogin(data),
     onSuccess: (res) => {
-      const user = res.data?.user;
-      login(user);
+      const user  = res.data?.user || res.user;
+      const token = res.data?.accessToken || res.accessToken;
+      login(user, token);
       toast.success('Super Admin Master Portal Access Granted');
       navigate('/super-admin/dashboard', { replace: true });
     },

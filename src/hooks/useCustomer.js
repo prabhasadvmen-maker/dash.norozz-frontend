@@ -1,56 +1,58 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customerService } from '../services/customer.service.js';
 import { toast } from '../utils/toast.js';
+import { useAuthContext } from '../contexts/AuthContext.jsx';
 
 export const useCustomer = (activeTab = 'home') => {
   const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuthContext();
 
   const dashboardQuery = useQuery({
     queryKey: ['customer', 'dashboard'],
     queryFn: () => customerService.getDashboard(),
-    enabled: activeTab === 'home' || activeTab === 'wallet',
+    enabled: isAuthenticated && (activeTab === 'home' || activeTab === 'wallet'),
     staleTime: 60 * 1000,
   });
 
   const categoriesQuery = useQuery({
     queryKey: ['customer', 'categories'],
     queryFn: () => customerService.getCategories(),
-    enabled: activeTab === 'home' || activeTab === 'services',
+    enabled: isAuthenticated && (activeTab === 'home' || activeTab === 'services'),
     staleTime: 60 * 1000,
   });
 
   const popularServicesQuery = useQuery({
     queryKey: ['customer', 'popularServices'],
     queryFn: () => customerService.getPopularServices(),
-    enabled: activeTab === 'home',
+    enabled: isAuthenticated && activeTab === 'home',
     staleTime: 60 * 1000,
   });
 
   const offersQuery = useQuery({
     queryKey: ['customer', 'offers'],
     queryFn: () => customerService.getOffers(),
-    enabled: activeTab === 'home',
+    enabled: isAuthenticated && activeTab === 'home',
     staleTime: 5 * 60 * 1000,
   });
 
   const addressesQuery = useQuery({
     queryKey: ['customer', 'addresses'],
     queryFn: () => customerService.getAddresses(),
-    enabled: activeTab === 'profile',
+    enabled: isAuthenticated && activeTab === 'profile',
     staleTime: 5 * 60 * 1000,
   });
 
   const favoritesQuery = useQuery({
     queryKey: ['customer', 'favorites'],
     queryFn: () => customerService.getFavorites(),
-    enabled: activeTab === 'profile',
+    enabled: isAuthenticated && activeTab === 'profile',
     staleTime: 5 * 60 * 1000,
   });
 
   const profileQuery = useQuery({
     queryKey: ['customer', 'profile'],
     queryFn: () => customerService.getProfile(),
-    enabled: activeTab === 'profile',
+    enabled: isAuthenticated && activeTab === 'profile',
     staleTime: 5 * 60 * 1000,
   });
 

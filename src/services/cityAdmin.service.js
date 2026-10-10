@@ -3,6 +3,7 @@ import { axiosInstance } from '../api/axiosInstance.js';
 export const cityAdminService = {
   getDashboard: () => axiosInstance.get('/city-admin/dashboard'),
   getPartners: () => axiosInstance.get('/city-admin/partners'),
+  getCustomers: () => axiosInstance.get('/city-admin/customers'),
   approvePartner: (id) => axiosInstance.patch(`/city-admin/partners/${id}/approve`),
   rejectPartner: (id, reason) => axiosInstance.patch(`/city-admin/partners/${id}/reject`, { reason }),
   updateDocumentStatus: (id, docKey, status, rejectionReason) => axiosInstance.patch(`/city-admin/partners/${id}/documents/status`, { docKey, status, rejectionReason }),

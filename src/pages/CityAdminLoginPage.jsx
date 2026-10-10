@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Mail, ArrowRight, Loader2, AlertCircle, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 
 const CityAdminLoginPage = () => {
@@ -8,24 +8,16 @@ const CityAdminLoginPage = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccessMessage('');
 
     try {
       await cityAdminLogin({ email, password });
     } catch (err) {
       setError(err.message || 'Invalid City Admin credentials.');
     }
-  };
-
-  const handleQuickFill = () => {
-    setEmail('delhi.admin@norozz.com');
-    setPassword('CityAdminPass123!');
-    setSuccessMessage('Delhi NCR City Admin credentials auto-filled!');
   };
 
   return (
@@ -86,25 +78,6 @@ const CityAdminLoginPage = () => {
             </div>
           )}
 
-          {/* Alert Success */}
-          {successMessage && (
-            <div style={{
-              background: 'rgba(16, 185, 129, 0.15)',
-              color: '#34d399',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
-              padding: '12px 16px',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '0.85rem',
-              marginBottom: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px'
-            }}>
-              <Sparkles size={18} style={{ flexShrink: 0 }} />
-              <span>{successMessage}</span>
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="form-group">
@@ -114,7 +87,7 @@ const CityAdminLoginPage = () => {
                 <input
                   type="email"
                   className="form-input has-icon"
-                  placeholder="delhi.admin@norozz.com"
+                  placeholder="admin@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -168,17 +141,7 @@ const CityAdminLoginPage = () => {
             </button>
           </form>
 
-          {/* Quick Auto-Fill Helper */}
-          <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--border-light)', textAlign: 'center' }}>
-            <button
-              type="button"
-              onClick={handleQuickFill}
-              className="btn btn-secondary btn-sm"
-              style={{ width: '100%', fontSize: '0.82rem', padding: '10px' }}
-            >
-              <Sparkles size={15} color="#06b6d4" /> Auto-Fill Delhi City Admin Credentials
-            </button>
-          </div>
+
 
         </div>
 

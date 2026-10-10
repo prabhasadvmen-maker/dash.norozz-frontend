@@ -4,7 +4,7 @@ import CityMetricCards from '../components/cityAdmin/CityMetricCards';
 import CityCharts from '../components/cityAdmin/CityCharts';
 import CityOrdersTable from '../components/cityAdmin/CityOrdersTable';
 import UserTable from '../components/UserTable';
-import { adminService } from '../services/api';
+import { useCityAdmin } from '../hooks/useCityAdmin.js';
 import {
   Users,
   Briefcase,
@@ -18,12 +18,14 @@ import {
   CheckCircle2,
   AlertCircle,
   MapPin,
-  ShoppingBag
+  ShoppingBag,
+  Loader2
 } from 'lucide-react';
 
 const CityAdminDashboard = ({ currentUser, onLogout, selectedCity }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [notification, setNotification] = useState({ message: '', type: '' });
+  const { partners, customers, isLoading } = useCityAdmin();
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
@@ -108,25 +110,32 @@ const CityAdminDashboard = ({ currentUser, onLogout, selectedCity }) => {
         {activeTab === 'customers' && (
           <div className="mui-card" style={{ padding: '26px' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Users size={20} color="#2563eb" /> {selectedCity} Customer Directory (4,210 Customers)
+              <Users size={20} color="#2563eb" /> {selectedCity} Customer Directory ({customers.length} Customers)
             </h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
               View and manage registered customers in {selectedCity}.
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-              {[
-                { name: 'Aarav Gupta', phone: '+91 98112 00112', area: 'Connaught Place', orders: 12 },
-                { name: 'Simran Kaur', phone: '+91 98765 11223', area: 'South Extension', orders: 8 },
-                { name: 'Nikhil Saxena', phone: '+91 97123 44556', area: 'Dwarka Sector 10', orders: 15 },
-                { name: 'Meera Chawla', phone: '+91 99887 22334', area: 'Vasant Kunj', orders: 6 },
-              ].map((c, i) => (
-                <div key={i} style={{ padding: '16px', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
-                  <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>{c.name}</div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{c.phone}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>{c.area} • {c.orders} Orders Completed</div>
-                </div>
-              ))}
-            </div>
+            {isLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                <Loader2 size={24} className="spin" style={{ display: 'inline-block' }} />
+                <p style={{ marginTop: '12px' }}>Loading customers...</p>
+              </div>
+            ) : customers.length > 0 ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+                {customers.slice(0, 8).map((c, i) => (
+                  <div key={i} style={{ padding: '16px', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                    <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>{c.name || 'Customer'}</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{c.phone || c.email || 'N/A'}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>{c.city || selectedCity} • {c.totalOrders || 0} Orders</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                <Users size={32} style={{ opacity: 0.5, marginBottom: '12px' }} />
+                <p>No customers found in {selectedCity}</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -135,26 +144,37 @@ const CityAdminDashboard = ({ currentUser, onLogout, selectedCity }) => {
           <div className="mui-card" style={{ padding: '26px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ fontSize: '1.1rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Briefcase size={20} color="#7c3aed" /> {selectedCity} Active Service Partners (185 Technicians)
+                <Briefcase size={20} color="#7c3aed" /> {selectedCity} Active Service Partners ({partners.length} Technicians)
               </h3>
               <button className="btn btn-primary"><Plus size={16} /> Onboard Local Partner</button>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-              {[
-                { name: 'Rajesh Kumar', skill: 'AC Repair Master', rating: '4.95 ⭐', status: 'Online' },
-                { name: 'Amitabh Verma', skill: 'Senior Plumber', rating: '4.88 ⭐', status: 'On Job' },
-                { name: 'Priya Sharma', skill: 'Beauty Therapist', rating: '4.92 ⭐', status: 'Online' },
-                { name: 'Sunil Malhotra', skill: 'Electrician Expert', rating: '4.85 ⭐', status: 'Offline' },
-              ].map((p, i) => (
-                <div key={i} style={{ padding: '16px', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>{p.name}</div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{p.skill} • {p.rating}</div>
-                  </div>
-                  <span className={`badge ${p.status === 'Offline' ? 'badge-warning' : 'badge-success'}`}>{p.status}</span>
-                </div>
-              ))}
-            </div>
+            {isLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                <Loader2 size={24} className="spin" style={{ display: 'inline-block' }} />
+                <p style={{ marginTop: '12px' }}>Loading partners...</p>
+              </div>
+            ) : partners.length > 0 ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+                {partners.slice(0, 8).map((p, i) => {
+                  const isApproved = (p.kycStatus || '').toLowerCase() === 'approved';
+                  const status = p.isOnline ? 'Online' : p.isAvailable ? 'Available' : 'Offline';
+                  return (
+                    <div key={i} style={{ padding: '16px', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>{p.name || 'Partner'}</div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{p.experience || 'Experienced'} • {p.averageRating || 4.8} ⭐</div>
+                      </div>
+                      <span className={`badge ${status === 'Offline' ? 'badge-warning' : 'badge-success'}`}>{status}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                <Briefcase size={32} style={{ opacity: 0.5, marginBottom: '12px' }} />
+                <p>No partners registered in {selectedCity} yet</p>
+              </div>
+            )}
           </div>
         )}
 

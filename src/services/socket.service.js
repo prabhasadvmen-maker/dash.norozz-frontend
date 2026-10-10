@@ -8,11 +8,12 @@ class SocketService {
   connect() {
     if (!this.socket) {
       this.socket = io(SOCKET_URL, {
-        transports: ['websocket', 'polling'],
+        transports: ['websocket'],
         autoConnect: true,
         reconnection: true,
-        reconnectionAttempts: 10,
-        reconnectionDelay: 1000,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 3000,
+        reconnectionDelayMax: 10000,
       });
 
       this.socket.on('connect', () => {

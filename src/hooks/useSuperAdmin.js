@@ -40,7 +40,8 @@ export const useSuperAdmin = () => {
   const createCityAdminMutation = useMutation({
     mutationFn: (data) => superAdminService.createCityAdmin(data),
     onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ['superAdmin'] });
+      // Invalidate the specific cityAdmins query to force refetch
+      queryClient.invalidateQueries({ queryKey: ['superAdmin', 'cityAdmins'] });
       toast.success(res.message || 'City Admin created successfully');
     },
   });
@@ -48,7 +49,7 @@ export const useSuperAdmin = () => {
   const updateCityAdminMutation = useMutation({
     mutationFn: ({ id, data }) => superAdminService.updateCityAdmin(id, data),
     onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ['superAdmin'] });
+      queryClient.invalidateQueries({ queryKey: ['superAdmin', 'cityAdmins'] });
       toast.success(res.message || 'City Admin updated successfully');
     },
   });
@@ -56,7 +57,7 @@ export const useSuperAdmin = () => {
   const updateCityAdminStatusMutation = useMutation({
     mutationFn: ({ id, status }) => superAdminService.updateCityAdminStatus(id, status),
     onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ['superAdmin'] });
+      queryClient.invalidateQueries({ queryKey: ['superAdmin', 'cityAdmins'] });
       toast.success(res.message || 'City Admin status updated');
     },
   });
@@ -64,7 +65,7 @@ export const useSuperAdmin = () => {
   const deleteCityAdminMutation = useMutation({
     mutationFn: (id) => superAdminService.deleteCityAdmin(id),
     onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ['superAdmin'] });
+      queryClient.invalidateQueries({ queryKey: ['superAdmin', 'cityAdmins'] });
       toast.success(res.message || 'City Admin deleted');
     },
   });

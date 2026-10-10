@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { partnerService } from '../services/partner.service.js';
 import { toast } from '../utils/toast.js';
+import { useAuthContext } from '../contexts/AuthContext.jsx';
 
 // Caching configuration for high performance and zero duplicate calls
 const QUERY_CONFIG = {
@@ -13,16 +14,16 @@ const QUERY_CONFIG = {
 
 export const usePartner = (tabOrOptions = 'dashboard') => {
   const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuthContext();
 
   const activeTab = typeof tabOrOptions === 'string' 
     ? tabOrOptions 
     : (tabOrOptions?.activeTab || tabOrOptions?.tab || 'dashboard');
 
-  // Determine enabled queries on demand based on active tab
-  const isDashboard = activeTab === 'dashboard';
-  const isBookings = activeTab === 'bookings';
-  const isWallet = activeTab === 'wallet';
-  const isReviews = activeTab === 'reviews';
+  const isDashboard = activeTab === 'dashboard' && isAuthenticated;
+  const isBookings = activeTab === 'bookings' && isAuthenticated;
+  const isWallet = activeTab === 'wallet' && isAuthenticated;
+  const isReviews = activeTab === 'reviews' && isAuthenticated;
 
   // 1. Dashboard Overview Query (Only active on Dashboard tab)
   const dashboardQuery = useQuery({

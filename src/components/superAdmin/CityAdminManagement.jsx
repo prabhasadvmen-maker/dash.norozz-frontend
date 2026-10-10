@@ -101,22 +101,31 @@ const CityAdminManagement = () => {
     setLoggingInId(admin._id);
     try {
       const res = await impersonateCityAdmin(admin._id);
-      const responseData = res?.data || res;
-      const targetUser = responseData?.user || responseData?.admin || responseData;
-      const token = responseData?.accessToken || responseData?.token || res?.accessToken;
+      console.log('[IMP] raw res:', res);
 
-      if (targetUser && token) {
-        toast.success(`🚀 Opening City Admin Portal for (${targetUser.name || admin.name}) in a NEW TAB!`);
-        if (loginNewTab) {
-          loginNewTab(targetUser, token);
-        } else {
-          login(targetUser, token);
-        }
-      } else {
-        toast.error('Impersonation token missing from server response');
+      // axiosInstance returns response.data directly
+      // Backend sendSuccess wraps as { statusCode, success, message, data: { user, accessToken } }
+      const responseData = res?.data ?? res;
+      console.log('[IMP] responseData:', responseData);
+
+      const targetUser = responseData?.user || responseData?.admin;
+      const token = responseData?.accessToken || responseData?.token;
+      console.log('[IMP] targetUser:', targetUser, '| token:', token ? token.slice(0, 20) + '...' : null);
+
+      if (!targetUser || !token) {
+        toast.error('Impersonation failed: token or user missing from server response');
+        return;
       }
+
+      const newTab = loginNewTab(targetUser, token);
+      if (!newTab) {
+        toast.error('Popup blocked! Please allow popups for this site and try again.');
+        return;
+      }
+      toast.success(`City Admin portal opened in new tab for ${targetUser.name || admin.name}`);
     } catch (err) {
-      console.error('City Admin direct login error:', err);
+      console.error('[IMP] City Admin direct login error:', err);
+      toast.error(err?.message || 'Failed to login as City Admin');
     } finally {
       setLoggingInId(null);
     }

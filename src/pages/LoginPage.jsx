@@ -49,30 +49,7 @@ const LoginPage = ({ onLoginSuccess }) => {
   const handleQuickDemoFill = async (role) => {
     setError('');
     setSelectedRole(role);
-
-    if (role === 'superadmin') {
-      try {
-        const seedRes = await authService.seedSuperAdmin();
-        setEmail(seedRes.credentials.email);
-        setPassword('SuperAdmin123!');
-        setSuccessMessage('Super Admin credentials auto-filled!');
-      } catch (err) {
-        setEmail('superadmin@norozz.com');
-        setPassword('SuperAdmin123!');
-      }
-    } else if (role === 'admin') {
-      setEmail('admin.test@norozz.com');
-      setPassword('AdminPass123!');
-      setSuccessMessage('Admin credentials auto-filled!');
-    } else if (role === 'partner') {
-      setEmail('partner.cleanpro@norozz.com');
-      setPassword('PartnerPass123!');
-      setSuccessMessage('Partner credentials auto-filled!');
-    } else {
-      setEmail('ananya.deshmukh@gmail.com');
-      setPassword('Customer123!');
-      setSuccessMessage('Customer credentials auto-filled!');
-    }
+    // Removed hardcoded credentials - all auth must come from backend
   };
 
   // Open Forgot Password
@@ -289,45 +266,11 @@ const LoginPage = ({ onLoginSuccess }) => {
           </div>
         )}
 
-        {/* 1-Click Quick Demo Auto-Fill Helpers */}
-        {authMode === 'login' && (
+        {/* 1-Click Quick Demo Auto-Fill Helpers — Dev Only */}
+        {authMode === 'login' && import.meta.env.DEV && (
           <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border-light)', textAlign: 'center' }}>
             <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '8px' }}>
-              QUICK DEMO AUTO-FILL
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoFill('superadmin')}
-                className="btn btn-secondary btn-sm"
-                style={{ fontSize: '0.75rem' }}
-              >
-                <Crown size={12} color="#7c3aed" /> Super Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoFill('admin')}
-                className="btn btn-secondary btn-sm"
-                style={{ fontSize: '0.75rem' }}
-              >
-                <Building2 size={12} color="#2563eb" /> Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoFill('partner')}
-                className="btn btn-secondary btn-sm"
-                style={{ fontSize: '0.75rem' }}
-              >
-                <Briefcase size={12} color="#ec4899" /> Partner
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoFill('customer')}
-                className="btn btn-secondary btn-sm"
-                style={{ fontSize: '0.75rem' }}
-              >
-                <Smartphone size={12} color="#10b981" /> Customer
-              </button>
+              DEV MODE: Use backend test credentials
             </div>
           </div>
         )}

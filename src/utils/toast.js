@@ -13,7 +13,12 @@ export const toast = {
   },
 };
 
+const activeToasts = new Set();
+
 function showToastNotification(message, type = 'info') {
+  if (activeToasts.has(message)) return;
+  activeToasts.add(message);
+
   let container = document.getElementById('norozz-toast-container');
   if (!container) {
     container = document.createElement('div');
@@ -57,17 +62,28 @@ function showToastNotification(message, type = 'info') {
     };
   `;
 
-  toastEl.innerHTML = `
-    <span>${message}</span>
-    <span style="cursor:pointer; opacity:0.8; font-weight:bold;" onclick="this.parentElement.remove()">✕</span>
-  `;
+  toastEl.innerHTML = `<span>${message}</span>`;
+  
+  const closeBtn = document.createElement('span');
+  closeBtn.style.cssText = 'cursor:pointer; opacity:0.8; font-weight:bold;';
+  closeBtn.textContent = '✕';
+  closeBtn.onclick = () => {
+    toastEl.remove();
+    activeToasts.delete(message);
+  };
+  toastEl.appendChild(closeBtn);
 
   container.appendChild(toastEl);
 
-  setTimeout(() => {
+  const removeToast = () => {
     toastEl.style.opacity = '0';
     toastEl.style.transform = 'translateY(10px)';
     toastEl.style.transition = 'all 0.3s ease';
-    setTimeout(() => toastEl.remove(), 300);
-  }, 4000);
+    toastEl.addEventListener('transitionend', () => {
+      toastEl.remove();
+      activeToasts.delete(message);
+    }, { once: true });
+  };
+
+  setTimeout(removeToast, 4000);
 }

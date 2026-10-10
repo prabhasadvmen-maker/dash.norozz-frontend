@@ -6,73 +6,88 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 export const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 });
 
-/**
- * Request Interceptor: Auto-attach JWT Access Token if available
- */
+// All role-based token keys in priority order
+const TOKEN_KEYS = [
+  'superadmin_token',
+  'cityadmin_token',
+  'partner_token',
+  'user_token',
+  'norozz_token', // legacy fallback
+];
+
+const getActiveToken = () => {
+  // Impersonation tab: sessionStorage only (tab-local)
+  // Normal tab: localStorage only
+  const isImpersonationTab = sessionStorage.getItem('norozz_impersonation_tab') === '1';
+  const storage = isImpersonationTab ? sessionStorage : localStorage;
+
+  for (const key of TOKEN_KEYS) {
+    const t = storage.getItem(key);
+    if (t) return t;
+  }
+  return null;
+};
+
+const clearAllTokens = () => {
+  TOKEN_KEYS.forEach((k) => {
+    try { localStorage.removeItem(k); } catch {}
+    try { sessionStorage.removeItem(k); } catch {}
+  });
+};
+
+// ─── Request Interceptor ─────────────────────────────────────────────────────
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = sessionStorage.getItem('norozz_token') || localStorage.getItem('norozz_token');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-    if (config.data instanceof FormData) {
-      delete config.headers['Content-Type'];
-    }
+    const token = getActiveToken();
+    if (token) config.headers['Authorization'] = `Bearer ${token}`;
+    if (config.data instanceof FormData) delete config.headers['Content-Type'];
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-/**
- * Response Interceptor: Global Error Handler & Auto Refresh / 401 Redirect
- */
+// ─── Response Interceptor ────────────────────────────────────────────────────
 axiosInstance.interceptors.response.use(
-  (response) => {
-    return response.data;
-  },
+  (response) => response.data,
   async (error) => {
     const originalRequest = error.config;
-    const status = error.response?.status;
+    const status  = error.response?.status;
     const message = error.response?.data?.message || error.message || 'An unexpected error occurred';
 
-    if (status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/login')) {
+    if (status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/')) {
       originalRequest._retry = true;
-      const isSuperAdminReq = originalRequest.url?.includes('/super-admin/');
-      if (!isSuperAdminReq) {
+      const isCustomerRoute = !originalRequest.url?.includes('/super-admin/') &&
+                              !originalRequest.url?.includes('/city-admin/') &&
+                              !originalRequest.url?.includes('/partner/');
+      if (isCustomerRoute) {
         try {
           await axios.post(`${API_BASE_URL}/auth/customer/refresh-token`, {}, { withCredentials: true });
           return axiosInstance(originalRequest);
         } catch {
-          localStorage.removeItem('norozz_user');
-          sessionStorage.removeItem('norozz_user');
+          clearAllTokens();
           window.dispatchEvent(new Event('norozz_logout'));
         }
       } else {
-        localStorage.removeItem('norozz_user');
-        sessionStorage.removeItem('norozz_user');
+        clearAllTokens();
         window.dispatchEvent(new Event('norozz_logout'));
       }
     }
 
-    // Handle 429 Too Many Requests (Rate Limit Exceeded)
     if (status === 429) {
-      const rateLimitMsg = error.response?.data?.message || '⚠️ Too many requests. Please wait a moment before trying again.';
-      toast.error(rateLimitMsg);
-      return Promise.reject(error.response?.data || { message: rateLimitMsg });
+      const msg = error.response?.data?.message || 'Too many requests. Please wait a moment.';
+      toast.error(msg);
+      return Promise.reject(error.response?.data || { message: msg });
     }
 
-    // Suppress toast for 401s on auth/login and super-admin routes
-    const isSuperAdminRoute = originalRequest.url?.includes('/super-admin/');
-    const isAuthLoginRoute = originalRequest.url?.includes('/auth/login');
-    if (status !== 401 || isAuthLoginRoute) {
-      if (!isSuperAdminRoute || status !== 401) {
-        toast.error(message);
-      }
+    // Suppress 401 toasts on protected portals (they trigger logout silently)
+    const isProtectedPortal = originalRequest.url?.includes('/super-admin/') ||
+                              originalRequest.url?.includes('/city-admin/') ||
+                              originalRequest.url?.includes('/partner/');
+    if (!(status === 401 && isProtectedPortal)) {
+      toast.error(message);
     }
 
     return Promise.reject(error.response?.data || { message });

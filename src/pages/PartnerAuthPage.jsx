@@ -35,34 +35,6 @@ import { catalogService } from '../services/catalog.service.js';
 import { cityService } from '../services/city.service.js';
 import { geoapifyService } from '../services/geoapify.service.js';
 
-const DEFAULT_SCHEDULE = [
-  { day: 'Monday', isOpen: true, openTime: '09:00 AM', closeTime: '07:00 PM' },
-  { day: 'Tuesday', isOpen: true, openTime: '09:00 AM', closeTime: '07:00 PM' },
-  { day: 'Wednesday', isOpen: true, openTime: '09:00 AM', closeTime: '07:00 PM' },
-  { day: 'Thursday', isOpen: true, openTime: '09:00 AM', closeTime: '07:00 PM' },
-  { day: 'Friday', isOpen: true, openTime: '09:00 AM', closeTime: '07:00 PM' },
-  { day: 'Saturday', isOpen: true, openTime: '10:00 AM', closeTime: '05:00 PM' },
-  { day: 'Sunday', isOpen: false, openTime: '09:00 AM', closeTime: '07:00 PM' },
-];
-
-const SKILLS_BY_CATEGORY = {
-  'AC & Appliance Repair': ['Split AC Install', 'Gas Refilling', 'Deep Jet Wash', 'Inverter AC Repair', 'Compressor Repair', 'PCB Board Repair'],
-  'Cleaning & Pest Control': ['Bathroom Deep Scrub', 'Kitchen Degreasing', 'Sofa Shampooing', 'Cockroach Gel Treatment', 'Balcony Wash', 'Full Home Polish'],
-  'Plumbing, Electrical & Carpentry': ['Tap & Mixer Fix', 'RO Purifier Filter Service', 'Switch & Fuse Repair', 'Fan & Chandelier Mount', 'Door Lock Fitting', 'Water Heater Repair'],
-  'Salon & Beauty for Women': ['O3+ Glow Facial', 'Rica Waxing', 'Spa Pedicure', 'Hair Spa', 'De-Tan Cleanup', 'Bridal Makeup'],
-  "Men's Salon & Grooming": ['Fade Haircut', 'Beard Shaping', 'Hot Towel Shave', 'Head Massage', 'Hair Color', 'Facial Scrub'],
-  'Home Painting & Decor': ['Accent Wall Paint', 'Wall Waterproofing', 'Damp Treatment', 'Stencil Design', 'POP Repair', 'Emulsion Coating'],
-};
-
-const LOCALITIES_BY_CITY = {
-  'Delhi NCR': ['Connaught Place', 'South Extension', 'Dwarka Sector 10', 'Noida Sector 62', 'Gurugram Cyber City', 'Indirapuram Ghaziabad'],
-  'Bengaluru': ['HSR Layout Sector 1-7', 'Koramangala 4th Block', 'Bellandur Outer Ring', 'BTM Layout Stage 2', 'Indiranagar 100ft Road', 'Whitefield ITPB'],
-  'Mumbai': ['Bandra West', 'Andheri East', 'Powai Hiranandani', 'Juhu Beach Area', 'Lower Parel', 'Thane West'],
-  'Hyderabad': ['Gachibowli', 'HITECH City', 'Banjara Hills', 'Jubilee Hills', 'Kukatpally'],
-  'Pune': ['Viman Nagar', 'Koregaon Park', 'Baner', 'Kharadi', 'Wakad'],
-  'Jaipur': ['Malviya Nagar', 'C Scheme', 'Vaishali Nagar', 'Mansarovar', 'Raja Park'],
-};
-
 const PartnerAuthPage = ({ initialStep = 'phone' }) => {
   const {
     requestPartnerOtp,
@@ -73,6 +45,9 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
     login,
     isLoggingIn,
   } = useAuth();
+
+  const [skillsByCategory, setSkillsByCategory] = useState({});
+  const [localitiesByCity, setLocalitiesByCity] = useState({});
 
   // Active Flow Step:
   // 'phone' | 'otp' | 'create-profile' | 'location-perm' | 'location-popup'
@@ -138,7 +113,15 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
   const [certifications, setCertifications] = useState([]);
   const [workRadius, setWorkRadius] = useState(8);
   const [selectedLocalities, setSelectedLocalities] = useState([]);
-  const [workingHours, setWorkingHours] = useState(DEFAULT_SCHEDULE);
+  const [workingHours, setWorkingHours] = useState([
+    { day: 'Monday', isOpen: true, openTime: '09:00 AM', closeTime: '07:00 PM' },
+    { day: 'Tuesday', isOpen: true, openTime: '09:00 AM', closeTime: '07:00 PM' },
+    { day: 'Wednesday', isOpen: true, openTime: '09:00 AM', closeTime: '07:00 PM' },
+    { day: 'Thursday', isOpen: true, openTime: '09:00 AM', closeTime: '07:00 PM' },
+    { day: 'Friday', isOpen: true, openTime: '09:00 AM', closeTime: '07:00 PM' },
+    { day: 'Saturday', isOpen: true, openTime: '10:00 AM', closeTime: '05:00 PM' },
+    { day: 'Sunday', isOpen: false, openTime: '09:00 AM', closeTime: '07:00 PM' },
+  ]);
   const [searchCatQuery, setSearchCatQuery] = useState('');
 
   // Fallback Email/Password Login State
@@ -170,15 +153,15 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
 
   // Set default localities when work city changes
   useEffect(() => {
-    const locs = LOCALITIES_BY_CITY[workCity] || LOCALITIES_BY_CITY['Delhi NCR'];
+    const locs = localitiesByCity[workCity] || [];
     setSelectedLocalities(locs.slice(0, 3));
-  }, [workCity]);
+  }, [workCity, localitiesByCity]);
 
   // Update skills list when category changes
   useEffect(() => {
-    const categorySkills = SKILLS_BY_CATEGORY[category] || SKILLS_BY_CATEGORY['AC & Appliance Repair'];
+    const categorySkills = skillsByCategory[category] || [];
     setSkills(categorySkills.slice(0, 2));
-  }, [category]);
+  }, [category, skillsByCategory]);
 
   // OTP Countdown Timer
   useEffect(() => {
@@ -301,6 +284,8 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
 
       setPendingUser(userObj);
       setPendingToken(accessToken);
+      // Save token to localStorage so axiosInstance can attach it to subsequent requests
+      if (accessToken) localStorage.setItem('partner_token', accessToken);
 
       // Pre-fill profile fields if user has partial data
       if (userObj.name && !userObj.name.startsWith('Partner ')) setName(userObj.name);
@@ -677,22 +662,6 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
             </form>
 
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <button
-                type="button"
-                onClick={handleQuickFillDemo}
-                style={{
-                  background: '#f1f5f9',
-                  border: '1px border #cbd5e1',
-                  padding: '8px 16px',
-                  borderRadius: '10px',
-                  fontSize: '0.8rem',
-                  fontWeight: '600',
-                  color: '#475569',
-                  cursor: 'pointer',
-                }}
-              >
-                ⚡ Auto-Fill Demo Partner Number
-              </button>
             </div>
 
             <div style={{ marginTop: '16px', textAlign: 'center' }}>
@@ -1260,14 +1229,7 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
 
             {/* Category Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '24px', maxHeight: '300px', overflowY: 'auto' }}>
-              {(categoriesList.length > 0 ? categoriesList : [
-                { name: 'AC & Appliance Repair', icon: 'Wrench' },
-                { name: 'Cleaning & Pest Control', icon: 'Sparkles' },
-                { name: 'Plumbing, Electrical & Carpentry', icon: 'Zap' },
-                { name: 'Salon & Beauty for Women', icon: 'Sparkles' },
-                { name: "Men's Salon & Grooming", icon: 'Scissors' },
-                { name: 'Home Painting & Decor', icon: 'Paintbrush' },
-              ]).filter((c) => c.name.toLowerCase().includes(searchCatQuery.toLowerCase())).map((cat) => {
+              {(categoriesList.length > 0 ? categoriesList : []).filter((c) => c.name.toLowerCase().includes(searchCatQuery.toLowerCase())).map((cat) => {
                 const isSelected = category === cat.name;
                 return (
                   <div
@@ -1344,7 +1306,7 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
                 Select Your Special Skills
               </label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {(SKILLS_BY_CATEGORY[category] || SKILLS_BY_CATEGORY['AC & Appliance Repair']).map((tag) => {
+                {(skillsByCategory[category] || []).map((tag) => {
                   const isSelected = skills.includes(tag);
                   return (
                     <button
@@ -1484,7 +1446,7 @@ const PartnerAuthPage = ({ initialStep = 'phone' }) => {
                 Available Localities ({selectedLocalities.length} selected)
               </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '150px', overflowY: 'auto' }}>
-                {(LOCALITIES_BY_CITY[workCity] || LOCALITIES_BY_CITY['Delhi NCR']).map((loc) => {
+                {(localitiesByCity[workCity] || []).map((loc) => {
                   const isChecked = selectedLocalities.includes(loc);
                   return (
                     <div

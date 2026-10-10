@@ -1,14 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bookingService } from '../services/booking.service.js';
 import { toast } from '../utils/toast.js';
+import { useAuthContext } from '../contexts/AuthContext.jsx';
 
 export const useBookings = (enabled = true) => {
   const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuthContext();
 
   const myBookingsQuery = useQuery({
     queryKey: ['bookings', 'myBookings'],
     queryFn: () => bookingService.getMyBookings(),
-    enabled: !!enabled,
+    enabled: isAuthenticated && !!enabled,
     staleTime: 60 * 1000,
   });
 

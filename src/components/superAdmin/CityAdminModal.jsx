@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Building2, Mail, Lock, User, MapPin, Phone, KeyRound, Loader2 } from 'lucide-react';
+import { X, Building2, Mail, Lock, User, MapPin, Phone, KeyRound, Loader2, Eye, EyeOff } from 'lucide-react';
 import { cityService } from '../../services/city.service.js';
 
 const CityAdminModal = ({ isOpen, onClose, onSubmit, initialData, mode }) => {
@@ -9,6 +9,7 @@ const CityAdminModal = ({ isOpen, onClose, onSubmit, initialData, mode }) => {
   const [assignedCity, setAssignedCity] = useState(initialData?.assignedCity || initialData?.city || '');
   const [activeCities, setActiveCities] = useState([]);
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const status = initialData?.status || 'active';
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -86,15 +87,34 @@ const CityAdminModal = ({ isOpen, onClose, onSubmit, initialData, mode }) => {
           {isResetPasswordMode ? (
             <div className="form-group" style={{ marginBottom: '24px' }}>
               <label className="form-label">New Admin Password</label>
-              <input
-                type="password"
-                className="form-input"
-                placeholder="Enter new password (min 6 chars)"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="form-input"
+                  placeholder="Enter new password (min 6 chars)"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  style={{ paddingRight: '40px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)'
+                  }}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
           ) : (
             /* CREATE / EDIT MODE */
@@ -169,15 +189,37 @@ const CityAdminModal = ({ isOpen, onClose, onSubmit, initialData, mode }) => {
                   <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Lock size={14} /> Admin Password
                   </label>
-                  <input
-                    type="password"
-                    className="form-input"
-                    placeholder="Minimum 6 characters"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={6}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      className="form-input"
+                      placeholder="Minimum 6 characters"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      style={{ paddingRight: '40px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '12px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: 'var(--text-muted)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
               )}
             </>
