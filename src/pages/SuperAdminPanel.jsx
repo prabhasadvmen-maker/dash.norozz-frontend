@@ -116,9 +116,11 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
 
   const { dashboard, customers, partners, bookings, refetch } = useSuperAdmin();
   const {
-    subCategories,
-    services,
-    skills,
+    categories = [],
+    adminCategories = [],
+    subCategories = [],
+    services = [],
+    skills = [],
     createCategory,
     deleteCategory,
     createSubCategory,
