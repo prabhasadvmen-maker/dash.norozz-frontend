@@ -39,9 +39,12 @@ const saveToStorage = (tokenKey, userKey, token, user) => {
 
 const clearFromStorage = (tokenKey, userKey) => {
   try {
+    const refreshKey = tokenKey.replace(/_token$/, '_refresh_token');
     localStorage.removeItem(tokenKey);
+    localStorage.removeItem(refreshKey);
     localStorage.removeItem(userKey);
     sessionStorage.removeItem(tokenKey);
+    sessionStorage.removeItem(refreshKey);
     sessionStorage.removeItem(userKey);
   } catch (e) {}
 };
@@ -49,6 +52,7 @@ const clearFromStorage = (tokenKey, userKey) => {
 const clearAllRoleStorage = () => {
   const allKeys = [
     ...Object.values(TOKEN_KEY),
+    ...Object.values(TOKEN_KEY).map((k) => k.replace(/_token$/, '_refresh_token')),
     ...Object.values(USER_KEY),
     LEGACY_TOKEN_KEY,
     LEGACY_USER_KEY,
@@ -126,7 +130,7 @@ export const AuthProvider = ({ children }) => {
     if (restoredUser) setCurrentUser(restoredUser);
     setLoading(false);
 
-    const handleAutoLogout = () => logout();
+    const handleAutoLogout = () => logout({ revoke: false });
     window.addEventListener('norozz_logout', handleAutoLogout);
     return () => window.removeEventListener('norozz_logout', handleAutoLogout);
   }, []);
@@ -159,8 +163,22 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = (options) => {
     const role = currentUser?.role;
+    // Manual logout: tell the server to revoke the refresh token (skipped for forced logouts, where it is already invalid)
+    if (role && options?.revoke !== false) {
+      const logoutPath = { partner: '/partner/auth/logout', customer: '/customer/auth/logout' }[role];
+      const token = localStorage.getItem(getTokenKey(role)) || sessionStorage.getItem(getTokenKey(role));
+      if (logoutPath && token) {
+        const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+        fetch(`${base}${logoutPath}`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+          keepalive: true,
+        }).catch(() => {});
+      }
+    }
     if (role) clearFromStorage(getTokenKey(role), getUserKey(role));
     clearFromStorage(LEGACY_TOKEN_KEY, LEGACY_USER_KEY);
     setCurrentUser(null);

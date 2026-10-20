@@ -15,6 +15,7 @@ export const partnerService = {
   getRating: () => axiosInstance.get('/partner/rating'),
   getProfile: () => axiosInstance.get('/partner/profile'),
   updateProfile: (data) => axiosInstance.put('/partner/profile', data),
+  getAvailability: () => axiosInstance.get('/partner/availability'),
   updateAvailability: (data) => axiosInstance.put('/partner/availability', data),
   getNotifications: () => axiosInstance.get('/partner/notifications'),
   getReviews: () => axiosInstance.get('/partner/reviews'),

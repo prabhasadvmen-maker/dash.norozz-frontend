@@ -23,7 +23,7 @@ import { toast } from '../../utils/toast.js';
 
 const PartnerJobsTable = ({ onOpenFulfillment }) => {
   const { currentUser } = useAuthContext();
-  const { todayBookings, pendingBookings, completedBookings, cancelledBookings, allBookings } = usePartner('bookings');
+  const { todayBookings, pendingBookings, completedBookings, cancelledBookings, allBookings } = usePartner({ activeTab: 'bookings', isApproved: true });
   const { completeBooking } = useBookings();
 
   const [searchParams, setSearchParams] = useSearchParams();

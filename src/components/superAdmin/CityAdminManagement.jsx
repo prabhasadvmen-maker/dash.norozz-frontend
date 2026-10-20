@@ -16,6 +16,7 @@ const CityAdminManagement = () => {
   const [citiesMap, setCitiesMap] = useState({});
   const [loggingInId, setLoggingInId] = useState(null);
   const [activeDropdownId, setActiveDropdownId] = useState(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
 
   useEffect(() => {
     cityService
@@ -33,11 +34,15 @@ const CityAdminManagement = () => {
       .catch((err) => console.warn('City map fetch warning:', err));
   }, []);
 
-  // Close dropdown on outside click
+  // Close dropdown on outside click / scroll (menu is position: fixed so it escapes the table's overflow clipping)
   useEffect(() => {
     const handleClickOutside = () => setActiveDropdownId(null);
     window.addEventListener('click', handleClickOutside);
-    return () => window.removeEventListener('click', handleClickOutside);
+    window.addEventListener('scroll', handleClickOutside, true);
+    return () => {
+      window.removeEventListener('click', handleClickOutside);
+      window.removeEventListener('scroll', handleClickOutside, true);
+    };
   }, []);
 
   const getCityName = (admin) => {
@@ -295,7 +300,11 @@ const CityAdminManagement = () => {
                     <td style={{ padding: '14px', textAlign: 'center' }}>
                       <div style={{ position: 'relative', display: 'inline-block' }} onClick={(e) => e.stopPropagation()}>
                         <button
-                          onClick={() => setActiveDropdownId(activeDropdownId === admin._id ? null : admin._id)}
+                          onClick={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setDropdownPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+                            setActiveDropdownId(activeDropdownId === admin._id ? null : admin._id);
+                          }}
                           style={{
                             width: '36px',
                             height: '36px',
@@ -316,15 +325,15 @@ const CityAdminManagement = () => {
 
                           {activeDropdownId === admin._id && (
                             <div style={{
-                              position: 'absolute',
-                              right: 0,
-                              top: '42px',
+                              position: 'fixed',
+                              right: dropdownPos.right,
+                              top: dropdownPos.top,
                               background: '#ffffff',
                               border: '1px solid #e2e8f0',
                               borderRadius: '12px',
                               boxShadow: '0 10px 25px rgba(0, 0, 0, 0.12)',
                               padding: '6px',
-                              zIndex: 50,
+                              zIndex: 1000,
                               minWidth: '190px',
                               display: 'flex',
                               flexDirection: 'column',

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { axiosInstance } from '../api/axiosInstance.js';
+import { socketService } from '../services/socket.service.js';
+import { useAuthContext } from '../contexts/AuthContext.jsx';
 import PartnerSidebar from '../components/partner/PartnerSidebar';
 import PartnerMetricCards from '../components/partner/PartnerMetricCards';
 import PartnerWalletCard from '../components/partner/PartnerWalletCard';
@@ -22,17 +24,29 @@ import {
   Upload
 } from 'lucide-react';
 
-const PartnerDashboard = ({ currentUser, onLogout }) => {
+const PartnerDashboard = ({ currentUser: propUser, onLogout }) => {
+  const { currentUser: ctxUser } = useAuthContext();
+  const currentUser = propUser || ctxUser;
   const [activeTab, setActiveTab] = useState('dashboard');
   const [notification, setNotification] = useState({ message: '', type: '' });
 
-  // BUG 1 FIX: Mark partner online in DB when dashboard mounts, offline on unmount
+  // Mark partner online in DB + join socket room for real-time job dispatch
   useEffect(() => {
-    axiosInstance.patch('/auto-assignment/partner-availability', { isOnline: true, isAvailable: true }).catch(() => {});
+    axiosInstance.patch('/dispatch/partner-availability', { isOnline: true, isAvailable: true }).catch(() => {});
+
+    if (currentUser?._id) {
+      socketService.connect();
+      socketService.joinPartner({
+        partnerId: currentUser._id,
+        category: currentUser.category?.name || currentUser.category || '',
+        city: currentUser.city || currentUser.assignedCity || 'Jaunpur',
+      });
+    }
+
     return () => {
-      axiosInstance.patch('/auto-assignment/partner-availability', { isOnline: false, isAvailable: false }).catch(() => {});
+      axiosInstance.patch('/dispatch/partner-availability', { isOnline: false, isAvailable: false }).catch(() => {});
     };
-  }, []);
+  }, [currentUser?._id]);
 
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });

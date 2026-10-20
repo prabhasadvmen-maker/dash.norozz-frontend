@@ -21,46 +21,8 @@ import { customerService } from '../../services/customer.service.js';
 import { axiosInstance } from '../../api/axiosInstance.js';
 import { toast } from '../../utils/toast.js';
 
-const INITIAL_NOTIFICATIONS = [
-  {
-    id: 'NOTIF-101',
-    title: '🎁 50% OFF Summer Voucher Active!',
-    message: 'Use promo code SUMMERAC to get 50% discount on all AC Foam Jet cleaning services today.',
-    category: 'offer',
-    time: '10 minutes ago',
-    read: false,
-    link: '/customer/offers',
-  },
-  {
-    id: 'NOTIF-102',
-    title: '👨‍🔧 Technician Dispatched',
-    message: 'Rajesh Kumar (AC & Appliance Specialist) is on the way to your current address for booking #UC-98213.',
-    category: 'booking',
-    time: '1 hour ago',
-    read: false,
-    link: '/customer/bookings',
-  },
-  {
-    id: 'NOTIF-103',
-    title: '💰 Wallet Cashback Credited',
-    message: '₹150 cashback credited to your Norozz Pay Wallet for your recent booking completion.',
-    category: 'system',
-    time: 'Yesterday',
-    read: true,
-    link: '/customer/wallet',
-  },
-  {
-    id: 'NOTIF-104',
-    title: '🛡️ Safety First Feature Enabled',
-    message: 'All Norozz verified partners are now background-verified and health-screened before assignment.',
-    category: 'system',
-    time: '2 days ago',
-    read: true,
-  },
-];
-
 const CustomerNotificationsView = ({ onNavigate }) => {
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
   const [pushPermission, setPushPermission] = useState('default');
@@ -79,24 +41,21 @@ const CustomerNotificationsView = ({ onNavigate }) => {
     setLoading(true);
     try {
       const res = await customerService.getNotifications();
-      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-        // Merge with initial notifications safely
-        const apiNotifs = res.data.map((item, idx) => ({
-          id: item.id || `API-NOTIF-${idx}`,
-          title: item.title || 'System Notification',
-          message: item.message || item.body || '',
-          category: item.category || 'system',
-          time: item.time || 'Recently',
-          read: false,
-        }));
-        setNotifications((prev) => {
-          const combined = [...apiNotifs, ...prev];
-          const unique = combined.filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i);
-          return unique;
-        });
+      if (res?.data && Array.isArray(res.data)) {
+        setNotifications(
+          res.data.map((item, idx) => ({
+            id: item.id || `API-NOTIF-${idx}`,
+            title: item.title || 'System Notification',
+            message: item.message || item.body || '',
+            category: item.category || 'system',
+            time: item.time || 'Recently',
+            link: item.link,
+            read: false,
+          }))
+        );
       }
     } catch {
-      // Keep initial notifications state on fallback
+      // Keep current notifications on failure (error toast is shown by the axios interceptor)
     } finally {
       setLoading(false);
     }

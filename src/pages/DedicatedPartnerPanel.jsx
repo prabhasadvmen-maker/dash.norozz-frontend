@@ -13,6 +13,10 @@ import PartnerFulfillmentPage from './partner/PartnerFulfillmentPage';
 import PartnerProfileView from '../components/partner/PartnerProfileView';
 import PartnerAnalyticsView from '../components/partner/PartnerAnalyticsView';
 import PartnerCalendarView from '../components/partner/PartnerCalendarView';
+import PartnerReviewsView from '../components/partner/PartnerReviewsView';
+import PartnerAvailabilityView from '../components/partner/PartnerAvailabilityView';
+import PartnerNotificationsView from '../components/partner/PartnerNotificationsView';
+import PartnerSupportView from '../components/partner/PartnerSupportView';
 import { socketService } from '../services/socket.service.js';
 import { cityService } from '../services/city.service.js';
 import { catalogService } from '../services/catalog.service.js';
@@ -22,8 +26,6 @@ import { toast } from '../utils/toast.js';
 import {
   Users,
   Calendar,
-  Star,
-  Headphones,
   Lock,
   ZapOff,
 } from 'lucide-react';
@@ -47,6 +49,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
     if (path.includes('/partner/availability')) return 'availability';
     if (path.includes('/partner/settings')) return 'settings';
     if (path.includes('/partner/support')) return 'support';
+    if (path.includes('/partner/notifications')) return 'notifications';
     return 'dashboard';
   };
 
@@ -68,12 +71,13 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
       availability: '/partner/availability',
       settings: '/partner/settings',
       support: '/partner/support',
+      notifications: '/partner/notifications',
     };
     const targetPath = tabToPath[tabId] || '/partner/dashboard';
     navigate(targetPath);
   };
 
-  const { dashboard, todayBookings, updateAvailability, refetchAll, refetchAll: refetch } = usePartner(activeTab);
+  const { dashboard, todayBookings, updateAvailability, refetchAll, refetchAll: refetch } = usePartner({ activeTab, isApproved: currentUser?.kycStatus === 'approved' });
   const [refreshing, setRefreshing] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -162,19 +166,19 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
 
   // BUG 2 FIX: Mark partner as ONLINE in DB via REST API when they open the dashboard
   useEffect(() => {
-    if (!currentUser?._id) return;
+    if (!currentUser?._id || currentUser?.kycStatus !== 'approved') return;
 
     // Go online on mount
-    axiosInstance.patch('/auto-assignment/partner-availability', { isOnline: true, isAvailable: true })
+    axiosInstance.patch('/dispatch/partner-availability', { isOnline: true, isAvailable: true })
       .then(() => console.log('✅ Partner marked ONLINE via REST API on dashboard mount.'))
       .catch((err) => console.warn('Could not mark partner online via REST:', err?.response?.data?.message || err.message));
 
     // Go offline on unmount (page close / logout)
     return () => {
-      axiosInstance.patch('/auto-assignment/partner-availability', { isOnline: false, isAvailable: false })
+      axiosInstance.patch('/dispatch/partner-availability', { isOnline: false, isAvailable: false })
         .catch(() => {}); // Best-effort: page may be unloading
     };
-  }, [currentUser?._id]);
+  }, [currentUser?._id, currentUser?.kycStatus]);
 
   // Real-Time Socket.io Connection Effect
   useEffect(() => {
@@ -361,6 +365,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
                 {activeTab === 'editProfile' && 'Edit Service Technician Profile'}
                 {activeTab === 'settings' && 'Technician Portal Preferences & Security Settings'}
                 {activeTab === 'support' && 'Technician Priority Helpdesk'}
+                {activeTab === 'notifications' && 'Notifications & Activity Alerts'}
                 {activeTab === 'profile' && 'Service Technician Partner Profile'}
               </h2>
               <p style={{ fontSize: '0.86rem', color: '#475569', marginTop: '4px', fontWeight: '700' }}>
@@ -504,16 +509,10 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
           )}
 
           {/* TAB: SUPPORT */}
-          {activeTab === 'support' && (
-            <div className="mui-card" style={{ padding: '26px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Headphones size={20} color="#2563eb" /> Technician Partner Helpdesk
-              </h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Need help with job dispatch or KYC verification? Contact City Operations Manager at <strong>+91 1800 200 9090</strong>.
-              </p>
-            </div>
-          )}
+          {activeTab === 'support' && <PartnerSupportView />}
+
+          {/* TAB: NOTIFICATIONS */}
+          {activeTab === 'notifications' && <PartnerNotificationsView />}
 
           {/* PERFORMANCE ANALYTICS TAB */}
           {activeTab === 'analytics' && <PartnerAnalyticsView currentUser={currentUser} />}
@@ -532,13 +531,9 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
             <>
               {activeTab === 'bookings' && <PartnerJobsTable onOpenFulfillment={handleOpenFulfillment} />}
               {activeTab === 'calendar' && <PartnerCalendarView onOpenFulfillment={handleOpenFulfillment} />}
-              {activeTab === 'reviews' && (
-                <div className="mui-card" style={{ padding: '26px' }}>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Star size={20} color="#f59e0b" /> Customer Ratings & Reviews
-                  </h3>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Live Customer Reviews Received.</p>
-                </div>
+              {activeTab === 'reviews' && <PartnerReviewsView />}
+              {activeTab === 'availability' && (
+                <PartnerAvailabilityView isOnline={isOnline} onToggleOnlineClick={handleOpenOnlineModal} />
               )}
             </>
           )}

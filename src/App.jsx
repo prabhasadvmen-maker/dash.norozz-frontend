@@ -192,49 +192,73 @@ function AppContent() {
         <Route
           path="/login"
           element={
-            <PublicAuthLayout>
-              <CustomerAuthPage />
-            </PublicAuthLayout>
+            currentUser && userRole === 'customer' ? (
+              <Navigate to="/" replace />
+            ) : (
+              <PublicAuthLayout>
+                <CustomerAuthPage />
+              </PublicAuthLayout>
+            )
           }
         />
         <Route
           path="/user/login"
           element={
-            <PublicAuthLayout>
-              <CustomerAuthPage />
-            </PublicAuthLayout>
+            currentUser && userRole === 'customer' ? (
+              <Navigate to="/" replace />
+            ) : (
+              <PublicAuthLayout>
+                <CustomerAuthPage />
+              </PublicAuthLayout>
+            )
           }
         />
         <Route
           path="/customer/login"
           element={
-            <PublicAuthLayout>
-              <CustomerAuthPage />
-            </PublicAuthLayout>
+            currentUser && userRole === 'customer' ? (
+              <Navigate to="/" replace />
+            ) : (
+              <PublicAuthLayout>
+                <CustomerAuthPage />
+              </PublicAuthLayout>
+            )
           }
         />
         <Route
           path="/partner/login"
           element={
-            <PublicAuthLayout>
-              <PartnerAuthPage />
-            </PublicAuthLayout>
+            currentUser && userRole === 'partner' ? (
+              <Navigate to="/partner" replace />
+            ) : (
+              <PublicAuthLayout>
+                <PartnerAuthPage />
+              </PublicAuthLayout>
+            )
           }
         />
         <Route
           path="/city-admin/login"
           element={
-            <PublicAuthLayout>
-              <CityAdminLoginPage />
-            </PublicAuthLayout>
+            currentUser && (userRole === 'admin' || userRole === 'cityAdmin') ? (
+              <Navigate to="/city-admin" replace />
+            ) : (
+              <PublicAuthLayout>
+                <CityAdminLoginPage />
+              </PublicAuthLayout>
+            )
           }
         />
         <Route
           path="/super-admin/login"
           element={
-            <PublicAuthLayout>
-              <SuperAdminLoginPage />
-            </PublicAuthLayout>
+            currentUser && userRole === 'superadmin' ? (
+              <Navigate to="/super-admin" replace />
+            ) : (
+              <PublicAuthLayout>
+                <SuperAdminLoginPage />
+              </PublicAuthLayout>
+            )
           }
         />
 

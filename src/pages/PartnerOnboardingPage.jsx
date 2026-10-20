@@ -216,6 +216,7 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
       if (resizeObserver) resizeObserver.disconnect();
       if (mapInstanceRef.current) {
         try {
+          mapInstanceRef.current.stop();
           mapInstanceRef.current.off();
           mapInstanceRef.current.remove();
         } catch (e) {
@@ -237,7 +238,7 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
         const map = mapInstanceRef.current;
         if (map && map._container) {
           map.invalidateSize();
-          map.setView([cLat, cLng], 13);
+          map.setView([cLat, cLng], 13, { animate: false });
           if (markerInstanceRef.current) {
             markerInstanceRef.current.setLatLng([cLat, cLng]);
             markerInstanceRef.current.bindPopup(`<b>Selected Position</b><br>Lat: ${cLat.toFixed(4)}, Lng: ${cLng.toFixed(4)}`);
@@ -258,7 +259,7 @@ const InteractiveServiceMap = ({ city = 'Delhi NCR', radiusKm = 8, coords = null
       try {
         circleInstanceRef.current.setRadius(radiusKm * 1000);
         if (mapInstanceRef.current && mapInstanceRef.current._container) {
-          mapInstanceRef.current.fitBounds(circleInstanceRef.current.getBounds(), { padding: [20, 20] });
+          mapInstanceRef.current.fitBounds(circleInstanceRef.current.getBounds(), { padding: [20, 20], animate: false });
         }
       } catch {
         // ignore map fitBounds exception if unmounted

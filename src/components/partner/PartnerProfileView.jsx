@@ -339,8 +339,9 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
     if (activeSubTab === 'settings') {
       partnerService.getChatMessages()
         .then((res) => {
-          if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
-            setChatMessages(res.data.data);
+          const list = res.data?.data || res.data;
+          if (Array.isArray(list) && list.length > 0) {
+            setChatMessages(list.map((m) => ({ ...m, id: m.id || m._id, name: m.name || m.agentName })));
           }
         })
         .catch((err) => console.error('Failed to load chat messages:', err));
@@ -407,8 +408,12 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
 
     try {
       const res = await partnerService.sendChatMessage({ text });
-      if (res.data?.data) {
-        setChatMessages(res.data.data);
+      const list = res.data?.data || res.data;
+      if (Array.isArray(list)) {
+        setChatMessages((prev) => [
+          ...prev,
+          ...list.map((m) => ({ ...m, id: m.id || m._id, name: m.name || m.agentName })),
+        ]);
       }
     } catch (err) {
       toast.error('Failed to send message to support chat');
@@ -448,7 +453,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
     setSubmittingComplaint(true);
     try {
       const res = await partnerService.submitComplaint(complaintForm);
-      const created = res.data?.data;
+      const created = res.data?.data || res.data;
       const ticketId = created?.ticketId || 'TKT-LIVE';
       toast.success(`🎉 Complaint registered in database! Ticket ID: ${ticketId}`);
       setComplaintForm({

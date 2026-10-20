@@ -8,6 +8,7 @@ import CustomerHomeSections from '../components/customer/CustomerHomeSections';
 import CustomerProfileView from '../components/customer/CustomerProfileView';
 import CustomerAiChatView from '../components/customer/CustomerAiChatView';
 import CustomerWalletView from '../components/customer/CustomerWalletView';
+import CustomerNotificationsView from '../components/customer/CustomerNotificationsView';
 import ServiceDetailsModal from '../components/customer/ServiceDetailsModal';
 import StarterPackBanner from '../components/customer/StarterPackBanner';
 import CustomerBookingTrackingPage from './customer/CustomerBookingTrackingPage';
@@ -44,7 +45,7 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
     }
   };
 
-  const { dashboard, popularServices, refetchCustomer } = useCustomer(activeTab);
+  const { dashboard, popularServices, refetch: refetchCustomer } = useCustomer(activeTab);
   const { myBookings } = useBookings(activeTab === 'bookings');
   const { updateUser } = useAuth();
 
@@ -715,6 +716,17 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
         {/* TAB 3: WALLET */}
         {activeTab === 'wallet' && (
           <CustomerWalletView currentUser={currentUser} onBalanceUpdate={() => refetchCustomer()} />
+        )}
+
+        {/* TAB: NOTIFICATIONS (opened from navbar bell / profile menu / bottom nav) */}
+        {activeTab === 'notifications' && (
+          <CustomerNotificationsView
+            onNavigate={(path) => {
+              if (path.includes('wallet')) setActiveTab('wallet');
+              else if (path.includes('bookings')) setActiveTab('bookings');
+              else setActiveTab('home');
+            }}
+          />
         )}
 
         {/* TAB 4: PROFILE */}

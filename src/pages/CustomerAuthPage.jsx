@@ -269,6 +269,9 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
           isProfileCompleted: true,
         };
       } catch (err) {
+        // Server rejected the profile (e.g. email already linked): stop here instead of faking success.
+        // The axios interceptor has already shown the error toast.
+        if (err?.statusCode) throw err;
         console.warn('Profile update API warning:', err);
         updatedUser = {
           ...pendingSession?.user,
@@ -286,7 +289,8 @@ const CustomerAuthPage = ({ onLoginSuccess }) => {
       toast.success(`Account setup complete! Welcome to NOROZZ, ${profileName}!`);
       login(updatedUser, tokenToUse);
     } catch (err) {
-      setError(err.message || 'Failed to update profile details.');
+      // Server errors are already toasted by the axios interceptor; avoid showing the same message twice
+      if (!err?.statusCode) setError(err.message || 'Failed to update profile details.');
     } finally {
       setLoading(false);
     }

@@ -31,12 +31,19 @@ export const translationService = {
    * Send batch translation request to backend API
    */
   translateBatch: async ({ texts, sourceLanguage = 'en-IN', targetLanguage = 'hi-IN' }) => {
-    const res = await axiosInstance.post('/translation/translate-batch', {
-      texts,
-      sourceLanguage,
-      targetLanguage,
-    });
-    return res;
+    try {
+      const res = await axiosInstance.post('/translation/translate-batch', {
+        texts,
+        sourceLanguage,
+        targetLanguage,
+      });
+      return res;
+    } catch (err) {
+      if (err?.code === 'ERR_NETWORK' || err?.code === 'ERR_CONNECTION_REFUSED') {
+        return { data: { translations: texts } }; // fallback: return original texts
+      }
+      throw err;
+    }
   },
 
   /**

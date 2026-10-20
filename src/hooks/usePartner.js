@@ -20,9 +20,12 @@ export const usePartner = (tabOrOptions = 'dashboard') => {
     ? tabOrOptions 
     : (tabOrOptions?.activeTab || tabOrOptions?.tab || 'dashboard');
 
+  // Booking/wallet endpoints return 403 until City Admin approves KYC, so don't call them before that
+  const isApproved = typeof tabOrOptions === 'object' ? tabOrOptions?.isApproved !== false : true;
+
   const isDashboard = activeTab === 'dashboard' && isAuthenticated;
-  const isBookings = activeTab === 'bookings' && isAuthenticated;
-  const isWallet = activeTab === 'wallet' && isAuthenticated;
+  const isBookings = activeTab === 'bookings' && isAuthenticated && isApproved;
+  const isWallet = activeTab === 'wallet' && isAuthenticated && isApproved;
   const isReviews = activeTab === 'reviews' && isAuthenticated;
 
   // 1. Dashboard Overview Query (Only active on Dashboard tab)
@@ -37,7 +40,7 @@ export const usePartner = (tabOrOptions = 'dashboard') => {
   const allBookingsQuery = useQuery({
     queryKey: ['partner', 'bookings', 'all'],
     queryFn: () => partnerService.getAllBookings(),
-    enabled: isBookings || isDashboard,
+    enabled: isBookings || (isDashboard && isApproved),
     ...QUERY_CONFIG,
   });
 
@@ -45,7 +48,7 @@ export const usePartner = (tabOrOptions = 'dashboard') => {
   const pendingBookingsQuery = useQuery({
     queryKey: ['partner', 'bookings', 'pending'],
     queryFn: () => partnerService.getPendingBookings(),
-    enabled: isBookings || isDashboard,
+    enabled: isBookings || (isDashboard && isApproved),
     ...QUERY_CONFIG,
   });
 
@@ -53,7 +56,7 @@ export const usePartner = (tabOrOptions = 'dashboard') => {
   const walletQuery = useQuery({
     queryKey: ['partner', 'wallet'],
     queryFn: () => partnerService.getWallet(),
-    enabled: isWallet || isDashboard,
+    enabled: isWallet || (isDashboard && isApproved),
     ...QUERY_CONFIG,
   });
 

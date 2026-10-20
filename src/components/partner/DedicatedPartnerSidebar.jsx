@@ -16,8 +16,10 @@ import {
   Lock,
   Briefcase,
   TrendingUp,
+  Bell,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { partnerService } from '../../services/partner.service.js';
 
 const DedicatedPartnerSidebar = ({
   activeTab,
@@ -31,13 +33,10 @@ const DedicatedPartnerSidebar = ({
   const [referralBonus, setReferralBonus] = useState(500);
 
   useEffect(() => {
-    fetch('/api/partner/dashboard/referral', {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.data?.referralBonusAmount) {
-          setReferralBonus(data.data.referralBonusAmount);
+    partnerService.getReferralData()
+      .then((res) => {
+        if (res?.success && res.data?.referralBonusAmount) {
+          setReferralBonus(res.data.referralBonusAmount);
         }
       })
       .catch(() => {});
@@ -50,6 +49,7 @@ const DedicatedPartnerSidebar = ({
     { id: 'editProfile', label: 'EDIT PROFILE', icon: UserCheck },
     { id: 'documents', label: 'MY DOCUMENTS', icon: FileText },
     { id: 'bankDetails', label: 'BANK DETAILS', icon: Landmark },
+    { id: 'notifications', label: 'NOTIFICATIONS', icon: Bell },
   ];
 
   const fullItems = [
@@ -65,6 +65,7 @@ const DedicatedPartnerSidebar = ({
     { id: 'referral', label: 'REFERRAL PROGRAM', icon: Gift, badge: `₹${referralBonus}` },
     { id: 'reviews', label: 'REVIEWS', icon: Star },
     { id: 'availability', label: 'AVAILABILITY', icon: Clock },
+    { id: 'notifications', label: 'NOTIFICATIONS', icon: Bell },
   ];
 
   const mainMenuItems = isApproved ? fullItems : baseItems;
