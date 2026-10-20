@@ -245,6 +245,23 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
   // Active Step: 1=details, 2=nav, 3=customerInfo, 4=otp, 5=execution, 6=pause, 7=addons, 8=payment
   const [step, setStep] = useState(1);
 
+  // Share the partner's live position with the customer while travelling to the job (steps 1-2)
+  useEffect(() => {
+    if (!bookingIdStr || (step !== 1 && step !== 2) || !navigator.geolocation) return undefined;
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        socketService.getSocket().emit('partner_location', {
+          bookingId: bookingIdStr,
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        });
+      },
+      () => { /* location permission denied: customer simply sees no live pin */ },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [bookingIdStr, step]);
+
   // OTP State (Blank input fields so technician asks customer and enters manually)
   const [otpDigits, setOtpDigits] = useState(['', '', '', '']);
   const [otpVerifying, setOtpVerifying] = useState(false);
@@ -892,7 +909,8 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                           await partnerService.claimJobOffer(rawId);
                           toast.success('🎉 Congratulations! You have accepted this job offer.');
                           const res = await partnerService.getBookingDetails(rawId);
-                          if (res.data?.data) setFullBookingData(res.data.data);
+                          const claimed = res.data?.data || res.data;
+                          if (claimed) setFullBookingData(claimed);
                         } catch (err) {
                           toast.error(err.response?.data?.message || 'Failed to accept job.');
                         }

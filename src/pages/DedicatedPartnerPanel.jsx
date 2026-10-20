@@ -185,11 +185,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
     if (!currentUser?._id) return;
 
     const socket = socketService.connect();
-    socketService.joinPartner({
-      partnerId: currentUser._id,
-      category: currentUser.category || 'AC & Appliance Repair',
-      city: resolvedCityName,
-    });
+    socketService.joinPartner({ online: Boolean(isOnline) });
 
     // Listen for new real-time job offers
     socketService.onNewJobOffer((offer) => {
@@ -221,7 +217,21 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
     socket.on('new_chat_message', handleIncomingChatMessage);
     socket.on('new_chat_notification', handleIncomingChatMessage);
 
+    // Admin / auto-assignment pushed a job to this partner, or the customer cancelled one
+    const handleJobAssigned = () => {
+      toast.info('📌 A new job has been assigned to you. Please accept it from your jobs list.');
+      refetch();
+    };
+    const handleBookingCancelled = () => {
+      toast.info('A booking assigned to you was cancelled by the customer.');
+      refetch();
+    };
+    socket.on('job_assigned', handleJobAssigned);
+    socket.on('booking_cancelled', handleBookingCancelled);
+
     return () => {
+      socket.off('job_assigned', handleJobAssigned);
+      socket.off('booking_cancelled', handleBookingCancelled);
       socketService.off('new_job_offer');
       socketService.off('job_claimed');
       socket.off('new_chat_message', handleIncomingChatMessage);
@@ -234,7 +244,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
     setClaimingJob(true);
 
     socketService.claimJob(
-      { bookingId: offer.bookingId, partnerId: currentUser._id },
+      { bookingId: offer.bookingId },
       async (res) => {
         setClaimingJob(false);
         if (res && res.success) {

@@ -193,7 +193,7 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
     socketRef.current = socket;
 
     const bIdStr = booking._id || booking.id;
-    socket.emit('join_user', { userId: currentUser?._id || currentUser?.id });
+    socket.emit('join_user', {});
     if (bIdStr) {
       socket.emit('join_chat_room', { bookingId: bIdStr });
     }
@@ -235,14 +235,25 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
       }
     };
 
+    // Server-pushed state changes (assigned, on the way, started, completed, cancelled ...): refresh immediately
+    const handleBookingEvent = (payload) => {
+      if (!payload?.bookingId || String(payload.bookingId) === String(bIdStr)) fetchFreshBookingStatus();
+    };
+
     socket.on('voice:call:incoming', handleIncomingCall);
     socket.on('partner_location_update', handlePartnerLocationUpdate);
+    socket.on('booking_updated', handleBookingEvent);
+    socket.on('partner_assigned', handleBookingEvent);
+    socket.on('partner_unassigned', handleBookingEvent);
 
     return () => {
       isMounted = false;
       clearInterval(intervalId);
       socket.off('voice:call:incoming', handleIncomingCall);
       socket.off('partner_location_update', handlePartnerLocationUpdate);
+      socket.off('booking_updated', handleBookingEvent);
+      socket.off('partner_assigned', handleBookingEvent);
+      socket.off('partner_unassigned', handleBookingEvent);
     };
   }, [booking, currentUser]);
 
@@ -250,40 +261,40 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
   const currentBooking = liveBooking || booking;
 
   // Extracted Fields & Partner Assignment Check
-  const bRef = booking.bookingId || booking.bookingNumber || `UC-${booking._id?.toString().slice(-6).toUpperCase() || '83547'}`;
-  const sTitle = booking.packageName || booking.service?.name || booking.serviceName || booking.packageTitle || 'Service Package';
-  const sAmount = booking.amount || booking.totalAmount || booking.service?.finalPrice || 599;
-  const rawStatus = booking.status || 'Pending';
+  const bRef = currentBooking.bookingId || currentBooking.bookingNumber || `UC-${currentBooking._id?.toString().slice(-6).toUpperCase() || '83547'}`;
+  const sTitle = currentBooking.packageName || currentBooking.service?.name || currentBooking.serviceName || currentBooking.packageTitle || 'Service Package';
+  const sAmount = currentBooking.amount || currentBooking.totalAmount || currentBooking.service?.finalPrice || 599;
+  const rawStatus = currentBooking.status || 'Pending';
 
   const isCompleted = rawStatus === 'Completed' || rawStatus === 'completed';
 
   // Check if partner is actually assigned & accepted
   const isAssigned = Boolean(
-    booking.partner &&
-    (typeof booking.partner === 'object' ? booking.partner.name : booking.partner) &&
+    currentBooking.partner &&
+    (typeof currentBooking.partner === 'object' ? currentBooking.partner.name : currentBooking.partner) &&
     rawStatus !== 'Pending'
   );
 
   const sStatus = isAssigned ? rawStatus : 'Pending';
 
   // OTP Verification & Cancellation Rules
-  const isOtpVerified = Boolean(booking.otpVerified || booking.serviceStarted || sStatus === 'Started' || sStatus === 'In Progress');
+  const isOtpVerified = Boolean(currentBooking.otpVerified || currentBooking.serviceStarted || sStatus === 'Started' || sStatus === 'In Progress');
   const isFinishedOrCancelled = isCompleted || sStatus === 'Cancelled' || sStatus === 'cancelled' || sStatus === 'Refunded';
   const canCancel = !isOtpVerified && !isFinishedOrCancelled;
 
   // 4-Digit OTP Code
-  const otpCode = String(booking.completionOtp || '2847');
-  const otpDigits = otpCode.length === 4 ? otpCode.split('') : ['2', '8', '4', '7'];
+  const otpCode = String(currentBooking.completionOtp || currentBooking.completionOtp || '');
+  const otpDigits = otpCode.length === 4 ? otpCode.split('') : ['-', '-', '-', '-'];
 
   // Partner Info
-  const partnerObj = typeof booking.partner === 'object' ? booking.partner : null;
+  const partnerObj = typeof currentBooking.partner === 'object' ? currentBooking.partner : null;
   const partnerName = isAssigned ? (partnerObj?.name || 'Assigned Technician') : 'Searching Partner';
   const partnerPhone = isAssigned ? (partnerObj?.phone || '') : null;
-  const rawDateStr = booking.bookingDate
-    ? new Date(booking.bookingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+  const rawDateStr = currentBooking.bookingDate
+    ? new Date(currentBooking.bookingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
     : 'Today';
 
-  let displaySlot = booking.timeSlot || booking.bookingTimeSlot || '10:30 AM';
+  let displaySlot = currentBooking.timeSlot || currentBooking.bookingTimeSlot || '10:30 AM';
   if (displaySlot.includes('•')) {
     displaySlot = displaySlot.split('•').pop().trim();
   } else if (displaySlot.includes(' at ')) {
@@ -292,23 +303,23 @@ const CustomerBookingTrackingPage = ({ booking, currentUser, onBack }) => {
 
   const sFormattedDate = `${rawDateStr} • ${displaySlot}`;
 
-const addressText = typeof booking.address === 'object'
-    ? `${booking.address?.addressLine ? booking.address.addressLine + ', ' : ''}${booking.address?.city || booking.city || 'Delhi NCR'}`
-    : (booking.address || booking.city || 'Delhi NCR');
+const addressText = typeof currentBooking.address === 'object'
+    ? `${currentBooking.address?.addressLine ? currentBooking.address.addressLine + ', ' : ''}${currentBooking.address?.city || currentBooking.city || 'Delhi NCR'}`
+    : (currentBooking.address || currentBooking.city || 'Delhi NCR');
 
-  const primaryServicePrice = booking.packageSnapshot?.finalPrice ||
-                              booking.packageSnapshot?.price ||
-                              booking.service?.finalPrice ||
-                              booking.service?.price ||
-                              (booking.extraServices && booking.extraServices.length > 0
-                                ? Math.max(0, booking.amount - booking.extraServices.reduce((s, i) => s + Number(i.price || 0), 0))
-                                : booking.amount) ||
+  const primaryServicePrice = currentBooking.packageSnapshot?.finalPrice ||
+                              currentBooking.packageSnapshot?.price ||
+                              currentBooking.service?.finalPrice ||
+                              currentBooking.service?.price ||
+                              (currentBooking.extraServices && currentBooking.extraServices.length > 0
+                                ? Math.max(0, currentBooking.amount - currentBooking.extraServices.reduce((s, i) => s + Number(i.price || 0), 0))
+                                : currentBooking.amount) ||
                               399;
 
-  const extraServicesList = booking.extraServices || [];
+  const extraServicesList = currentBooking.extraServices || [];
   const extraServicesTotal = extraServicesList.reduce((sum, item) => sum + Number(item.price || 0), 0);
   const totalSubtotal = primaryServicePrice + extraServicesTotal;
-  const totalPaidAmount = booking.amount || totalSubtotal;
+  const totalPaidAmount = currentBooking.amount || totalSubtotal;
   const basePrice = primaryServicePrice;
   const platformFee = 0;
 

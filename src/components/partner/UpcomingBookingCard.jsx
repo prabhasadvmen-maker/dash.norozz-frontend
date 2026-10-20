@@ -46,7 +46,6 @@ const UpcomingBookingCard = ({ booking, onViewAllClick, onOpenFulfillment }) => 
       ? `${booking.address?.addressLine ? booking.address.addressLine + ', ' : ''}${booking.address?.city || booking.city || 'Delhi NCR'}`
       : (booking.address || booking.city || 'HSR Layout Sector 2, Bengaluru'),
     status: booking.status || 'Accepted',
-    completionOtp: booking.completionOtp || '2847',
   };
 
   const handleNavigate = () => {
@@ -77,12 +76,10 @@ const UpcomingBookingCard = ({ booking, onViewAllClick, onOpenFulfillment }) => 
     if (activeBooking.status === 'Accepted' || activeBooking.status === 'Assigned') {
       await updateBookingStatus({ id: activeBooking.rawId, status: 'On The Way' });
       toast.success('Updated status to ON THE WAY');
-    } else if (activeBooking.status === 'On The Way') {
-      await updateBookingStatus({ id: activeBooking.rawId, status: 'Started' });
-      toast.success('Service STARTED! Verification timer active.');
-    } else if (activeBooking.status === 'Started') {
-      await completeBooking(activeBooking.rawId);
-      toast.success('Service COMPLETED! Earnings added to your wallet.');
+    } else if (activeBooking.status === 'On The Way' || activeBooking.status === 'Started') {
+      // Starting requires the customer's OTP and completing requires the full fulfilment steps:
+      // both happen on the job screen, never with a one-tap shortcut.
+      toast.info('Open the job to verify the customer OTP and complete the service.');
     }
   };
 

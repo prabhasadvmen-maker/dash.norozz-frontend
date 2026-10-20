@@ -29,7 +29,7 @@ const StarterPackBanner = ({ onSelectStarterPack }) => {
     if (e) e.stopPropagation();
     setClaiming(true);
     try {
-      await customerService.claimStarterPack();
+      // The offer is consumed by the booking itself (server-side), not by tapping the banner
       toast.success(`🎉 Starter Pack Offer Claimed! ₹${pack.offerPrice || 139} for ${pack.visitCount || 2} Visits applied!`);
     } catch (err) {
       console.warn('Claim starter pack warning:', err);

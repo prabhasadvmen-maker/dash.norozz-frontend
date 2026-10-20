@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -27,6 +27,7 @@ import { useBookings } from '../../hooks/useBookings.js';
 import { useCustomer } from '../../hooks/useCustomer.js';
 import { useAuth } from '../../hooks/useAuth.js';
 import { customerService } from '../../services/customer.service.js';
+import { payWithGateway } from '../../utils/razorpay.js';
 import { catalogService } from '../../services/catalog.service.js';
 import { paymentService } from '../../services/payment.service.js';
 import { geoapifyService } from '../../services/geoapify.service.js';
@@ -229,8 +230,37 @@ const AddressMapPicker = ({ onLocationSelect, onMapReady, onLocateGps, isLocatin
   );
 };
 
+const SLOT_TIMES = ['09:00 AM', '10:30 AM', '02:00 PM', '05:00 PM', '07:00 PM'];
+
+const slotMinutes = (t) => {
+  const [hm, ap] = t.split(' ');
+  let [h, m] = hm.split(':').map(Number);
+  if (ap === 'PM' && h !== 12) h += 12;
+  if (ap === 'AM' && h === 12) h = 0;
+  return h * 60 + m;
+};
+
+// Real upcoming days; for today only slots that start at least an hour from now
+const buildScheduleDays = (count = 5) => {
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const days = [];
+  for (let i = 0; days.length < count && i < count + 2; i++) {
+    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    const slots = SLOT_TIMES.filter((t) => i > 0 || slotMinutes(t) >= nowMin + 60);
+    if (!slots.length) continue;
+    days.push({
+      label: date.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' }),
+      date,
+      slots,
+    });
+  }
+  return days;
+};
+
 const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToBookings, appliedStarterPack }) => {
-  const { createBooking, payBooking } = useBookings();
+  const { createBooking } = useBookings();
+  const pendingBookingRef = useRef(null); // unpaid booking of this session: a payment retry pays the SAME booking
   const { addresses, refetchCustomer } = useCustomer();
   const { updateUser } = useAuth();
 
@@ -253,27 +283,21 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
   const [newFullAddress, setNewFullAddress] = useState('');
   const [newFloorApt, setNewFloorApt] = useState('');
   const [newLandmark, setNewLandmark] = useState('');
-  const [newCity, setNewCity] = useState(currentUser?.city || 'Delhi NCR');
+  const [newCity, setNewCity] = useState(currentUser?.city || '');
+  const newCoordsRef = useRef(null);
 
   // Date & Time Slot State
-  const [selectedDate, setSelectedDate] = useState('Sat, March 15, 2025');
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState('10:30 AM');
+  const scheduleDays = useMemo(() => buildScheduleDays(), []);
+  const [selectedDate, setSelectedDate] = useState(scheduleDays[0].label);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState(scheduleDays[0].slots[0]);
   const [isSlotPickerOpen, setIsSlotPickerOpen] = useState(false);
 
-  const availableDates = [
-    'Sat, March 15, 2025',
-    'Sun, March 16, 2025',
-    'Mon, March 17, 2025',
-    'Tue, March 18, 2025'
-  ];
+  const availableDates = scheduleDays.map((d) => d.label);
+  const availableTimeSlots = (scheduleDays.find((d) => d.label === selectedDate) || scheduleDays[0]).slots;
 
-  const availableTimeSlots = [
-    '09:00 AM',
-    '10:30 AM',
-    '02:00 PM',
-    '05:00 PM',
-    '07:00 PM'
-  ];
+  useEffect(() => {
+    if (!availableTimeSlots.includes(selectedTimeSlot)) setSelectedTimeSlot(availableTimeSlots[0]);
+  }, [selectedDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Platform Fee State
   const [customerPlatformFeePercent, setCustomerPlatformFeePercent] = useState(5);
@@ -427,7 +451,10 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
       const formatted = addresses.map((a, idx) => ({
         id: a._id || String(idx + 1),
         label: a.title || (idx === 0 ? 'Home' : 'Office'),
-        address: `${a.addressLine || a.street || ''}, ${a.city || 'Delhi NCR'}`,
+        address: `${a.addressLine || a.street || ''}, ${a.city || ''}`.replace(/,\s*$/, ''),
+        city: a.city || '',
+        pincode: a.pincode || '',
+        locationCoordinates: a.locationCoordinates?.lat ? a.locationCoordinates : null,
         type: (a.title || '').toLowerCase().includes('office') ? 'office' : 'home'
       }));
       setSavedAddresses(formatted);
@@ -472,8 +499,9 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
       const res = await customerService.addAddress({
         title: newAddressLabel,
         addressLine: fullCombined,
-        city: newCity || 'Delhi NCR',
-        pincode: '110001',
+        city: newCity || currentUser?.city || '',
+        pincode: '',
+        locationCoordinates: newCoordsRef.current || undefined,
         isDefault: true
       });
 
@@ -651,134 +679,113 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
     }
   };
 
+  // Any change to the cart invalidates an unpaid booking created earlier in this session
+  useEffect(() => {
+    pendingBookingRef.current = null;
+  }, [selectedPackageIndex, selectedAddressId, appliedCoupon, selectedDate, selectedTimeSlot, selectedPaymentMethod]);
+
   // Start Payment & Searching Partner Radar Handler
   const handleStartPaymentAndFindingPartner = async () => {
+    if (loading) return;
     const isWalletMethod = selectedPaymentMethod === 'Wallets' || selectedPaymentMethod === 'Wallet';
 
-    // 1. If Wallet payment method is selected, strictly check current customer wallet balance first
-    if (isWalletMethod) {
+    const categoryId = service?.category?._id || service?.category || service?.categoryId;
+    const serviceId = service?.serviceId || service?._id;
+    if (!categoryId || !serviceId) {
+      toast.error('This service is not available for booking right now.');
+      return;
+    }
+    if (savedAddresses.length === 0 || !activeAddressObj?.address) {
+      toast.error('Please add or select a service address.');
+      return;
+    }
+    const addressCity = activeAddressObj.city || currentUser?.city;
+    if (!addressCity) {
+      toast.error('Please choose an address that includes your city.');
+      return;
+    }
+
+    // Wallet: fast client-side check (the server re-checks atomically)
+    if (isWalletMethod && !pendingBookingRef.current) {
       setLoading(true);
       let currentBal = currentUser?.walletBalance ?? 0;
       try {
         const walletRes = await customerService.getWallet();
         const data = walletRes.data?.data || walletRes.data || {};
-        if (typeof data.balance === 'number') {
-          currentBal = data.balance;
-        }
+        if (typeof data.balance === 'number') currentBal = data.balance;
       } catch (err) {
         console.warn('Wallet balance check notice:', err);
       }
-
       if (currentBal < totalAmount) {
         setLoading(false);
         toast.error(
-          `❌ Insufficient NOROZZ Wallet Balance!\nYour available balance is ₹${currentBal}, but total amount is ₹${totalAmount}.\nPlease add money to your wallet or select another payment method.`,
+          `Insufficient NOROZZ Wallet balance. Available ₹${currentBal}, required ₹${totalAmount}. Add money or choose another payment method.`,
           { duration: 6000 }
         );
-        return; // STOP! Stay on 'payment' step, DO NOT create booking or switch step!
+        return;
       }
     }
 
-    // 2. Wallet balance is sufficient (or another payment method selected)
     setCurrentStep('finding_partner');
     setLoading(true);
 
     try {
-      const res = await createBooking({
-        category: service?.category?._id || service?.category || '65f0a0000000000000000001',
-        service: service?.serviceId || service?._id || '65f0a0000000000000000002',
-        packageId: service?.packageId || service?.package?._id || currentPackage?._id || null,
-        packageName: service?.packageName || currentPackage?.title || service?.name || service?.title || 'Standard Service',
-        addressTitle: activeAddressObj.label || 'Home',
-        addressLine: activeAddressObj.address,
-        city: activeAddressObj.city || currentUser?.city || 'Azamgarh',
-        pincode: activeAddressObj.pincode || '110001',
-        locationCoordinates: activeAddressObj.locationCoordinates || {
-          lat: 26.0494,
-          lng: 83.0565
-        },
-        bookingDate: new Date(),
-        timeSlot: `${selectedDate} • ${selectedTimeSlot}`,
-        amount: totalAmount,
-        discountAmount: couponDiscountVal,
-        couponCode: appliedCoupon?.code || null,
-        paymentMethod: isWalletMethod ? 'Wallet' : selectedPaymentMethod
-      });
+      let booking = pendingBookingRef.current;
 
-      const backendBooking = res.data || res.booking || res;
-      const finalBookingRef = backendBooking.bookingId || backendBooking.bookingNumber || `#NZ-${Math.floor(1000 + Math.random() * 9000)}`;
+      if (!booking) {
+        const scheduled = scheduleDays.find((d) => d.label === selectedDate) || scheduleDays[0];
+        const res = await createBooking({
+          category: categoryId,
+          service: serviceId,
+          packageId: service?.packageId || service?.package?._id || currentPackage?._id || null,
+          packageName: currentPackage?.title || service?.name || service?.title,
+          addressTitle: activeAddressObj.label || 'Home',
+          addressLine: activeAddressObj.address,
+          city: addressCity,
+          pincode: activeAddressObj.pincode || '',
+          locationCoordinates: activeAddressObj.locationCoordinates || undefined,
+          bookingDate: scheduled.date.toISOString(),
+          timeSlot: `${selectedDate} • ${selectedTimeSlot}`,
+          // price, fee and discount are always calculated by the server
+          couponCode: appliedStarterPack ? undefined : appliedCoupon?.code || undefined,
+          useStarterPack: Boolean(appliedStarterPack),
+          paymentMethod: isWalletMethod ? 'Wallet' : selectedPaymentMethod,
+        });
+        booking = res.data || res.booking || res;
+        if (!booking?._id) throw new Error('Your booking could not be created. Please try again.');
+        if (booking.requiresPayment) pendingBookingRef.current = booking;
+      }
 
-      if (backendBooking._id) {
-        if (isWalletMethod) {
-          if (backendBooking.paymentStatus !== 'paid') {
-            try {
-              const payRes = await paymentService.walletPay({
-                bookingId: backendBooking._id,
-                amount: totalAmount,
-              });
-              const payData = payRes.data?.data || payRes.data || {};
-              const newWalletBal = typeof payData.walletBalance === 'number' ? payData.walletBalance : (currentUser?.walletBalance - totalAmount);
-              if (updateUser) {
-                updateUser({ walletBalance: Math.max(0, newWalletBal) });
-              }
-              toast.success(payRes.data?.message || `🎉 ₹${totalAmount} deducted from NOROZZ Wallet!`);
-            } catch (wErr) {
-              console.warn('Wallet pay fallback notice:', wErr);
-            }
-          } else {
-            if (updateUser && typeof currentUser?.walletBalance === 'number') {
-              updateUser({ walletBalance: Math.max(0, currentUser.walletBalance - totalAmount) });
-            }
-            toast.success(`🎉 ₹${totalAmount} paid successfully via NOROZZ Wallet!`);
-          }
-        } else {
-          try {
-            await payBooking({ id: backendBooking._id, paymentMethod: selectedPaymentMethod });
-          } catch (e) {
-            console.warn('Payment API call:', e);
-          }
-        }
+      if (booking.requiresPayment) {
+        await payWithGateway({
+          type: 'booking_payment',
+          bookingId: booking._id,
+          user: currentUser,
+          description: currentPackage?.title || 'Service booking',
+        });
+        pendingBookingRef.current = null;
+      } else if (isWalletMethod && updateUser) {
+        updateUser({ walletBalance: Math.max(0, (currentUser?.walletBalance || 0) - Number(booking.amount || totalAmount)) });
       }
 
       setConfirmedOrder({
-        bookingId: finalBookingRef,
-        serviceTitle: service?.name || service?.title || 'Full Home Deep Cleaning',
+        bookingId: booking.bookingId,
+        serviceTitle: service?.name || service?.title,
         packageName: currentPackage.title,
         dateAndTime: `${selectedDate} • ${selectedTimeSlot}`,
         address: activeAddressObj.address,
-        amount: totalAmount
+        amount: booking.amount ?? totalAmount,
       });
 
       setTimeout(() => {
         setLoading(false);
         setCurrentStep('booking_confirmed');
-      }, 2500);
-
+      }, 1500);
     } catch (err) {
-      console.warn('Backend order payment error / fallback notice:', err);
-      const errMsg = err.response?.data?.message || err.message || '';
-      
-      if (isWalletMethod && (errMsg.includes('Insufficient') || errMsg.includes('balance'))) {
-        setLoading(false);
-        setCurrentStep('payment');
-        toast.error(errMsg || 'Insufficient wallet balance for payment.');
-        return;
-      }
-
-      const mockRef = `#NZ-${Math.floor(2000 + Math.random() * 8000)}`;
-      setConfirmedOrder({
-        bookingId: mockRef,
-        serviceTitle: service?.name || service?.title || 'Full Home Deep Cleaning',
-        packageName: currentPackage.title,
-        dateAndTime: `${selectedDate} • ${selectedTimeSlot}`,
-        address: activeAddressObj.address,
-        amount: totalAmount
-      });
-
-      setTimeout(() => {
-        setLoading(false);
-        setCurrentStep('booking_confirmed');
-      }, 2500);
+      // Never show a "confirmed" screen when the booking or payment did not succeed
+      setLoading(false);
+      setCurrentStep('payment');
+      toast.error(err?.message || err?.response?.data?.message || 'We could not complete your booking. You have not been charged.');
     }
   };
 
@@ -1201,6 +1208,7 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
                   if (!cleanFull || cleanFull === 'UP' || cleanFull === 'India') cleanFull = city ? `${city}, UP` : 'Nizamabad, UP';
                   setNewFullAddress(cleanFull);
                   if (city) setNewCity(city);
+                  newCoordsRef.current = lat && lng ? { lat: Number(lat), lng: Number(lng) } : null;
                 }}
                 onMapReady={(map, marker) => {
                   activeMapRef.current = map;

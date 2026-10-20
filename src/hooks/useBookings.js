@@ -21,7 +21,7 @@ export const useBookings = (enabled = true) => {
       queryClient.invalidateQueries({ queryKey: ['customer'] });
       queryClient.invalidateQueries({ queryKey: ['cityAdmin'] });
       queryClient.invalidateQueries({ queryKey: ['superAdmin'] });
-      toast.success(res.message || 'Booking created successfully!');
+      if (!res?.data?.requiresPayment) toast.success(res.message || 'Booking created successfully!');
     },
   });
 

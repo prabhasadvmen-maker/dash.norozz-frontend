@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { customerService } from '../../services/customer.service.js';
 import { toast } from '../../utils/toast.js';
+import { payWithGateway } from '../../utils/razorpay.js';
 import {
   Wallet,
   Plus,
@@ -78,26 +79,26 @@ const CustomerWalletView = ({ currentUser, onBalanceUpdate }) => {
       return;
     }
 
+    if (numAmount > 50000) {
+      toast.error('Maximum limit per transaction is ₹50,000.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const res = await customerService.addWalletMoney({
-        amount: numAmount,
-        paymentMethod: selectedPaymentMethod,
-      });
-
-      const updatedBal = res.data?.data?.balance ?? res.data?.balance ?? (balance + numAmount);
-      setBalance(updatedBal);
-      toast.success(`🎉 ₹${numAmount.toLocaleString('en-IN')} added to Norozz Wallet!`);
-
-      if (onBalanceUpdate) onBalanceUpdate(updatedBal);
+      // Money is credited by the server only after the gateway payment is verified
+      await payWithGateway({ type: 'wallet_recharge', amount: numAmount, user: currentUser, description: 'NOROZZ Wallet top-up' });
+      toast.success(`₹${numAmount.toLocaleString('en-IN')} added to Norozz Wallet!`);
+      const fresh = await customerService.getWallet();
+      const updatedBal = fresh.data?.balance ?? fresh.data?.data?.balance;
+      if (typeof updatedBal === 'number') {
+        setBalance(updatedBal);
+        if (onBalanceUpdate) onBalanceUpdate(updatedBal);
+      }
       fetchWallet();
       setSubView('home');
     } catch (err) {
-      const newBal = balance + numAmount;
-      setBalance(newBal);
-      toast.success(`🎉 ₹${numAmount.toLocaleString('en-IN')} added to Norozz Wallet!`);
-      if (onBalanceUpdate) onBalanceUpdate(newBal);
-      setSubView('home');
+      toast.error(err?.message || 'Payment was not completed. No money was added to your wallet.');
     } finally {
       setIsSubmitting(false);
     }

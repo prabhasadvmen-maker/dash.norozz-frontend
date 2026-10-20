@@ -227,7 +227,7 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
     if (!currentUser?._id) return;
 
     const socket = socketService.connect();
-    socketService.joinUser({ userId: currentUser._id });
+    socketService.joinUser();
 
     const handleIncomingChatMessage = (msgPayload) => {
       if (msgPayload && msgPayload.sender !== currentUser._id) {

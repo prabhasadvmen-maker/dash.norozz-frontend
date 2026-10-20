@@ -63,6 +63,7 @@ import { cityService } from '../../services/city.service.js';
 import { partnerService } from '../../services/partner.service.js';
 import { axiosInstance } from '../../api/axiosInstance.js';
 import { toast } from '../../utils/toast.js';
+import { payWithGateway } from '../../utils/razorpay.js';
 
 const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTabChange, onUpdateUser }) => {
   const [activeSubTab, setActiveSubTab] = useState(initialSubTab);
@@ -506,12 +507,12 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
 
     setIsDepositing(true);
     try {
-      const res = await partnerService.addDepositToWallet(amt);
-      toast.success(res.data?.message || `₹${amt.toLocaleString('en-IN')} added to your wallet!`);
+      await payWithGateway({ type: 'wallet_recharge', amount: amt, user, description: 'NOROZZ partner wallet top-up' });
+      toast.success(`₹${amt.toLocaleString('en-IN')} added to your wallet!`);
       setDepositModalOpen(false);
       setDepositAmount('');
       const updatedWallet = await partnerService.getWallet();
-      const newBal = res.data?.data?.walletBalance ?? res.data?.walletBalance ?? updatedWallet.data?.data?.walletBalance;
+      const newBal = updatedWallet.data?.data?.walletBalance ?? updatedWallet.data?.walletBalance;
       if (updatedWallet.data?.data) {
         setWalletData(updatedWallet.data.data);
       }
@@ -519,7 +520,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
         onUpdateUser({ ...user, walletBalance: newBal });
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Deposit failed');
+      toast.error(err?.message || err.response?.data?.message || 'Deposit failed');
     } finally {
       setIsDepositing(false);
     }
@@ -845,12 +846,16 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
   const handleSaveDocuments = async () => {
     setSaving(true);
     try {
-      const payload = {
-        documents: {
-          ...docs,
-          ...documentsState,
-        },
-      };
+      // Only documents the partner actually picked in this session are uploaded (never placeholders / existing URLs)
+      const picked = Object.fromEntries(
+        Object.entries(documentsState).filter(([, v]) => typeof v === 'string' && (v.startsWith('data:image') || v.startsWith('data:application/pdf')))
+      );
+      if (Object.keys(picked).length === 0) {
+        toast.info('Please choose at least one new document to upload.');
+        setSaving(false);
+        return;
+      }
+      const payload = { documents: picked };
       const res = await partnerService.updateProfile(payload);
       toast.success('📄 Documents submitted for verification!');
       if (onUpdateUser && res.data?.user) {
