@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import SuperAdminNavbar from '../components/superAdmin/SuperAdminNavbar';
 import SuperAdminSidebar from '../components/superAdmin/SuperAdminSidebar';
@@ -497,41 +497,66 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     setNewSrvVideos((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleCreateCategorySubmit = async (e) => {
+  // Create forms are guarded by a ref (state would lag behind a fast double click) so one click = one record.
+  const createLock = useRef(false);
+  const [creating, setCreating] = useState(false);
+  const runOnce = async (task) => {
+    if (createLock.current) return;
+    createLock.current = true;
+    setCreating(true);
+    try {
+      await task();
+    } catch {
+      /* the request layer already shows the error toast; keep the form open */
+    } finally {
+      createLock.current = false;
+      setCreating(false);
+    }
+  };
+
+  const handleCreateCategorySubmit = (e) => {
     e.preventDefault();
     if (!newCatName.trim()) return;
-    const skillsArray = newCatSkills ? newCatSkills.split(',').map((s) => s.trim()).filter(Boolean) : [];
-    await createCategory({
-      name: newCatName.trim(),
-      description: newCatDesc.trim(),
-      image: newCatImage,
-      icon: newCatImage,
-      skills: skillsArray,
+    return runOnce(async () => {
+      const skillsArray = newCatSkills ? newCatSkills.split(',').map((s) => s.trim()).filter(Boolean) : [];
+      await createCategory({
+        name: newCatName.trim(),
+        description: newCatDesc.trim(),
+        image: newCatImage,
+        icon: newCatImage,
+        skills: skillsArray,
+      });
+      setNewCatName('');
+      setNewCatDesc('');
+      setNewCatImage('');
+      setNewCatSkills('');
+      setCatModalOpen(false);
     });
-    setNewCatName('');
-    setNewCatDesc('');
-    setNewCatImage('');
-    setNewCatSkills('');
-    setCatModalOpen(false);
   };
 
-  const handleCreateSubCategorySubmit = async (e) => {
+  const handleCreateSubCategorySubmit = (e) => {
     e.preventDefault();
     if (!newSubCatName.trim() || !newSubCatCategory) return;
-    await createSubCategory({
-      name: newSubCatName.trim(),
-      category: newSubCatCategory,
-      description: newSubCatDesc.trim(),
+    return runOnce(async () => {
+      await createSubCategory({
+        name: newSubCatName.trim(),
+        category: newSubCatCategory,
+        description: newSubCatDesc.trim(),
+      });
+      setNewSubCatName('');
+      setNewSubCatCategory('');
+      setNewSubCatDesc('');
+      setSubCatModalOpen(false);
     });
-    setNewSubCatName('');
-    setNewSubCatCategory('');
-    setNewSubCatDesc('');
-    setSubCatModalOpen(false);
   };
 
-  const handleCreateServiceSubmit = async (e) => {
+  const handleCreateServiceSubmit = (e) => {
     e.preventDefault();
     if (!newSrvName.trim() || !newSrvCategory || !newSrvSubCategory) return;
+    return runOnce(() => submitNewService());
+  };
+
+  const submitNewService = async () => {
 
     const formData = new FormData();
     formData.append('name', newSrvName.trim());
@@ -1044,7 +1069,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
               </div>
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setCatModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Create Category</button>
+                <button type="submit" className="btn btn-primary" disabled={creating}>{creating ? 'Creating…' : 'Create Category'}</button>
               </div>
             </form>
           </div>
@@ -1085,7 +1110,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
               </div>
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setSubCatModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Create SubCategory</button>
+                <button type="submit" className="btn btn-primary" disabled={creating}>{creating ? 'Creating…' : 'Create SubCategory'}</button>
               </div>
             </form>
           </div>
@@ -1310,7 +1335,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
               </div>
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setSrvModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Create Service</button>
+                <button type="submit" className="btn btn-primary" disabled={creating}>{creating ? 'Creating…' : 'Create Service'}</button>
               </div>
             </form>
           </div>

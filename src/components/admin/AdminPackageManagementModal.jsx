@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { X, Plus, Trash2, Edit2, Star, Flame, CheckCircle2, ShieldAlert, Sparkles, Layers } from 'lucide-react';
 import { catalogService } from '../../services/catalog.service.js';
 import { toast } from '../../utils/toast.js';
@@ -6,6 +7,11 @@ import { toast } from '../../utils/toast.js';
 const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const saveLock = useRef(false);
+  const queryClient = useQueryClient();
+  // keeps the Services directory (package summary on each card) in step with changes made here
+  const refreshCatalog = () => queryClient.invalidateQueries({ queryKey: ['catalog'] });
 
   // Form State for Create / Edit Package
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -128,6 +134,9 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
       sortOrder: Number(sortOrder) || 0,
     };
 
+    if (saveLock.current) return;
+    saveLock.current = true;
+    setSaving(true);
     try {
       if (editingPackageId) {
         await catalogService.updatePackage(editingPackageId, payload);
@@ -138,9 +147,13 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
       }
       setIsFormOpen(false);
       fetchPackages();
+      refreshCatalog();
     } catch (err) {
       console.error('Save package error:', err);
       toast.error(err.response?.data?.message || 'Failed to save service package.');
+    } finally {
+      saveLock.current = false;
+      setSaving(false);
     }
   };
 
@@ -150,6 +163,7 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
       await catalogService.deletePackage(id);
       toast.success(`Package '${pkgTitle}' deleted.`);
       fetchPackages();
+      refreshCatalog();
     } catch (err) {
       toast.error('Failed to delete package.');
     }
@@ -161,6 +175,7 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
       await catalogService.updatePackageStatus(pkg._id, nextStatus);
       toast.success(`Package status updated to ${nextStatus.toUpperCase()}`);
       fetchPackages();
+      refreshCatalog();
     } catch (err) {
       toast.error('Failed to update status.');
     }
@@ -170,6 +185,7 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
     try {
       await catalogService.togglePackagePopular(pkg._id);
       fetchPackages();
+      refreshCatalog();
     } catch (err) {
       toast.error('Failed to update popular flag.');
     }
@@ -179,6 +195,7 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
     try {
       await catalogService.togglePackageRecommended(pkg._id);
       fetchPackages();
+      refreshCatalog();
     } catch (err) {
       toast.error('Failed to update recommended flag.');
     }
@@ -508,8 +525,9 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
                   type="submit"
                   className="btn btn-primary btn-sm"
                   style={{ fontWeight: '800', padding: '8px 20px' }}
+                  disabled={saving}
                 >
-                  {editingPackageId ? 'Save Changes' : 'Create Package'}
+                  {saving ? 'Saving…' : editingPackageId ? 'Save Changes' : 'Create Package'}
                 </button>
               </div>
             </form>

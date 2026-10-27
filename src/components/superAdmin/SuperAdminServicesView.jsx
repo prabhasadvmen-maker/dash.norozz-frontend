@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Wrench, Grid, IndianRupee, ImageOff, Plus, Search, MoreVertical, Eye, Pencil, Trash2, Package, X, Clock, ImageIcon, Video, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Wrench, Grid, IndianRupee, ImageOff, Plus, Search, MoreVertical, Eye, Pencil, Trash2, Package, X, Clock, ImageIcon, Video, AlertTriangle, ChevronLeft, ChevronRight, Layers, Star, Flame } from 'lucide-react';
 import { useCatalog } from '../../hooks/useCatalog.js';
+import { catalogService } from '../../services/catalog.service.js';
 
 const PAGE_SIZE = 12;
 
@@ -26,6 +28,9 @@ const coverOf = (s) => s.thumbnail || s.image || (Array.isArray(s.gallery) && s.
 const photoCount = (s) => (Array.isArray(s.gallery) ? s.gallery.length : 0);
 const videoCount = (s) => (Array.isArray(s.videos) && s.videos.length ? s.videos.length : s.videoUrl ? 1 : 0);
 const finalOf = (s) => (s.finalPrice > 0 ? s.finalPrice : Math.max(0, (s.price || 0) - (s.discount || 0)));
+const packagesOf = (s) => (Array.isArray(s.packages) ? s.packages : []);
+const activePackagesOf = (s) => packagesOf(s).filter((p) => p.status === 'active');
+const csv = (v) => String(v || '').split(',').map((x) => x.trim()).filter(Boolean);
 
 const StatusPill = ({ status }) => {
   const s = STATUS[status] || STATUS.active;
@@ -100,6 +105,40 @@ const CardMenu = ({ onView, onEdit, onPackages, onDelete }) => {
   );
 };
 
+const PackageSummary = ({ srv, onPackages }) => {
+  const all = packagesOf(srv);
+  const active = activePackagesOf(srv);
+  const lowest = active.length ? Math.min(...active.map((p) => p.finalPrice ?? p.price ?? 0)) : null;
+  const shown = active.slice(0, 3);
+  return (
+    <div style={{ padding: '10px 12px', borderRadius: '12px', background: active.length ? '#f8fafc' : '#fffbeb', border: `1px solid ${active.length ? '#e2e8f0' : '#fde68a'}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 800, color: active.length ? '#0f172a' : '#b45309' }}>
+          <Layers size={14} color={active.length ? '#059669' : '#d97706'} />
+          {active.length ? `${active.length} package${active.length > 1 ? 's' : ''}${all.length > active.length ? ` (${all.length - active.length} inactive)` : ''}` : all.length ? 'No active package' : 'No packages yet'}
+        </span>
+        <button type="button" onClick={onPackages} style={{ background: 'transparent', border: 'none', color: '#2563eb', fontSize: '0.76rem', fontWeight: 800, cursor: 'pointer', padding: 0 }}>
+          {all.length ? 'Manage' : '+ Add'}
+        </button>
+      </div>
+      {shown.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
+          {shown.map((p) => (
+            <div key={p._id} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '0.78rem', color: '#334155', fontWeight: 600 }}>
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {p.title}{p.isPopular ? ' 🔥' : ''}{p.isRecommended ? ' ⭐' : ''}
+              </span>
+              <span style={{ fontWeight: 800, color: '#059669', flexShrink: 0 }}>{money(p.finalPrice ?? p.price)}</span>
+            </div>
+          ))}
+          {active.length > shown.length && <div style={{ fontSize: '0.72rem', color: '#64748b' }}>+{active.length - shown.length} more · from {money(lowest)}</div>}
+        </div>
+      )}
+      {!active.length && <div style={{ marginTop: '6px', fontSize: '0.74rem', color: '#92400e' }}>Customers cannot book this service until a package is active.</div>}
+    </div>
+  );
+};
+
 const ServiceCard = ({ srv, catName, subName, onView, onEdit, onPackages, onDelete }) => {
   const cover = coverOf(srv);
   const photos = photoCount(srv);
@@ -142,6 +181,8 @@ const ServiceCard = ({ srv, catName, subName, onView, onEdit, onPackages, onDele
           {srv.description || 'No description added.'}
         </p>
 
+        <PackageSummary srv={srv} onPackages={onPackages} />
+
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}><Clock size={13} /> {srv.duration || '45 mins'}</span>
           <StatusPill status={srv.status || 'active'} />
@@ -159,7 +200,7 @@ const Modal = ({ title, onClose, maxWidth = 500, children }) => {
   }, [onClose]);
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()} style={{ padding: '26px', maxWidth }}>
+      <div className="modal-content" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()} style={{ padding: '26px', maxWidth, maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '18px' }}>
           <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>{title}</h3>
           <button type="button" onClick={onClose} aria-label="Close" style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '50%', color: '#64748b', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}><X size={18} /></button>
@@ -195,9 +236,41 @@ const ViewModal = ({ srv, catName, subName, onClose, onEdit, onPackages }) => {
       <Row label="Customer pays"><span style={{ color: '#059669' }}>{money(finalOf(srv))}</span></Row>
       <Row label="Duration">{srv.duration || '45 mins'}</Row>
       <Row label="Photos / videos">{photoCount(srv)} / {videoCount(srv)}</Row>
+      {Array.isArray(srv.cities) && srv.cities.length > 0 && <Row label="Cities">{srv.cities.join(', ')}</Row>}
+      {Array.isArray(srv.tags) && srv.tags.length > 0 && <Row label="Tags">{srv.tags.join(', ')}</Row>}
       <Row label="URL slug"><span style={{ fontFamily: 'monospace' }}>/{srv.slug}</span></Row>
       <Row label="Created">{fmtDate(srv.createdAt)}</Row>
       <Row label="ID"><span style={{ fontFamily: 'monospace', fontSize: '0.78rem' }}>{srv._id}</span></Row>
+      <div style={{ marginTop: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '0.9rem', color: '#0f172a' }}><Layers size={16} color="#059669" /> Packages ({packagesOf(srv).length})</span>
+        </div>
+        {packagesOf(srv).length === 0 ? (
+          <div style={{ padding: '12px', borderRadius: '12px', background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', fontSize: '0.82rem' }}>No packages yet. Add at least one so customers can book this service.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {packagesOf(srv).map((p) => (
+              <div key={p._id} style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '12px', opacity: p.status === 'active' ? 1 : 0.65 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'flex-start' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#0f172a', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
+                      {p.title}
+                      {p.isPopular && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '0.66rem', padding: '2px 7px', borderRadius: '6px', background: '#fef3c7', color: '#b45309' }}><Flame size={10} /> POPULAR</span>}
+                      {p.isRecommended && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '0.66rem', padding: '2px 7px', borderRadius: '6px', background: '#ecfdf5', color: '#047857' }}><Star size={10} /> RECOMMENDED</span>}
+                      {p.status !== 'active' && <span style={{ fontSize: '0.66rem', padding: '2px 7px', borderRadius: '6px', background: '#f1f5f9', color: '#64748b' }}>INACTIVE</span>}
+                    </div>
+                    <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px' }}>{p.duration || '45 mins'}{Array.isArray(p.features) && p.features.length ? ` · ${p.features.length} features` : ''}</div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontWeight: 900, color: '#059669' }}>{money(p.finalPrice ?? p.price)}</div>
+                    {p.price > (p.finalPrice ?? p.price) && <div style={{ fontSize: '0.7rem', color: '#94a3b8', textDecoration: 'line-through' }}>{money(p.price)}</div>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
       {gallery.length > 1 && (
         <div style={{ display: 'flex', gap: '8px', marginTop: '14px', overflowX: 'auto' }}>
           {gallery.map((g) => <img key={g} src={g} alt="" loading="lazy" style={{ width: '64px', height: '64px', borderRadius: '10px', objectFit: 'cover', border: '1px solid #e2e8f0', flexShrink: 0 }} />)}
@@ -212,43 +285,99 @@ const ViewModal = ({ srv, catName, subName, onClose, onEdit, onPackages }) => {
   );
 };
 
-const EditModal = ({ srv, categories, subCategories, onClose, onSave }) => {
+const sectionTitle = { fontSize: '0.74rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '6px 0 10px' };
+
+const FullEditModal = ({ srv, categories, subCategories, onClose, onSave, onPackages }) => {
   const [name, setName] = useState(srv.name || '');
   const [category, setCategory] = useState(idOf(srv.category) || '');
   const [subCategory, setSubCategory] = useState(idOf(srv.subCategory) || '');
+  const [status, setStatus] = useState(srv.status === 'inactive' ? 'inactive' : 'active');
   const [price, setPrice] = useState(String(srv.price ?? ''));
   const [discount, setDiscount] = useState(String(srv.discount ?? 0));
   const [duration, setDuration] = useState(srv.duration || '');
+  const [sortOrder, setSortOrder] = useState(String(srv.sortOrder ?? 0));
   const [description, setDescription] = useState(srv.description || '');
+  const [cities, setCities] = useState((srv.cities || []).join(', '));
+  const [tags, setTags] = useState((srv.tags || []).join(', '));
+  const [seoTitle, setSeoTitle] = useState(srv.seoTitle || '');
+  const [seoDescription, setSeoDescription] = useState(srv.seoDescription || '');
+  const [seoKeywords, setSeoKeywords] = useState((srv.seoKeywords || []).join(', '));
+  const [gallery, setGallery] = useState(Array.isArray(srv.gallery) ? srv.gallery : []);
+  const [cover, setCover] = useState(srv.thumbnail || srv.image || '');
+  const [videos, setVideos] = useState(Array.isArray(srv.videos) && srv.videos.length ? srv.videos : srv.videoUrl ? [srv.videoUrl] : []);
+  const [videoUrlInput, setVideoUrlInput] = useState('');
+  const [newFiles, setNewFiles] = useState([]); // { file, preview, isVideo }
   const [saving, setSaving] = useState(false);
+  const lock = useRef(false);
+
+  const filesRef = useRef(newFiles);
+  filesRef.current = newFiles;
+  useEffect(() => () => filesRef.current.forEach((f) => URL.revokeObjectURL(f.preview)), []);
 
   const subs = subCategories.filter((sc) => !category || idOf(sc.category) === category);
   const priceNum = Number(price);
   const discountNum = Number(discount) || 0;
-  const invalid = !name.trim() || !category || !subCategory || !(priceNum >= 0) || price === '' || discountNum < 0 || discountNum > priceNum;
+  const invalid = !name.trim() || !category || !subCategory || price === '' || !(priceNum >= 0) || discountNum < 0 || discountNum > priceNum;
+  const effectiveCover = gallery.includes(cover) ? cover : gallery[0] || '';
+
+  const addFiles = (e) => {
+    const picked = Array.from(e.target.files || []).map((file) => ({ file, preview: URL.createObjectURL(file), isVideo: file.type.startsWith('video/') }));
+    setNewFiles((prev) => [...prev, ...picked]);
+    e.target.value = '';
+  };
+  const addVideoUrl = () => {
+    const v = videoUrlInput.trim();
+    if (v && !videos.includes(v)) setVideos((prev) => [...prev, v]);
+    setVideoUrlInput('');
+  };
 
   const submit = async (e) => {
     e.preventDefault();
-    if (invalid) return;
+    if (invalid || lock.current) return;
+    lock.current = true;
     setSaving(true);
     try {
-      await onSave({ name: name.trim(), category, subCategory, price: priceNum, discount: discountNum, duration: duration.trim() || '45 mins', description: description.trim() });
+      const data = new FormData();
+      data.append('name', name.trim());
+      data.append('category', category);
+      data.append('subCategory', subCategory);
+      data.append('status', status);
+      data.append('price', priceNum);
+      data.append('discount', discountNum);
+      data.append('duration', duration.trim() || '45 mins');
+      data.append('sortOrder', Number(sortOrder) || 0);
+      data.append('description', description.trim());
+      data.append('seoTitle', seoTitle.trim());
+      data.append('seoDescription', seoDescription.trim());
+      data.append('cities', JSON.stringify(csv(cities)));
+      data.append('tags', JSON.stringify(csv(tags)));
+      data.append('seoKeywords', JSON.stringify(csv(seoKeywords)));
+      data.append('gallery', JSON.stringify(gallery));
+      data.append('videos', JSON.stringify(videos));
+      data.append('thumbnail', effectiveCover);
+      newFiles.forEach(({ file }) => data.append('files', file));
+      await onSave(data);
       onClose();
     } catch {
       /* the request layer already shows the error toast; keep the form open */
     } finally {
+      lock.current = false;
       setSaving(false);
     }
   };
 
+  const thumb = { width: '76px', height: '76px', borderRadius: '10px', objectFit: 'cover', border: '1px solid #e2e8f0', display: 'block', background: '#f1f5f9' };
+  const miniBtn = (bg, color) => ({ position: 'absolute', border: 'none', borderRadius: '6px', background: bg, color, fontSize: '0.64rem', fontWeight: 800, padding: '2px 6px', cursor: 'pointer' });
+
   return (
-    <Modal title="Edit Service" onClose={onClose} maxWidth={520}>
+    <Modal title="Edit Service" onClose={onClose} maxWidth={680}>
       <form onSubmit={submit}>
+        <div style={sectionTitle}>Basics</div>
         <div className="form-group">
           <label className="form-label">Service Name *</label>
           <input type="text" className="form-input" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
           <div className="form-group">
             <label className="form-label">Category *</label>
             <select className="form-input" value={category} onChange={(e) => { setCategory(e.target.value); setSubCategory(''); }} required>
@@ -263,8 +392,21 @@ const EditModal = ({ srv, categories, subCategories, onClose, onSave }) => {
               {subs.map((sc) => <option key={sc._id} value={sc._id}>{sc.name}</option>)}
             </select>
           </div>
+          <div className="form-group">
+            <label className="form-label">Status</label>
+            <select className="form-input" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="active">Active (visible to customers)</option>
+              <option value="inactive">Inactive (hidden)</option>
+            </select>
+          </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
+        <div className="form-group">
+          <label className="form-label">Description</label>
+          <textarea className="form-input" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} style={{ resize: 'vertical' }} />
+        </div>
+
+        <div style={sectionTitle}>Pricing</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
           <div className="form-group">
             <label className="form-label">Price (₹) *</label>
             <input type="number" min="0" className="form-input" value={price} onChange={(e) => setPrice(e.target.value)} required />
@@ -277,18 +419,90 @@ const EditModal = ({ srv, categories, subCategories, onClose, onSave }) => {
             <label className="form-label">Duration</label>
             <input type="text" className="form-input" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="e.g. 45 mins" />
           </div>
+          <div className="form-group">
+            <label className="form-label">Sort order</label>
+            <input type="number" className="form-input" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
+          </div>
         </div>
         {price !== '' && (
           <div style={{ margin: '-4px 0 14px', fontSize: '0.8rem', color: discountNum > priceNum ? '#b91c1c' : '#64748b' }}>
             {discountNum > priceNum ? 'Discount cannot be more than the price.' : <>Customer will pay <strong style={{ color: '#059669' }}>{money(Math.max(0, priceNum - discountNum))}</strong></>}
           </div>
         )}
-        <div className="form-group">
-          <label className="form-label">Description</label>
-          <textarea className="form-input" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} style={{ resize: 'vertical' }} />
+
+        <div style={sectionTitle}>Photos &amp; videos</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+          {gallery.map((url) => {
+            const isCover = url === effectiveCover;
+            return (
+              <div key={url} style={{ position: 'relative' }}>
+                <img src={url} alt="" style={{ ...thumb, border: isCover ? '2px solid #059669' : thumb.border }} />
+                <button type="button" aria-label="Remove photo" onClick={() => setGallery((g) => g.filter((x) => x !== url))} style={{ ...miniBtn('#dc2626', '#fff'), top: '3px', right: '3px' }}>✕</button>
+                {isCover
+                  ? <span style={{ ...miniBtn('#059669', '#fff'), bottom: '3px', left: '3px', cursor: 'default' }}>COVER</span>
+                  : <button type="button" onClick={() => setCover(url)} style={{ ...miniBtn('rgba(15,23,42,0.75)', '#fff'), bottom: '3px', left: '3px' }}>Set cover</button>}
+              </div>
+            );
+          })}
+          {newFiles.map((f, i) => (
+            <div key={f.preview} style={{ position: 'relative' }}>
+              {f.isVideo ? <video src={f.preview} style={thumb} muted /> : <img src={f.preview} alt="" style={thumb} />}
+              <button type="button" aria-label="Remove new file" onClick={() => setNewFiles((prev) => prev.filter((_, idx) => idx !== i))} style={{ ...miniBtn('#dc2626', '#fff'), top: '3px', right: '3px' }}>✕</button>
+              <span style={{ ...miniBtn('#2563eb', '#fff'), bottom: '3px', left: '3px', cursor: 'default' }}>NEW</span>
+            </div>
+          ))}
         </div>
-        <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginBottom: '18px' }}>Photos and videos are kept as they are. Packages are managed from the card menu.</div>
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+        <div className="form-group">
+          <label className="form-label">Add photos / videos</label>
+          <input type="file" accept="image/*,video/*" multiple className="form-input" onChange={addFiles} />
+        </div>
+        {videos.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+            {videos.map((v) => (
+              <div key={v} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: '#334155', padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                <Video size={14} />
+                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</span>
+                <button type="button" aria-label="Remove video" onClick={() => setVideos((vs) => vs.filter((x) => x !== v))} style={{ background: 'transparent', border: 'none', color: '#dc2626', cursor: 'pointer', fontWeight: 800 }}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="form-group" style={{ display: 'flex', gap: '8px' }}>
+          <input type="url" className="form-input" placeholder="Paste a video URL" value={videoUrlInput} onChange={(e) => setVideoUrlInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addVideoUrl(); } }} />
+          <button type="button" className="btn btn-secondary" onClick={addVideoUrl} style={{ flexShrink: 0 }}>Add</button>
+        </div>
+
+        <div style={sectionTitle}>Reach &amp; SEO</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+          <div className="form-group">
+            <label className="form-label">Cities (comma separated)</label>
+            <input type="text" className="form-input" value={cities} onChange={(e) => setCities(e.target.value)} placeholder="Delhi NCR, Mumbai" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Tags (comma separated)</label>
+            <input type="text" className="form-input" value={tags} onChange={(e) => setTags(e.target.value)} />
+          </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">SEO title</label>
+          <input type="text" className="form-input" value={seoTitle} onChange={(e) => setSeoTitle(e.target.value)} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">SEO description</label>
+          <textarea className="form-input" rows={2} value={seoDescription} onChange={(e) => setSeoDescription(e.target.value)} style={{ resize: 'vertical' }} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">SEO keywords (comma separated)</label>
+          <input type="text" className="form-input" value={seoKeywords} onChange={(e) => setSeoKeywords(e.target.value)} />
+        </div>
+
+        <div style={sectionTitle}>Packages</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '12px', marginBottom: '18px' }}>
+          <span style={{ fontSize: '0.84rem', color: '#334155', fontWeight: 600 }}>{packagesOf(srv).length ? `${packagesOf(srv).length} package(s) configured` : 'No packages yet'}</span>
+          <button type="button" className="btn btn-secondary" onClick={onPackages}>Manage packages</button>
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', position: 'sticky', bottom: 0, background: '#fff', paddingTop: '10px' }}>
           <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button type="submit" className="btn btn-primary" disabled={saving || invalid}>{saving ? 'Saving…' : 'Save Changes'}</button>
         </div>
@@ -323,7 +537,16 @@ const DeleteModal = ({ srv, onClose, onConfirm }) => {
 };
 
 const SuperAdminServicesView = ({ onCreate, onManagePackages }) => {
-  const { categories, subCategories, services, updateService, deleteService } = useCatalog();
+  const { categories, subCategories, updateService, deleteService } = useCatalog();
+  // Admin directory: includes inactive services and each service's packages (the public list has neither)
+  const { data: adminServices } = useQuery({
+    queryKey: ['catalog', 'adminServices'],
+    queryFn: () => catalogService.getAdminServices({ limit: 1000, sortBy: 'createdAt', order: 'desc' }),
+  });
+  const services = useMemo(() => {
+    const d = adminServices?.data?.data ?? adminServices?.data;
+    return d?.items || (Array.isArray(d) ? d : []);
+  }, [adminServices]);
   const [category, setCategory] = useState('');
   const [subCategory, setSubCategory] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -435,7 +658,7 @@ const SuperAdminServicesView = ({ onCreate, onManagePackages }) => {
       </div>
 
       {target && dialog.type === 'view' && <ViewModal srv={target} catName={catName(target)} subName={subName(target)} onClose={close} onEdit={() => open('edit', target)} onPackages={() => { close(); onManagePackages(target); }} />}
-      {target && dialog.type === 'edit' && <EditModal srv={target} categories={categories} subCategories={subCategories} onClose={close} onSave={(data) => updateService({ id: target._id, data })} />}
+      {target && dialog.type === 'edit' && <FullEditModal srv={target} categories={categories} subCategories={subCategories} onClose={close} onSave={(data) => updateService({ id: target._id, data })} onPackages={() => { close(); onManagePackages(target); }} />}
       {target && dialog.type === 'delete' && <DeleteModal srv={target} onClose={close} onConfirm={() => deleteService(target._id)} />}
     </div>
   );
