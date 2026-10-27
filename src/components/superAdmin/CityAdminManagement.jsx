@@ -216,7 +216,8 @@ const CityAdminManagement = () => {
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #e2e8f0', color: '#475569', fontSize: '0.78rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              <th style={{ padding: '12px 14px', borderRadius: '8px 0 0 8px' }}>ADMIN NAME</th>
+              <th style={{ padding: '12px 14px', borderRadius: '8px 0 0 8px', width: '48px' }}>#</th>
+              <th style={{ padding: '12px 14px' }}>ADMIN NAME</th>
               <th style={{ padding: '12px 14px' }}>OFFICIAL EMAIL</th>
               <th style={{ padding: '12px 14px' }}>ASSIGNED CITY</th>
               <th style={{ padding: '12px 14px' }}>STATUS</th>
@@ -227,28 +228,29 @@ const CityAdminManagement = () => {
           <tbody>
             {cityAdminsLoading ? (
               <tr>
-                <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
+                <td colSpan={7} style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
                   <Loader2 size={20} className="spin" style={{ display: 'inline-block', marginRight: '8px' }} />
                   Loading city admins...
                 </td>
               </tr>
             ) : cityAdminsError ? (
               <tr>
-                <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#dc2626', fontWeight: '600' }}>
+                <td colSpan={7} style={{ padding: '24px', textAlign: 'center', color: '#dc2626', fontWeight: '600' }}>
                   Error: {cityAdminsError?.message || 'Failed to load city admins. Check console.'}
                 </td>
               </tr>
             ) : filteredAdmins.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontWeight: '600' }}>
+                <td colSpan={7} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontWeight: '600' }}>
                   No City Admins found. Click 'Create City Admin' to add one.
                 </td>
               </tr>
             ) : (
-              filteredAdmins.map((admin) => {
+              filteredAdmins.map((admin, idx) => {
                 const isActive = admin.status === 'active';
                 return (
                   <tr key={admin._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '14px', color: '#94a3b8', fontWeight: '700', width: '48px' }}>{idx + 1}</td>
                     <td style={{ padding: '14px', fontWeight: '800', fontSize: '0.92rem', color: '#0f172a' }}>
                       {admin.name}
                     </td>

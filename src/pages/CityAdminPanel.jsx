@@ -234,6 +234,7 @@ const CityAdminPanel = ({ currentUser, onLogout }) => {
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
                       <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '800' }}>
+                        <th style={{ padding: '12px', width: '48px' }}>#</th>
                         <th style={{ padding: '12px' }}>TECHNICIAN NAME</th>
                         <th style={{ padding: '12px' }}>SKILL CATEGORY</th>
                         <th style={{ padding: '12px' }}>EMAIL</th>
@@ -242,9 +243,9 @@ const CityAdminPanel = ({ currentUser, onLogout }) => {
                     </thead>
                     <tbody>
                       {partners.length === 0 ? (
-                        <tr><td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>No partners registered in {assignedCity}.</td></tr>
+                        <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>No partners registered in {assignedCity}.</td></tr>
                       ) : (
-                        partners.map((p) => (
+                        partners.map((p, idx) => (
                           <tr
                             key={p._id}
                             onClick={() => setSelectedPartner(p)}
@@ -256,6 +257,7 @@ const CityAdminPanel = ({ currentUser, onLogout }) => {
                             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
                             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                           >
+                            <td style={{ padding: '12px', color: '#94a3b8', fontWeight: '700', width: '48px' }}>{idx + 1}</td>
                             <td style={{ padding: '12px', fontWeight: '800', color: '#2563eb', display: 'flex', alignItems: 'center', gap: '6px' }}>
                               {p.name} <Eye size={14} color="#94a3b8" />
                             </td>

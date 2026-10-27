@@ -253,16 +253,17 @@ const SuperAdminPartnerHiringView = () => {
         <table className="pha-table">
           <thead>
             <tr>
-              <th>Applicant</th><th>Category</th><th>Experience</th><th>Applied On</th><th>Status</th><th />
+              <th>#</th><th>Applicant</th><th>Category</th><th>Experience</th><th>Applied On</th><th>Status</th><th />
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6}><div className="pha-empty"><Loader2 className="spin" size={24} /></div></td></tr>
+              <tr><td colSpan={7}><div className="pha-empty"><Loader2 className="spin" size={24} /></div></td></tr>
             ) : items.length === 0 ? (
-              <tr><td colSpan={6}><div className="pha-empty">No applications found.</div></td></tr>
-            ) : items.map((a) => (
+              <tr><td colSpan={7}><div className="pha-empty">No applications found.</div></td></tr>
+            ) : items.map((a, idx) => (
               <tr key={a._id}>
+                <td style={{ color: '#94a3b8', fontWeight: 700 }}>{(page - 1) * 15 + idx + 1}</td>
                 <td>
                   <div className="pha-person">
                     <img className="pha-avatar" src={a.profilePhoto?.url} alt="" />

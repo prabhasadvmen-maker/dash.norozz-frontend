@@ -61,6 +61,7 @@ const CityOrdersTable = ({ selectedCity }) => {
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                <th style={{ padding: '12px 14px', width: '48px' }}>#</th>
                 <th style={{ padding: '12px 14px' }}>ORDER ID</th>
                 <th style={{ padding: '12px 14px' }}>CUSTOMER</th>
                 <th style={{ padding: '12px 14px' }}>SERVICE</th>
@@ -72,8 +73,9 @@ const CityOrdersTable = ({ selectedCity }) => {
               </tr>
             </thead>
             <tbody>
-              {bookings.map((order) => (
+              {bookings.map((order, idx) => (
                 <tr key={order._id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                  <td style={{ padding: '14px', color: '#94a3b8', fontWeight: '700', width: '48px' }}>{idx + 1}</td>
                   <td style={{ padding: '14px', fontWeight: '800', color: 'var(--accent-blue)', fontSize: '0.85rem' }}>
                     {order.bookingId || order._id?.substring(0, 8)}
                   </td>

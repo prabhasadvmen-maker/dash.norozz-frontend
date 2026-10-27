@@ -296,11 +296,12 @@ const SuperAdminReportsView = () => {
         {section === 'cities' && (
           <>
             <SectionTitle right={exportBtn("cities", "Export City Statement")}>City Revenue Statement</SectionTitle>
-            <TableShell minWidth="820px" head={<><Th>City</Th><Th right>Paid Bookings</Th><Th right>Completed</Th><Th right>GMV</Th><Th right>Platform Revenue</Th><Th right>Partner Earnings</Th><Th right>Refunds</Th><Th right>GST Incl.</Th></>}>
-              {!r?.cities?.length ? <EmptyRow cols={8}>{r ? 'No paid bookings in this period.' : 'Loading…'}</EmptyRow> : (
+            <TableShell minWidth="820px" head={<><Th>#</Th><Th>City</Th><Th right>Paid Bookings</Th><Th right>Completed</Th><Th right>GMV</Th><Th right>Platform Revenue</Th><Th right>Partner Earnings</Th><Th right>Refunds</Th><Th right>GST Incl.</Th></>}>
+              {!r?.cities?.length ? <EmptyRow cols={9}>{r ? 'No paid bookings in this period.' : 'Loading…'}</EmptyRow> : (
                 <>
-                  {r.cities.map((c) => (
+                  {r.cities.map((c, i) => (
                     <tr key={c.city} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ ...td, color: '#94a3b8', fontWeight: 700 }}>{i + 1}</td>
                       <td style={{ ...td, fontWeight: 800, color: '#0f172a' }}>{c.city}</td>
                       <td style={{ ...td, textAlign: 'right' }}>{c.bookings}</td>
                       <td style={{ ...td, textAlign: 'right', color: '#059669', fontWeight: 700 }}>{c.completed}</td>
@@ -312,6 +313,7 @@ const SuperAdminReportsView = () => {
                     </tr>
                   ))}
                   <tr style={{ background: '#f8fafc', fontWeight: 900 }}>
+                    <td style={td} />
                     <td style={{ ...td, fontWeight: 900, color: '#0f172a' }}>Total</td>
                     <td style={{ ...td, textAlign: 'right', fontWeight: 900 }}>{totalCities.bookings}</td>
                     <td style={td} />
@@ -350,11 +352,12 @@ const SuperAdminReportsView = () => {
             <SectionTitle right={<div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>{exportBtn("gst", "Export GST Log")}{exportBtn("bookings", "Export All Transactions")}</div>}>
               Platform GST Log <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>· {rate}% GST included in customer prices</span>
             </SectionTitle>
-            <TableShell minWidth="620px" head={<><Th>Date</Th><Th right>Paid Bookings</Th><Th right>Gross Receipts</Th><Th right>Taxable Value</Th><Th right>GST ({rate}%)</Th></>}>
-              {!gstDaily.length ? <EmptyRow cols={5}>{r ? 'No paid bookings in this period.' : 'Loading…'}</EmptyRow> : (
+            <TableShell minWidth="620px" head={<><Th>#</Th><Th>Date</Th><Th right>Paid Bookings</Th><Th right>Gross Receipts</Th><Th right>Taxable Value</Th><Th right>GST ({rate}%)</Th></>}>
+              {!gstDaily.length ? <EmptyRow cols={6}>{r ? 'No paid bookings in this period.' : 'Loading…'}</EmptyRow> : (
                 <>
-                  {[...gstDaily].reverse().map((d) => (
+                  {[...gstDaily].reverse().map((d, i) => (
                     <tr key={d.date} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ ...td, color: '#94a3b8', fontWeight: 700 }}>{i + 1}</td>
                       <td style={{ ...td, fontWeight: 700, color: '#0f172a' }}>{fmtDay(d.date)}</td>
                       <td style={{ ...td, textAlign: 'right' }}>{d.bookings}</td>
                       <td style={{ ...td, textAlign: 'right' }}>{money2(d.gmv)}</td>

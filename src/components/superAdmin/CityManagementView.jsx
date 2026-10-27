@@ -190,7 +190,8 @@ const CityManagementView = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
               <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #e2e8f0', color: '#475569', fontSize: '0.78rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                <th style={{ padding: '12px 14px', borderRadius: '8px 0 0 8px' }}>CITY NAME</th>
+                <th style={{ padding: '12px 14px', borderRadius: '8px 0 0 8px', width: '48px' }}>#</th>
+                <th style={{ padding: '12px 14px' }}>CITY NAME</th>
                 <th style={{ padding: '12px 14px' }}>STATE / REGION</th>
                 <th style={{ padding: '12px 14px' }}>COUNTRY</th>
                 <th style={{ padding: '12px 14px' }}>STATUS</th>
@@ -200,17 +201,18 @@ const CityManagementView = () => {
             <tbody>
               {filteredCities.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontWeight: '600' }}>
+                  <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontWeight: '600' }}>
                     No operational cities found. Click 'Add New City' to create one.
                   </td>
                 </tr>
               ) : (
-                filteredCities.map((city) => {
+                filteredCities.map((city, idx) => {
                   const isActive = city.status === 'active';
                   const isDropdownOpen = activeDropdownId === city._id;
 
                   return (
                     <tr key={city._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '14px', color: '#94a3b8', fontWeight: '700', width: '48px' }}>{idx + 1}</td>
                       <td style={{ padding: '14px', fontWeight: '800', fontSize: '0.92rem', color: '#0f172a' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                           <MapPin size={15} color="#0284c7" /> {city.name}

@@ -1,707 +1,293 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Sparkles,
-  Save,
-  Loader2,
-  Clock,
-  Calendar,
-  CheckCircle2,
-  AlertCircle,
-  Tag,
-  Eye,
-  Settings,
-  Zap,
-  Users,
-  ShieldCheck
-} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Sparkles, Save, Loader2, Clock, Calendar, Eye, RotateCcw, Wand2, Ticket, Timer, Users, Power } from 'lucide-react';
 import { superAdminService } from '../../services/superAdmin.service.js';
 import { catalogService } from '../../services/catalog.service.js';
 import { toast } from '../../utils/toast.js';
 
+const DEFAULTS = {
+  badge: 'STARTER PACK',
+  subBadge: '✦ ONE TIME OFFER ✦',
+  originalPrice: '398',
+  offerPrice: '139',
+  ticketOriginalPrice: '199',
+  ticketOfferPrice: '70',
+  perVisitPriceText: 'Only ₹70 per visit',
+  visitCount: '2',
+  visitDurationMinutes: '60',
+  validityDays: '15',
+  bannerColor: '#ec4899',
+  isActive: true,
+  targetAudience: 'NEW_USERS_ONLY',
+  applicableCategory: '',
+  applicableService: '',
+};
+
+const NUMERIC = ['originalPrice', 'offerPrice', 'ticketOriginalPrice', 'ticketOfferPrice', 'visitCount', 'visitDurationMinutes', 'validityDays'];
+
+const card = { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)' };
+const inputStyle = { width: '100%', padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '10px', fontSize: '0.88rem', fontWeight: 600, color: '#0f172a', background: '#ffffff', outline: 'none', boxSizing: 'border-box' };
+
+const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+const idOf = (v) => (v && typeof v === 'object' ? v._id : v) || '';
+
+// Server document -> editable form (numbers are kept as text so the inputs can be cleared while typing)
+const toForm = (d = {}) => {
+  const out = { ...DEFAULTS };
+  for (const key of Object.keys(DEFAULTS)) {
+    if (d[key] === undefined || d[key] === null) continue;
+    out[key] = NUMERIC.includes(key) ? String(d[key]) : d[key];
+  }
+  out.applicableCategory = idOf(d.applicableCategory);
+  out.applicableService = idOf(d.applicableService);
+  return out;
+};
+
+const Section = ({ icon: Icon, title, hint, children }) => (
+  <section style={{ ...card, padding: '20px 22px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+      <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: '#fdf2f8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Icon size={17} color="#db2777" />
+      </div>
+      <div>
+        <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: '#0f172a' }}>{title}</h3>
+        {hint && <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: '#64748b' }}>{hint}</p>}
+      </div>
+    </div>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '14px' }}>{children}</div>
+  </section>
+);
+
+const Field = ({ label, hint, error, wide, children }) => (
+  <label style={{ display: 'block', gridColumn: wide ? '1 / -1' : undefined, minWidth: 0 }}>
+    <span style={{ display: 'block', fontSize: '0.74rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '6px' }}>{label}</span>
+    {children}
+    {(error || hint) && <span style={{ display: 'block', marginTop: '5px', fontSize: '0.74rem', color: error ? '#b91c1c' : '#94a3b8', fontWeight: error ? 700 : 500 }}>{error || hint}</span>}
+  </label>
+);
+
+const Preview = ({ f }) => {
+  const visits = Number(f.visitCount) || 0;
+  return (
+    <div style={{ background: '#090d16', borderRadius: '22px', padding: '18px', color: '#ffffff', boxShadow: '0 16px 40px rgba(0, 0, 0, 0.35)', border: '1px solid rgba(255, 255, 255, 0.08)', overflow: 'hidden' }}>
+      <div style={{ background: 'linear-gradient(135deg, #111827 0%, #1f293d 100%)', borderRadius: '18px', padding: '22px 18px', position: 'relative', marginBottom: '14px', border: '1px solid rgba(255, 255, 255, 0.05)', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '12px', left: '12px', background: '#000000', fontSize: '0.68rem', fontWeight: 900, letterSpacing: '1px', padding: '4px 11px', borderRadius: '9999px', border: '1px solid rgba(255, 255, 255, 0.2)' }}>{f.badge || '—'}</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '16px', position: 'relative', height: '76px' }}>
+          <div style={{ position: 'absolute', width: '88px', height: '48px', background: '#be185d', borderRadius: '8px', transform: 'rotate(-15deg)', opacity: 0.8 }} />
+          <div style={{ position: 'absolute', width: '88px', height: '48px', background: '#9d174d', borderRadius: '8px', transform: 'rotate(15deg)', opacity: 0.8 }} />
+          <div style={{ position: 'relative', zIndex: 2, background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)', borderRadius: '12px', padding: '8px 16px', boxShadow: '0 8px 24px rgba(236, 72, 153, 0.4)', display: 'flex', alignItems: 'center', gap: '8px', border: '1.5px dashed rgba(255, 255, 255, 0.4)' }}>
+            <span style={{ fontSize: '1rem', textDecoration: 'line-through', opacity: 0.75, fontWeight: 700 }}>{money(f.ticketOriginalPrice)}</span>
+            <span style={{ fontSize: '1.4rem', fontWeight: 900 }}>{money(f.ticketOfferPrice)}</span>
+          </div>
+        </div>
+      </div>
+      <div style={{ textAlign: 'center', fontSize: '0.72rem', fontWeight: 900, letterSpacing: '1px', color: '#ec4899', marginBottom: '8px' }}>{f.subBadge}</div>
+      <div style={{ textAlign: 'center', marginBottom: '4px' }}>
+        <span style={{ fontSize: '1.25rem', fontWeight: 900, marginRight: '8px' }}>{visits} VISITS FOR</span>
+        <span style={{ fontSize: '1.1rem', textDecoration: 'line-through', opacity: 0.5, fontWeight: 800, marginRight: '6px' }}>{money(f.originalPrice)}</span>
+        <span style={{ fontSize: '1.35rem', fontWeight: 900 }}>{money(f.offerPrice)}</span>
+      </div>
+      <div style={{ textAlign: 'center', fontSize: '0.82rem', color: '#94a3b8', fontWeight: 600, marginBottom: '14px' }}>{f.perVisitPriceText}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+        {[[Clock, `${visits} × ${f.visitDurationMinutes || 0} min visits`], [Calendar, `Valid for ${f.validityDays || 0} days`]].map(([Icon, text]) => (
+          <div key={text} style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '14px', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.76rem', fontWeight: 700 }}>
+            <Icon size={14} color="#ec4899" /> <span>{text}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const SuperAdminStarterPackView = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [form, setForm] = useState(DEFAULTS);
+  const [saved, setSaved] = useState(DEFAULTS);
+  const [categories, setCategories] = useState([]);
+  const [services, setServices] = useState([]);
 
-  const [categoriesList, setCategoriesList] = useState([]);
-  const [servicesList, setServicesList] = useState([]);
-
-  const [formData, setFormData] = useState({
-    badge: 'STARTER PACK',
-    subBadge: '✦ ONE TIME OFFER ✦',
-    title: '2 VISITS FOR ₹398 ₹139',
-    originalPrice: 398,
-    offerPrice: 139,
-    ticketOriginalPrice: 199,
-    ticketOfferPrice: 70,
-    perVisitPriceText: 'Only ₹70 per visit',
-    visitCount: 2,
-    visitDurationMinutes: 60,
-    validityDays: 15,
-    bannerColor: '#ec4899',
-    isActive: true,
-    targetAudience: 'NEW_USERS_ONLY',
-    applicableCategory: '',
-    applicableService: '',
-  });
-
-  const fetchStarterPack = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
-      // Fetch Categories & Services in parallel
-      const [resPack, resCats, resSrvs] = await Promise.all([
+      const [pack, cats, srvs] = await Promise.all([
         superAdminService.getStarterPack(),
         catalogService.getCategories().catch(() => ({ data: [] })),
         catalogService.getServices().catch(() => ({ data: [] })),
       ]);
-
-      const catsData = resCats.data?.data || resCats.data || [];
-      const srvsData = resSrvs.data?.data || resSrvs.data || [];
-      setCategoriesList(Array.isArray(catsData) ? catsData : []);
-      setServicesList(Array.isArray(srvsData) ? srvsData : []);
-
-      const data = resPack.data?.data || resPack.data;
-      if (data) {
-        setFormData({
-          badge: data.badge || 'STARTER PACK',
-          subBadge: data.subBadge || '✦ ONE TIME OFFER ✦',
-          title: data.title || '2 VISITS FOR ₹398 ₹139',
-          originalPrice: data.originalPrice !== undefined ? data.originalPrice : 398,
-          offerPrice: data.offerPrice !== undefined ? data.offerPrice : 139,
-          ticketOriginalPrice: data.ticketOriginalPrice !== undefined ? data.ticketOriginalPrice : 199,
-          ticketOfferPrice: data.ticketOfferPrice !== undefined ? data.ticketOfferPrice : 70,
-          perVisitPriceText: data.perVisitPriceText || 'Only ₹70 per visit',
-          visitCount: data.visitCount !== undefined ? data.visitCount : 2,
-          visitDurationMinutes: data.visitDurationMinutes !== undefined ? data.visitDurationMinutes : 60,
-          validityDays: data.validityDays !== undefined ? data.validityDays : 15,
-          bannerColor: data.bannerColor || '#ec4899',
-          isActive: data.isActive !== undefined ? data.isActive : true,
-          targetAudience: data.targetAudience || 'NEW_USERS_ONLY',
-          applicableCategory: data.applicableCategory?._id || data.applicableCategory || '',
-          applicableService: data.applicableService?._id || data.applicableService || '',
-        });
-      }
-    } catch (err) {
-      console.error('Error fetching starter pack:', err);
+      const list = (r) => { const d = r?.data?.data || r?.data || []; return Array.isArray(d) ? d : []; };
+      setCategories(list(cats));
+      setServices(list(srvs));
+      const data = pack?.data?.data || pack?.data;
+      const next = toForm(data || {});
+      setForm(next);
+      setSaved(next);
+    } catch {
+      setLoadError(true);
       toast.error('Failed to load Starter Pack configuration');
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchStarterPack();
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
+
+  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
+  const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(saved), [form, saved]);
+
+  const n = (k) => Number(form[k]);
+  const errors = useMemo(() => {
+    const e = {};
+    for (const k of ['originalPrice', 'offerPrice', 'ticketOriginalPrice', 'ticketOfferPrice']) {
+      if (form[k] === '' || !(Number(form[k]) >= 0)) e[k] = 'Enter a price of 0 or more';
+    }
+    if (!e.offerPrice && !e.originalPrice && n('offerPrice') > n('originalPrice')) e.offerPrice = 'Offer price cannot be higher than the original price';
+    if (!e.ticketOfferPrice && !e.ticketOriginalPrice && n('ticketOfferPrice') > n('ticketOriginalPrice')) e.ticketOfferPrice = 'Offer price cannot be higher than the original price';
+    if (!(Number(form.visitCount) >= 1) || !Number.isInteger(Number(form.visitCount))) e.visitCount = 'At least 1 whole visit';
+    if (!(Number(form.visitDurationMinutes) >= 15)) e.visitDurationMinutes = 'At least 15 minutes';
+    if (!(Number(form.validityDays) >= 1)) e.validityDays = 'At least 1 day';
+    if (!form.badge.trim()) e.badge = 'Badge text is required';
+    return e;
+  }, [form]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const hasErrors = Object.keys(errors).length > 0;
+  const visits = Math.max(1, Number(form.visitCount) || 1);
+  const perVisit = Math.round((n('offerPrice') || 0) / visits);
+  const saving$ = n('originalPrice') - n('offerPrice');
+  const savePct = n('originalPrice') > 0 ? Math.round((saving$ / n('originalPrice')) * 100) : 0;
+  const serviceOptions = services.filter((s) => !form.applicableCategory || idOf(s.category) === form.applicableCategory);
+
+  const changeCategory = (e) => setForm((f) => ({ ...f, applicableCategory: e.target.value, applicableService: '' }));
+
+  const handleSave = async (e) => {
+    e?.preventDefault();
+    if (hasErrors) {
+      toast.error('Please fix the highlighted fields first');
+      return;
+    }
     setSaving(true);
     try {
-      await superAdminService.updateStarterPack(formData);
-      toast.success('🎉 Starter Pack Offer configuration updated & published successfully!');
+      const payload = { ...form };
+      for (const k of NUMERIC) payload[k] = Number(form[k]);
+      payload.badge = form.badge.trim();
+      payload.subBadge = form.subBadge.trim();
+      payload.perVisitPriceText = form.perVisitPriceText.trim();
+      payload.title = `${payload.visitCount} VISITS FOR ₹${payload.originalPrice} ₹${payload.offerPrice}`;
+      await superAdminService.updateStarterPack(payload);
+      setSaved(form);
+      toast.success('Starter Pack offer saved and published');
     } catch (err) {
-      console.error('Error updating starter pack:', err);
       toast.error(err.response?.data?.message || 'Failed to save Starter Pack configuration');
     } finally {
       setSaving(false);
     }
   };
 
+  if (loading) {
+    return <div style={{ ...card, padding: '48px', textAlign: 'center', color: '#64748b' }}><Loader2 size={28} className="spin" style={{ margin: '0 auto 10px' }} /><div>Loading Starter Pack…</div></div>;
+  }
+  if (loadError) {
+    return (
+      <div role="alert" style={{ ...card, padding: '32px', textAlign: 'center', color: '#b91c1c' }}>
+        <div style={{ fontWeight: 700, marginBottom: '12px' }}>Could not load the Starter Pack configuration.</div>
+        <button type="button" className="btn btn-secondary" onClick={load}>Try again</button>
+      </div>
+    );
+  }
+
+  const inp = (key, extra = {}) => ({ ...inputStyle, ...(errors[key] ? { borderColor: '#f87171', background: '#fef2f2' } : {}), ...extra });
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '1200px' }}>
-      
-      {/* 1. Header Banner */}
-      <div style={{
-        background: '#ffffff',
-        borderRadius: '24px',
-        padding: '24px 30px',
-        border: '1px solid #e2e8f0',
-        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.02)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '16px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '46px',
-            height: '46px',
-            borderRadius: '16px',
-            background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
-            color: '#ffffff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 6px 16px rgba(236, 72, 153, 0.35)'
-          }}>
-            <Sparkles size={24} />
-          </div>
-          <div>
-            <h2 style={{ fontSize: '1.35rem', fontWeight: '900', margin: 0, color: '#0f172a' }}>
-              Starter Pack Offer Management
-            </h2>
-            <p style={{ fontSize: '0.84rem', color: '#64748b', margin: '2px 0 0 0' }}>
-              Configure new user welcome offers, discount voucher tickets, and visit duration passes.
-            </p>
-          </div>
-        </div>
+    <form onSubmit={handleSave} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '18px', minWidth: 0 }}>
+      {/* Status & save bar */}
+      <div style={{ ...card, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap', position: 'sticky', top: '8px', zIndex: 5 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+          <span style={{ position: 'relative', width: '44px', height: '24px', borderRadius: '9999px', background: form.isActive ? '#10b981' : '#cbd5e1', transition: 'background .15s', flexShrink: 0 }}>
+            <span style={{ position: 'absolute', top: '3px', left: form.isActive ? '23px' : '3px', width: '18px', height: '18px', borderRadius: '50%', background: '#fff', transition: 'left .15s', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
+          </span>
+          <input type="checkbox" checked={form.isActive} onChange={set('isActive')} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }} aria-label="Show the Starter Pack offer in the customer app" />
+          <span>
+            <span style={{ display: 'block', fontWeight: 800, fontSize: '0.92rem', color: '#0f172a' }}>{form.isActive ? 'Offer is live' : 'Offer is switched off'}</span>
+            <span style={{ display: 'block', fontSize: '0.76rem', color: '#64748b' }}>{form.isActive ? 'Eligible customers see it in the app' : 'Hidden from every customer'}</span>
+          </span>
+        </label>
 
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={saving || loading}
-          style={{
-            padding: '11px 24px',
-            borderRadius: '14px',
-            fontWeight: '800',
-            fontSize: '0.9rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
-            boxShadow: '0 4px 14px rgba(236, 72, 153, 0.35)',
-            color: '#ffffff',
-            border: 'none',
-            cursor: 'pointer'
-          }}
-        >
-          {saving ? <Loader2 size={18} className="spin" /> : <Save size={18} />}
-          <span>Save & Publish Offer</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {dirty && <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', padding: '4px 10px', borderRadius: '9999px' }}>Unsaved changes</span>}
+          <button type="button" className="btn btn-secondary" disabled={!dirty || saving} onClick={() => setForm(saved)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><RotateCcw size={14} /> Discard</button>
+          <button type="submit" disabled={!dirty || saving} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '12px', border: 'none', fontWeight: 800, fontSize: '0.88rem', color: '#fff', cursor: !dirty || saving ? 'not-allowed' : 'pointer', opacity: !dirty ? 0.55 : 1, background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)', boxShadow: dirty ? '0 4px 14px rgba(236, 72, 153, 0.35)' : 'none' }}>
+            {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />} {saving ? 'Publishing…' : 'Save & Publish'}
+          </button>
+        </div>
       </div>
 
-      {/* 2. Main Grid: Form Controls (Left) vs Live UI Preview (Right) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px', alignItems: 'flex-start' }}>
-        
-        {/* Left Column: Form Controls */}
-        <div style={{ background: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', padding: '28px', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.02)' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '20px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Settings size={20} color="#ec4899" /> Offer Details & Pricing Parameters
-          </h3>
+      <div style={{ display: 'flex', gap: '18px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        {/* Form */}
+        <div style={{ flex: '1 1 480px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          <Section icon={Sparkles} title="Offer text" hint="The labels customers read on the offer card.">
+            <Field label="Badge" error={errors.badge}><input type="text" value={form.badge} onChange={set('badge')} placeholder="STARTER PACK" style={inp('badge')} /></Field>
+            <Field label="Sub-header tag"><input type="text" value={form.subBadge} onChange={set('subBadge')} placeholder="✦ ONE TIME OFFER ✦" style={inp('subBadge')} /></Field>
+            <Field wide label="Per-visit line" hint={<>Shown under the price. <button type="button" onClick={() => setForm((f) => ({ ...f, perVisitPriceText: `Only ${money(perVisit)} per visit` }))} style={{ border: 'none', background: 'none', padding: 0, color: '#db2777', fontWeight: 800, cursor: 'pointer', fontSize: 'inherit' }}><Wand2 size={11} style={{ verticalAlign: '-1px' }} /> Fill from price ({`Only ${money(perVisit)} per visit`})</button></>}>
+              <input type="text" value={form.perVisitPriceText} onChange={set('perVisitPriceText')} placeholder="Only ₹70 per visit" style={inp('perVisitPriceText')} />
+            </Field>
+          </Section>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            
-            {/* Offer Badge & Sub-Badge */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-              <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  BADGE TEXT
-                </label>
-                <input
-                  type="text"
-                  value={formData.badge}
-                  onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
-                  placeholder="e.g. STARTER PACK"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '12px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.88rem',
-                    fontWeight: '700',
-                    outline: 'none',
-                    color: '#0f172a',
-                    background: '#f8fafc'
-                  }}
-                />
+          <Section icon={Ticket} title="Pricing" hint="Ticket price is the figure on the pink ticket graphic; total price is what the customer pays for the whole pack.">
+            <Field label="Ticket: original (₹)" error={errors.ticketOriginalPrice}><input type="number" min="0" value={form.ticketOriginalPrice} onChange={set('ticketOriginalPrice')} style={inp('ticketOriginalPrice')} /></Field>
+            <Field label="Ticket: offer (₹)" error={errors.ticketOfferPrice}><input type="number" min="0" value={form.ticketOfferPrice} onChange={set('ticketOfferPrice')} style={inp('ticketOfferPrice')} /></Field>
+            <Field label="Total: original (₹)" error={errors.originalPrice}><input type="number" min="0" value={form.originalPrice} onChange={set('originalPrice')} style={inp('originalPrice')} /></Field>
+            <Field label="Total: offer (₹)" error={errors.offerPrice}><input type="number" min="0" value={form.offerPrice} onChange={set('offerPrice')} style={inp('offerPrice')} /></Field>
+            {!errors.offerPrice && !errors.originalPrice && (
+              <div style={{ gridColumn: '1 / -1', padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', fontSize: '0.8rem', color: '#166534', fontWeight: 600 }}>
+                Customer pays <strong>{money(form.offerPrice)}</strong> for {visits} visit{visits > 1 ? 's' : ''} — about <strong>{money(perVisit)}</strong> per visit, saving <strong>{money(saving$)}</strong> ({savePct}% off).
               </div>
+            )}
+          </Section>
 
-              <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  SUB-HEADER TAG
-                </label>
-                <input
-                  type="text"
-                  value={formData.subBadge}
-                  onChange={(e) => setFormData({ ...formData, subBadge: e.target.value })}
-                  placeholder="e.g. ✦ ONE TIME OFFER ✦"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '12px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.88rem',
-                    fontWeight: '700',
-                    outline: 'none',
-                    color: '#0f172a',
-                    background: '#f8fafc'
-                  }}
-                />
-              </div>
-            </div>
+          <Section icon={Timer} title="Visit rules" hint="What the customer gets with the pack.">
+            <Field label="Number of visits" error={errors.visitCount}><input type="number" min="1" step="1" value={form.visitCount} onChange={set('visitCount')} style={inp('visitCount')} /></Field>
+            <Field label="Each visit (minutes)" error={errors.visitDurationMinutes}><input type="number" min="15" value={form.visitDurationMinutes} onChange={set('visitDurationMinutes')} style={inp('visitDurationMinutes')} /></Field>
+            <Field label="Valid for (days)" error={errors.validityDays}><input type="number" min="1" value={form.validityDays} onChange={set('validityDays')} style={inp('validityDays')} /></Field>
+          </Section>
 
-            {/* Ticket Strikethrough & Offer Price */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-              <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  TICKET ORIGINAL PRICE (₹)
-                </label>
-                <input
-                  type="number"
-                  value={formData.ticketOriginalPrice}
-                  onChange={(e) => setFormData({ ...formData, ticketOriginalPrice: Number(e.target.value) })}
-                  placeholder="199"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '12px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.9rem',
-                    fontWeight: '800',
-                    outline: 'none',
-                    color: '#dc2626',
-                    background: '#f8fafc'
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  TICKET OFFER PRICE (₹)
-                </label>
-                <input
-                  type="number"
-                  value={formData.ticketOfferPrice}
-                  onChange={(e) => setFormData({ ...formData, ticketOfferPrice: Number(e.target.value) })}
-                  placeholder="70"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '12px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.9rem',
-                    fontWeight: '800',
-                    outline: 'none',
-                    color: '#059669',
-                    background: '#f8fafc'
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Total Original Price & Total Offer Price */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-              <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  TOTAL ORIGINAL PRICE (₹)
-                </label>
-                <input
-                  type="number"
-                  value={formData.originalPrice}
-                  onChange={(e) => setFormData({ ...formData, originalPrice: Number(e.target.value) })}
-                  placeholder="398"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '12px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.9rem',
-                    fontWeight: '800',
-                    outline: 'none',
-                    color: '#64748b',
-                    background: '#f8fafc'
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  TOTAL OFFER PRICE (₹)
-                </label>
-                <input
-                  type="number"
-                  value={formData.offerPrice}
-                  onChange={(e) => setFormData({ ...formData, offerPrice: Number(e.target.value) })}
-                  placeholder="139"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '12px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.9rem',
-                    fontWeight: '800',
-                    outline: 'none',
-                    color: '#ec4899',
-                    background: '#f8fafc'
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Per Visit Text */}
-            <div>
-              <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
-                PER VISIT SUBTITLE TEXT
-              </label>
-              <input
-                type="text"
-                value={formData.perVisitPriceText}
-                onChange={(e) => setFormData({ ...formData, perVisitPriceText: e.target.value })}
-                placeholder="Only ₹70 per visit"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: '12px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '0.88rem',
-                  fontWeight: '700',
-                  outline: 'none',
-                  color: '#0f172a',
-                  background: '#f8fafc'
-                }}
-              />
-            </div>
-
-            {/* Visit Count, Duration & Validity Days */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-              <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  NUMBER OF VISITS
-                </label>
-                <input
-                  type="number"
-                  value={formData.visitCount}
-                  onChange={(e) => setFormData({ ...formData, visitCount: Number(e.target.value) })}
-                  placeholder="2"
-                  min="1"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '12px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.9rem',
-                    fontWeight: '800',
-                    outline: 'none',
-                    color: '#0f172a',
-                    background: '#f8fafc'
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  DURATION (MINS)
-                </label>
-                <input
-                  type="number"
-                  value={formData.visitDurationMinutes}
-                  onChange={(e) => setFormData({ ...formData, visitDurationMinutes: Number(e.target.value) })}
-                  placeholder="60"
-                  min="15"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '12px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.9rem',
-                    fontWeight: '800',
-                    outline: 'none',
-                    color: '#0f172a',
-                    background: '#f8fafc'
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  VALIDITY (DAYS)
-                </label>
-                <input
-                  type="number"
-                  value={formData.validityDays}
-                  onChange={(e) => setFormData({ ...formData, validityDays: Number(e.target.value) })}
-                  placeholder="15"
-                  min="1"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '12px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.9rem',
-                    fontWeight: '800',
-                    outline: 'none',
-                    color: '#0f172a',
-                    background: '#f8fafc'
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Applicable Category & Specific Service */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-              <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  APPLICABLE CATEGORY
-                </label>
-                <select
-                  value={formData.applicableCategory}
-                  onChange={(e) => setFormData({ ...formData, applicableCategory: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '12px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.88rem',
-                    fontWeight: '700',
-                    outline: 'none',
-                    color: '#0f172a',
-                    background: '#ffffff'
-                  }}
-                >
-                  <option value="">🌐 All Categories (Global Starter Pack)</option>
-                  {categoriesList.map((cat) => (
-                    <option key={cat._id} value={cat._id}>
-                      📁 {cat.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  APPLICABLE SPECIFIC SERVICE (OPTIONAL)
-                </label>
-                <select
-                  value={formData.applicableService}
-                  onChange={(e) => setFormData({ ...formData, applicableService: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '12px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.88rem',
-                    fontWeight: '700',
-                    outline: 'none',
-                    color: '#0f172a',
-                    background: '#ffffff'
-                  }}
-                >
-                  <option value="">🛠️ All Services in Category</option>
-                  {servicesList
-                    .filter((srv) => !formData.applicableCategory || String(srv.category?._id || srv.category) === String(formData.applicableCategory))
-                    .map((srv) => (
-                      <option key={srv._id} value={srv._id}>
-                        ⚡ {srv.name || srv.title}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Target Audience & Status Switch */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', alignItems: 'center' }}>
-              <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  TARGET AUDIENCE
-                </label>
-                <select
-                  value={formData.targetAudience}
-                  onChange={(e) => setFormData({ ...formData, targetAudience: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '12px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.88rem',
-                    fontWeight: '700',
-                    outline: 'none',
-                    color: '#0f172a',
-                    background: '#ffffff'
-                  }}
-                >
-                  <option value="NEW_USERS_ONLY">🆕 New Customers Only (1st Booking)</option>
-                  <option value="ALL_USERS">🌐 All Customers (Global Offer)</option>
-                </select>
-              </div>
-
-              <div style={{ paddingTop: '18px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: '800', fontSize: '0.88rem', color: '#0f172a' }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.isActive}
-                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                    style={{ width: '20px', height: '20px', accentColor: '#ec4899' }}
-                  />
-                  Enable Offer on Customer App
-                </label>
-              </div>
-            </div>
-
-          </form>
+          <Section icon={Users} title="Who can use it" hint="Limit the offer to an audience, a category or one service.">
+            <Field wide label="Audience">
+              <select value={form.targetAudience} onChange={set('targetAudience')} style={inp('targetAudience')}>
+                <option value="NEW_USERS_ONLY">New customers only (first booking)</option>
+                <option value="ALL_USERS">All customers</option>
+              </select>
+            </Field>
+            <Field label="Category">
+              <select value={form.applicableCategory} onChange={changeCategory} style={inp('applicableCategory')}>
+                <option value="">All categories</option>
+                {categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
+              </select>
+            </Field>
+            <Field label="Service (optional)">
+              <select value={form.applicableService} onChange={set('applicableService')} style={inp('applicableService')}>
+                <option value="">All services{form.applicableCategory ? ' in this category' : ''}</option>
+                {serviceOptions.map((s) => <option key={s._id} value={s._id}>{s.name || s.title}</option>)}
+              </select>
+            </Field>
+          </Section>
         </div>
 
-        {/* Right Column: Live Mobile UI Preview */}
-        <div style={{ background: '#ffffff', borderRadius: '24px', border: '1px solid #e2e8f0', padding: '24px', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.02)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: '#0f172a', fontWeight: '800', fontSize: '0.95rem' }}>
-            <Eye size={18} color="#ec4899" /> LIVE CUSTOMER APP PREVIEW
+        {/* Live preview */}
+        <aside style={{ flex: '0 1 360px', minWidth: '280px', position: 'sticky', top: '88px' }}>
+          <div style={{ ...card, padding: '18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px', fontWeight: 800, fontSize: '0.88rem', color: '#0f172a' }}>
+              <Eye size={16} color="#db2777" /> Live customer app preview
+              {!form.isActive && <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: '#64748b' }}><Power size={12} /> hidden</span>}
+            </div>
+            <div style={{ opacity: form.isActive ? 1 : 0.45, transition: 'opacity .15s' }}><Preview f={form} /></div>
           </div>
-
-          {/* Screenshot-Identical Dark Card Preview */}
-          <div style={{
-            background: '#090d16',
-            borderRadius: '24px',
-            padding: '20px',
-            color: '#ffffff',
-            boxShadow: '0 16px 40px rgba(0, 0, 0, 0.4)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            position: 'relative',
-            overflow: 'hidden'
-          }}>
-            {/* Top Ticket Graphic Banner Box */}
-            <div style={{
-              background: 'linear-gradient(135deg, #111827 0%, #1f293d 100%)',
-              borderRadius: '20px',
-              padding: '24px 20px',
-              position: 'relative',
-              marginBottom: '16px',
-              border: '1px solid rgba(255, 255, 255, 0.05)',
-              overflow: 'hidden'
-            }}>
-              {/* STARTER PACK BADGE */}
-              <div style={{
-                position: 'absolute',
-                top: '14px',
-                left: '14px',
-                background: '#000000',
-                color: '#ffffff',
-                fontSize: '0.72rem',
-                fontWeight: '900',
-                letterSpacing: '1px',
-                padding: '4px 12px',
-                borderRadius: '9999px',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                boxShadow: '0 4px 10px rgba(0,0,0,0.5)'
-              }}>
-                {formData.badge}
-              </div>
-
-              {/* Pink Tickets Graphic Representation */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginTop: '16px',
-                position: 'relative',
-                height: '80px'
-              }}>
-                {/* Background Rotated Tickets */}
-                <div style={{
-                  position: 'absolute',
-                  width: '90px',
-                  height: '50px',
-                  background: '#be185d',
-                  borderRadius: '8px',
-                  transform: 'rotate(-15deg)',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                  opacity: 0.8
-                }} />
-                <div style={{
-                  position: 'absolute',
-                  width: '90px',
-                  height: '50px',
-                  background: '#9d174d',
-                  borderRadius: '8px',
-                  transform: 'rotate(15deg)',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                  opacity: 0.8
-                }} />
-
-                {/* Main Front Pink Ticket */}
-                <div style={{
-                  position: 'relative',
-                  zIndex: 5,
-                  background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
-                  borderRadius: '12px',
-                  padding: '8px 18px',
-                  boxShadow: '0 8px 24px rgba(236, 72, 153, 0.4)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  border: '1.5px dashed rgba(255, 255, 255, 0.4)'
-                }}>
-                  <span style={{ fontSize: '1.1rem', textDecoration: 'line-through', opacity: 0.75, fontWeight: '700' }}>
-                    ₹{formData.ticketOriginalPrice}
-                  </span>
-                  <span style={{ fontSize: '1.5rem', fontWeight: '900', color: '#ffffff' }}>
-                    ₹{formData.ticketOfferPrice}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Sub-Header Sparkle Tag */}
-            <div style={{
-              textAlign: 'center',
-              fontSize: '0.74rem',
-              fontWeight: '900',
-              letterSpacing: '1px',
-              color: '#ec4899',
-              marginBottom: '8px'
-            }}>
-              {formData.subBadge}
-            </div>
-
-            {/* Main Title & Strikethrough Pricing */}
-            <div style={{ textAlign: 'center', marginBottom: '4px' }}>
-              <span style={{ fontSize: '1.35rem', fontWeight: '900', letterSpacing: '-0.3px', marginRight: '8px' }}>
-                {formData.visitCount} VISITS FOR
-              </span>
-              <span style={{ fontSize: '1.2rem', textDecoration: 'line-through', opacity: 0.5, fontWeight: '800', marginRight: '6px' }}>
-                ₹{formData.originalPrice}
-              </span>
-              <span style={{ fontSize: '1.45rem', fontWeight: '900', color: '#ffffff' }}>
-                ₹{formData.offerPrice}
-              </span>
-            </div>
-
-            {/* Per Visit Rate Text */}
-            <div style={{ textAlign: 'center', fontSize: '0.84rem', color: '#94a3b8', fontWeight: '600', marginBottom: '16px' }}>
-              {formData.perVisitPriceText}
-            </div>
-
-            {/* Two Info Chips (Visits & Validity) */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '14px',
-                padding: '10px 12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                fontSize: '0.8rem',
-                fontWeight: '700',
-                color: '#ffffff'
-              }}>
-                <Clock size={15} color="#ec4899" />
-                <span>{formData.visitCount} × {formData.visitDurationMinutes} min visits</span>
-              </div>
-
-              <div style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '14px',
-                padding: '10px 12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                fontSize: '0.8rem',
-                fontWeight: '700',
-                color: '#ffffff'
-              }}>
-                <Calendar size={15} color="#ec4899" />
-                <span>Valid for {formData.validityDays} days</span>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
+        </aside>
       </div>
-
-    </div>
+    </form>
   );
 };
 

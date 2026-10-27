@@ -358,13 +358,14 @@ const CityReportsView = ({ assignedCity = 'Delhi NCR' }) => {
         <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
           <table style={{ width: '100%', minWidth: '640px', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
-              <tr style={headRow}><Th>Category</Th><Th right>Placed</Th><Th right>Completed</Th><Th right>Cancelled</Th><Th right>Completion</Th><Th right>Rating</Th><Th right>Revenue</Th></tr>
+              <tr style={headRow}><Th>#</Th><Th>Category</Th><Th right>Placed</Th><Th right>Completed</Th><Th right>Cancelled</Th><Th right>Completion</Th><Th right>Rating</Th><Th right>Revenue</Th></tr>
             </thead>
             <tbody>
               {!r?.categories?.length ? (
-                <tr><td colSpan={7}><EmptyState>No bookings in this period.</EmptyState></td></tr>
-              ) : r.categories.map((c) => (
+                <tr><td colSpan={8}><EmptyState>No bookings in this period.</EmptyState></td></tr>
+              ) : r.categories.map((c, i) => (
                 <tr key={c.name} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ ...td, color: '#94a3b8', fontWeight: 700 }}>{i + 1}</td>
                   <td style={{ ...td, fontWeight: 800, color: '#0f172a' }}>{c.name}</td>
                   <td style={{ ...td, textAlign: 'right' }}>{c.placed}</td>
                   <td style={{ ...td, textAlign: 'right', color: '#059669', fontWeight: 700 }}>{c.completed}</td>

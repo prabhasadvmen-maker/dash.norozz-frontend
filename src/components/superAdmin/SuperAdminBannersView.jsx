@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Image,
   Plus,
@@ -6,21 +6,18 @@ import {
   Edit2,
   Trash2,
   CheckCircle2,
-  XCircle,
   Loader2,
   X,
-  Settings,
   Power,
-  Sparkles,
   Link,
   Tag,
   ArrowRight,
-  Eye,
   Wind,
   Home,
   Wrench,
   Scissors,
-  Zap
+  MoreVertical,
+  AlertTriangle
 } from 'lucide-react';
 import { superAdminService } from '../../services/superAdmin.service.js';
 import { catalogService } from '../../services/catalog.service.js';
@@ -34,6 +31,110 @@ const gradientPresets = [
   { label: 'Midnight Cyan', value: 'linear-gradient(135deg, #083344 0%, #0e7490 50%, #0284c7 100%)' },
 ];
 
+const TEMPLATES = [
+  { icon: Wind, color: '#0284c7', label: 'AC Foam Jet Cleaning', title: 'AC Foam Jet Deep Cleaning', subtitle: 'Book 2-in-1 Foam Jet AC Cleaning at flat 50% OFF', badgeText: 'SUMMER SPECIAL', gradientBg: 'linear-gradient(135deg, #083344 0%, #0e7490 50%, #0284c7 100%)', targetType: 'service' },
+  { icon: Home, color: '#2563eb', label: 'Home Deep Cleaning', title: 'Full Home Deep Cleaning', subtitle: 'Complete 3BHK sanitization starting at ₹1,999', badgeText: 'BESTSELLER', gradientBg: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #7c3aed 100%)', targetType: 'category' },
+  { icon: Wrench, color: '#059669', label: 'Appliance Repair', title: 'Expert Appliance Repair', subtitle: 'Same-day repair for AC, Fridge, Washing Machine & more', badgeText: 'SAME DAY', gradientBg: 'linear-gradient(135deg, #09331E 0%, #064e3b 50%, #0f172a 100%)', targetType: 'category' },
+  { icon: Scissors, color: '#c026d3', label: 'Salon at Home', title: 'Salon & Beauty at Home', subtitle: 'Professional salon services at your doorstep', badgeText: 'FLAT 30% OFF', gradientBg: 'linear-gradient(135deg, #701a75 0%, #a21caf 60%, #c026d3 100%)', targetType: 'category' },
+];
+
+const card = { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)' };
+const inputStyle = { padding: '8px 11px', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '0.84rem', color: '#0f172a', background: '#ffffff' };
+const headRow = { background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' };
+const td = { padding: '12px 10px', fontSize: '0.84rem', color: '#334155', verticalAlign: 'middle' };
+
+const StatCard = ({ icon: Icon, color, bg, label, value }) => (
+  <div style={{ ...card, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 }}>
+    <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <Icon size={20} color={color} />
+    </div>
+    <div>
+      <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0f172a', lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px', marginTop: '2px' }}>{label}</div>
+    </div>
+  </div>
+);
+
+const Th = ({ children, w }) => <th style={{ padding: '11px 10px', fontWeight: 800, whiteSpace: 'nowrap', textAlign: 'left', width: w }}>{children}</th>;
+
+const menuItem = (color) => ({ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '9px 12px', background: 'transparent', border: 'none', borderRadius: '8px', color, fontSize: '0.84rem', fontWeight: 700, cursor: 'pointer', textAlign: 'left', whiteSpace: 'nowrap' });
+
+const RowMenu = ({ active, onEdit, onToggle, onDelete }) => {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = () => setOpen(false);
+    const onDown = (e) => ref.current && !ref.current.contains(e.target) && close();
+    const onKey = (e) => e.key === 'Escape' && close();
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('resize', close);
+    window.addEventListener('scroll', close, true);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', close);
+      window.removeEventListener('scroll', close, true);
+    };
+  }, [open]);
+
+  // The table scrolls horizontally, which would clip an absolutely positioned menu, so it is fixed to the viewport
+  const toggle = (e) => {
+    if (!open) {
+      const r = e.currentTarget.getBoundingClientRect();
+      const flip = r.bottom + 150 > window.innerHeight;
+      setPos({ right: window.innerWidth - r.right, ...(flip ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }) });
+    }
+    setOpen((o) => !o);
+  };
+  const pick = (fn) => () => { setOpen(false); fn(); };
+
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <button type="button" aria-label="Banner actions" aria-haspopup="menu" aria-expanded={open} onClick={toggle} style={{ width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: open ? '#f1f5f9' : 'transparent', border: '1px solid transparent', borderRadius: '10px', color: '#64748b', cursor: 'pointer' }}>
+        <MoreVertical size={18} />
+      </button>
+      {open && pos && (
+        <div role="menu" style={{ position: 'fixed', ...pos, zIndex: 1050, minWidth: '170px', padding: '6px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 12px 30px rgba(15, 23, 42, 0.14)' }}>
+          <button type="button" role="menuitem" onClick={pick(onEdit)} style={menuItem('#334155')}><Edit2 size={16} color="#d97706" /> Edit banner</button>
+          <button type="button" role="menuitem" onClick={pick(onToggle)} style={menuItem(active ? '#b45309' : '#047857')}><Power size={16} /> {active ? 'Deactivate' : 'Activate'}</button>
+          <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }} />
+          <button type="button" role="menuitem" onClick={pick(onDelete)} style={menuItem('#dc2626')}><Trash2 size={16} /> Delete</button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const DeleteModal = ({ banner, busy, onClose, onConfirm }) => {
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" role="dialog" aria-modal="true" aria-label="Delete banner" onClick={(e) => e.stopPropagation()} style={{ padding: '26px', maxWidth: '430px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Delete banner</h3>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '50%', color: '#64748b', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><X size={18} /></button>
+        </div>
+        <div style={{ display: 'flex', gap: '12px', padding: '12px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', color: '#991b1b', fontSize: '0.86rem', lineHeight: 1.45 }}>
+          <AlertTriangle size={20} style={{ flexShrink: 0, marginTop: '1px' }} />
+          <div>Delete <strong>{banner.title}</strong>? It is removed from the customer app straight away. To hide it for now, use Deactivate instead.</div>
+        </div>
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '22px' }}>
+          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
+          <button type="button" className="btn" disabled={busy} onClick={onConfirm} style={{ background: '#dc2626', color: '#fff', border: 'none' }}>{busy ? 'Deleting…' : 'Delete banner'}</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SuperAdminBannersView = () => {
   const [banners, setBanners] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -42,7 +143,8 @@ const SuperAdminBannersView = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [activeDropdownId, setActiveDropdownId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -63,12 +165,6 @@ const SuperAdminBannersView = () => {
     isActive: true,
     displayOrder: 0,
   });
-
-  useEffect(() => {
-    const handleClickOutside = () => setActiveDropdownId(null);
-    window.addEventListener('click', handleClickOutside);
-    return () => window.removeEventListener('click', handleClickOutside);
-  }, []);
 
   const fetchData = async () => {
     setLoading(true);
@@ -194,15 +290,36 @@ const SuperAdminBannersView = () => {
     }
   };
 
-  const handleDelete = async (id, title) => {
-    if (!window.confirm(`Are you sure you want to delete banner '${title}'?`)) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await superAdminService.deleteBanner(id);
-      toast.success(`Banner '${title}' deleted`);
+      await superAdminService.deleteBanner(deleteTarget._id);
+      toast.success(`Banner '${deleteTarget.title}' deleted`);
+      setDeleteTarget(null);
       fetchData();
     } catch (err) {
       toast.error('Failed to delete banner');
+    } finally {
+      setDeleting(false);
     }
+  };
+
+  const openTemplate = (tpl) => {
+    setEditingBanner(null);
+    setFormData({
+      title: tpl.title,
+      subtitle: tpl.subtitle,
+      badgeText: tpl.badgeText,
+      imageUrl: '',
+      gradientBg: tpl.gradientBg,
+      targetType: tpl.targetType,
+      targetValue: '',
+      couponCode: '',
+      isActive: true,
+      displayOrder: banners.length,
+    });
+    setModalOpen(true);
   };
 
   const handleToggleActive = async (banner) => {
@@ -215,7 +332,7 @@ const SuperAdminBannersView = () => {
     }
   };
 
-  const filteredBanners = banners.filter((b) => {
+  const filteredBanners = [...banners].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0)).filter((b) => {
     const matchesSearch =
       b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (b.subtitle && b.subtitle.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -227,451 +344,94 @@ const SuperAdminBannersView = () => {
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
-      {/* HEADER ACTION BAR */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-        <p style={{ fontSize: '0.88rem', color: '#475569', margin: 0, maxWidth: '640px', lineHeight: 1.5 }}>
-          Create and manage homepage hero banners, link them to services or categories, and attach promo codes for one-tap customer discounts.
-        </p>
-
-        <button
-          type="button"
-          onClick={handleOpenCreateModal}
-          style={{
-            padding: '11px 20px',
-            borderRadius: '14px',
-            fontWeight: '800',
-            fontSize: '0.9rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-            boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
-            color: '#ffffff',
-            border: 'none',
-            cursor: 'pointer'
-          }}
-        >
-          <Plus size={18} /> Create New Banner
-        </button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
+      {/* STATS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+        <StatCard icon={Image} color="#2563eb" bg="#eff6ff" label="Total banners" value={banners.length} />
+        <StatCard icon={CheckCircle2} color="#059669" bg="#ecfdf5" label="Live in customer app" value={banners.filter((b) => b.isActive).length} />
+        <StatCard icon={Tag} color="#d97706" bg="#fffbeb" label="Linked to category" value={banners.filter((b) => b.targetType === 'category').length} />
+        <StatCard icon={Link} color="#7c3aed" bg="#f5f3ff" label="Linked to service" value={banners.filter((b) => b.targetType === 'service').length} />
       </div>
 
-      {/* QUICK START TEMPLATES */}
-      <div style={{ background: '#f8fafc', borderRadius: '18px', padding: '16px 20px', border: '1px solid #e2e8f0' }}>
-        <div style={{ fontSize: '0.76rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Zap size={13} color="#64748b" /> Quick Start — Banner Templates
-        </div>
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          {[
-            {
-              icon: <Wind size={15} color="#0284c7" />,
-              label: 'AC Foam Jet Cleaning',
-              title: 'AC Foam Jet Deep Cleaning',
-              subtitle: 'Book 2-in-1 Foam Jet AC Cleaning at flat 50% OFF',
-              badgeText: 'SUMMER SPECIAL',
-              gradientBg: 'linear-gradient(135deg, #083344 0%, #0e7490 50%, #0284c7 100%)',
-              targetType: 'service',
-            },
-            {
-              icon: <Home size={15} color="#2563eb" />,
-              label: 'Home Deep Cleaning',
-              title: 'Full Home Deep Cleaning',
-              subtitle: 'Complete 3BHK sanitization starting at ₹1,999',
-              badgeText: 'BESTSELLER',
-              gradientBg: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #7c3aed 100%)',
-              targetType: 'category',
-            },
-            {
-              icon: <Wrench size={15} color="#059669" />,
-              label: 'Appliance Repair',
-              title: 'Expert Appliance Repair',
-              subtitle: 'Same-day repair for AC, Fridge, Washing Machine & more',
-              badgeText: 'SAME DAY',
-              gradientBg: 'linear-gradient(135deg, #09331E 0%, #064e3b 50%, #0f172a 100%)',
-              targetType: 'category',
-            },
-            {
-              icon: <Scissors size={15} color="#c026d3" />,
-              label: 'Salon at Home',
-              title: 'Salon & Beauty at Home',
-              subtitle: 'Professional salon services at your doorstep',
-              badgeText: 'FLAT 30% OFF',
-              gradientBg: 'linear-gradient(135deg, #701a75 0%, #a21caf 60%, #c026d3 100%)',
-              targetType: 'category',
-            },
-          ].map((tpl, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => {
-                setEditingBanner(null);
-                setFormData({
-                  title: tpl.title,
-                  subtitle: tpl.subtitle,
-                  badgeText: tpl.badgeText,
-                  imageUrl: '',
-                  gradientBg: tpl.gradientBg,
-                  targetType: tpl.targetType,
-                  targetValue: '',
-                  couponCode: '',
-                  isActive: true,
-                  displayOrder: banners.length,
-                });
-                setModalOpen(true);
-              }}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '10px',
-                border: '1px solid #e2e8f0',
-                background: '#ffffff',
-                fontSize: '0.82rem',
-                fontWeight: '700',
-                color: '#334155',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.15s ease',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#93c5fd'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-            >
-              {tpl.icon} {tpl.label}
+      <div style={{ ...card, padding: '20px', minWidth: 0 }}>
+        {/* TOOLBAR */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div role="tablist" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {[['ALL', 'All', banners.length], ['ACTIVE', 'Active', banners.filter((b) => b.isActive).length], ['INACTIVE', 'Inactive', banners.filter((b) => !b.isActive).length]].map(([id, label, n]) => {
+              const active = statusFilter === id;
+              return (
+                <button key={id} type="button" role="tab" aria-selected={active} onClick={() => setStatusFilter(id)} style={{ padding: '6px 13px', borderRadius: '9999px', border: `1px solid ${active ? '#059669' : '#e2e8f0'}`, background: active ? '#059669' : '#ffffff', color: active ? '#ffffff' : '#475569', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  {label}<span style={{ opacity: 0.75, marginLeft: '6px' }}>{n}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+            <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+              <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: '10px' }} />
+              <input type="search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search title or subtitle" style={{ ...inputStyle, paddingLeft: '30px', width: '210px' }} />
+            </label>
+            <select aria-label="Start from a template" value="" onChange={(e) => { const t = TEMPLATES[Number(e.target.value)]; if (t) openTemplate(t); }} style={inputStyle}>
+              <option value="">Use a template…</option>
+              {TEMPLATES.map((t, i) => <option key={t.label} value={i}>{t.label}</option>)}
+            </select>
+            <button type="button" onClick={handleOpenCreateModal} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '9px 16px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '0.84rem', cursor: 'pointer', boxShadow: '0 4px 14px rgba(16, 185, 129, 0.25)' }}>
+              <Plus size={16} /> Create Banner
             </button>
-          ))}
-        </div>
-      </div>
-
-      {/* STATS CARDS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-        <div className="mui-card" style={{ padding: '16px 20px', borderRadius: '16px', background: '#ffffff' }}>
-          <div style={{ fontSize: '0.76rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-            Total Banners
-          </div>
-          <div style={{ fontSize: '1.6rem', fontWeight: '900', color: '#0f172a', marginTop: '6px' }}>
-            {banners.length}
           </div>
         </div>
 
-        <div className="mui-card" style={{ padding: '16px 20px', borderRadius: '16px', background: '#ffffff' }}>
-          <div style={{ fontSize: '0.76rem', fontWeight: '800', color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-            Active Customer Banners
-          </div>
-          <div style={{ fontSize: '1.6rem', fontWeight: '900', color: '#10b981', marginTop: '6px' }}>
-            {banners.filter((b) => b.isActive).length}
-          </div>
-        </div>
-
-        <div className="mui-card" style={{ padding: '16px 20px', borderRadius: '16px', background: '#ffffff' }}>
-          <div style={{ fontSize: '0.76rem', fontWeight: '800', color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-            Category Linked
-          </div>
-          <div style={{ fontSize: '1.6rem', fontWeight: '900', color: '#2563eb', marginTop: '6px' }}>
-            {banners.filter((b) => b.targetType === 'category').length}
-          </div>
-        </div>
-
-        <div className="mui-card" style={{ padding: '16px 20px', borderRadius: '16px', background: '#ffffff' }}>
-          <div style={{ fontSize: '0.76rem', fontWeight: '800', color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-            Service Linked
-          </div>
-          <div style={{ fontSize: '1.6rem', fontWeight: '900', color: '#7c3aed', marginTop: '6px' }}>
-            {banners.filter((b) => b.targetType === 'service').length}
-          </div>
-        </div>
-      </div>
-
-      {/* SEARCH & FILTER BAR */}
-      <div
-        className="mui-card"
-        style={{
-          padding: '16px 20px',
-          borderRadius: '18px',
-          background: '#ffffff',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '14px',
-        }}
-      >
-        <div style={{ position: 'relative', minWidth: '280px', flex: 1 }}>
-          <Search size={17} color="#94a3b8" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search banner title or subtitle..."
-            style={{
-              width: '100%',
-              padding: '10px 14px 10px 40px',
-              borderRadius: '12px',
-              border: '1px solid var(--border-light)',
-              fontSize: '0.88rem',
-              outline: 'none',
-            }}
-          />
-        </div>
-
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {['ALL', 'ACTIVE', 'INACTIVE'].map((st) => (
-            <button
-              key={st}
-              type="button"
-              onClick={() => setStatusFilter(st)}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '12px',
-                fontSize: '0.8rem',
-                fontWeight: '800',
-                cursor: 'pointer',
-                border: '1px solid transparent',
-                background: statusFilter === st ? '#2563eb' : 'var(--bg-light)',
-                color: statusFilter === st ? '#ffffff' : 'var(--text-secondary)',
-              }}
-            >
-              {st}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* BANNERS LIST TABLE */}
-      <div className="mui-card" style={{ padding: 0, borderRadius: '20px', overflow: 'hidden', background: '#ffffff' }}>
+        {/* TABLE */}
         {loading ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-            <Loader2 size={30} className="spin" style={{ margin: '0 auto 10px auto' }} />
-            <div>Loading promotional banners...</div>
-          </div>
-        ) : filteredBanners.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-            <Image size={36} color="#cbd5e1" style={{ margin: '0 auto 10px auto' }} />
-            <div style={{ fontWeight: '700', color: '#475569' }}>No promotional banners found</div>
-            <div style={{ fontSize: '0.82rem', marginTop: '4px' }}>Click 'Create New Banner' to add hero banner for customer app.</div>
+            <Loader2 size={28} className="spin" style={{ margin: '0 auto 10px auto' }} />
+            <div>Loading promotional banners…</div>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', minWidth: '860px', borderCollapse: 'collapse', fontSize: '0.88rem', textAlign: 'left' }}>
+          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+            <table style={{ width: '100%', minWidth: '900px', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Banner Preview</th>
-                  <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Banner Title & Text</th>
-                  <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Click Target / Link</th>
-                  <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Coupon Code</th>
-                  <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Order</th>
-                  <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Status</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
+                <tr style={headRow}>
+                  <Th w="48px">#</Th><Th>Preview</Th><Th>Banner</Th><Th>Click target</Th><Th>Coupon</Th><Th>Order</Th><Th>Status</Th><th style={{ width: '56px' }} />
                 </tr>
               </thead>
               <tbody>
-                {filteredBanners.map((b) => (
+                {filteredBanners.length === 0 ? (
+                  <tr><td colSpan={8} style={{ padding: '40px 16px', textAlign: 'center', color: '#64748b', fontSize: '0.88rem' }}>
+                    {banners.length ? 'No banners match these filters.' : 'No promotional banners yet. Click "Create Banner" or pick a template to add one.'}
+                  </td></tr>
+                ) : filteredBanners.map((b, idx) => (
                   <tr key={b._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    
-                    {/* Preview Cell */}
-                    <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
-                      <div style={{
-                        width: '132px',
-                        height: '66px',
-                        flexShrink: 0,
-                        borderRadius: '12px',
-                        background: b.imageUrl ? `url(${b.imageUrl}) center/cover` : (b.gradientBg || 'linear-gradient(135deg, #09331E, #0f172a)'),
-                        padding: '8px',
-                        color: '#ffffff',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        overflow: 'hidden'
-                      }}>
-                        <span style={{ background: 'rgba(255,255,255,0.25)', fontSize: '0.55rem', fontWeight: '800', padding: '2px 6px', borderRadius: '6px', alignSelf: 'flex-start' }}>
-                          {b.badgeText || 'OFFER'}
-                        </span>
-                        <div style={{ fontSize: '0.7rem', fontWeight: '900', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {b.title}
-                        </div>
+                    <td style={{ ...td, color: '#94a3b8', fontWeight: 700 }}>{idx + 1}</td>
+                    <td style={td}>
+                      <div style={{ width: '128px', height: '64px', borderRadius: '10px', background: b.imageUrl ? `url(${b.imageUrl}) center/cover` : (b.gradientBg || 'linear-gradient(135deg, #09331E, #0f172a)'), padding: '7px', color: '#ffffff', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', border: '1px solid rgba(15,23,42,0.08)', overflow: 'hidden' }}>
+                        <span style={{ background: 'rgba(255,255,255,0.25)', fontSize: '0.55rem', fontWeight: 800, padding: '2px 6px', borderRadius: '6px', alignSelf: 'flex-start' }}>{b.badgeText || 'OFFER'}</span>
+                        <div style={{ fontSize: '0.68rem', fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.title}</div>
                       </div>
                     </td>
-
-                    {/* Title & Subtitle */}
-                    <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
-                      <div style={{ maxWidth: '260px' }}>
-                        <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '0.92rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={b.title}>{b.title}</div>
-                        {b.subtitle && <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={b.subtitle}>{b.subtitle}</div>}
-                      </div>
+                    <td style={{ ...td, maxWidth: '260px' }}>
+                      <div title={b.title} style={{ fontWeight: 800, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.title}</div>
+                      {b.subtitle && <div title={b.subtitle} style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{b.subtitle}</div>}
                     </td>
-
-                    {/* Click Target */}
-                    <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
+                    <td style={td}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
-                        <span style={{
-                          padding: '3px 8px',
-                          borderRadius: '6px',
-                          fontSize: '0.72rem',
-                          fontWeight: '800',
-                          background: b.targetType === 'category' ? '#dbeafe' : b.targetType === 'service' ? '#f3e8ff' : '#f1f5f9',
-                          color: b.targetType === 'category' ? '#1d4ed8' : b.targetType === 'service' ? '#6b21a8' : '#475569',
-                          textTransform: 'uppercase'
-                        }}>
-                          {b.targetType}
-                        </span>
-                        <span style={{ fontWeight: '700', fontSize: '0.82rem', color: '#334155', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={b.targetValue || ''}>
-                          {b.targetValue || 'None'}
-                        </span>
+                        <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', background: b.targetType === 'category' ? '#dbeafe' : b.targetType === 'service' ? '#f3e8ff' : '#f1f5f9', color: b.targetType === 'category' ? '#1d4ed8' : b.targetType === 'service' ? '#6b21a8' : '#475569' }}>{b.targetType || 'none'}</span>
+                        <span title={b.targetValue || ''} style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.targetValue || '—'}</span>
                       </div>
                     </td>
-
-                    {/* Coupon Code */}
-                    <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
-                      {b.couponCode ? (
-                        <span style={{ background: '#ecfdf5', color: '#047857', border: '1px dashed #10b981', padding: '4px 10px', borderRadius: '8px', fontWeight: '800', fontSize: '0.8rem' }}>
-                          🎟️ {b.couponCode}
-                        </span>
-                      ) : (
-                        <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>None</span>
-                      )}
+                    <td style={td}>
+                      {b.couponCode
+                        ? <span style={{ background: '#ecfdf5', color: '#047857', border: '1px dashed #10b981', padding: '3px 9px', borderRadius: '8px', fontWeight: 800, fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{b.couponCode}</span>
+                        : <span style={{ color: '#cbd5e1' }}>—</span>}
                     </td>
-
-                    {/* Order */}
-                    <td style={{ padding: '14px 16px', fontWeight: '800', color: '#475569', whiteSpace: 'nowrap' }}>
-                      #{b.displayOrder || 0}
-                    </td>
-
-                    {/* Status */}
-                    <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleActive(b)}
-                        style={{
-                          border: 'none',
-                          background: b.isActive ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                          color: b.isActive ? '#059669' : '#dc2626',
-                          padding: '4px 12px',
-                          borderRadius: '9999px',
-                          fontWeight: '800',
-                          fontSize: '0.75rem',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {b.isActive ? '● Active' : '○ Inactive'}
+                    <td style={{ ...td, fontWeight: 800, color: '#475569', whiteSpace: 'nowrap' }}>{b.displayOrder || 0}</td>
+                    <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                      <button type="button" onClick={() => handleToggleActive(b)} title={b.isActive ? 'Click to deactivate' : 'Click to activate'} style={{ border: `1px solid ${b.isActive ? '#a7f3d0' : '#e2e8f0'}`, background: b.isActive ? '#ecfdf5' : '#f1f5f9', color: b.isActive ? '#047857' : '#64748b', padding: '3px 11px', borderRadius: '9999px', fontWeight: 800, fontSize: '0.7rem', cursor: 'pointer' }}>
+                        ● {b.isActive ? 'Active' : 'Inactive'}
                       </button>
                     </td>
-
-                    {/* Actions Dropdown */}
-                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                      <div style={{ position: 'relative', display: 'inline-block' }} onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={() => setActiveDropdownId(activeDropdownId === b._id ? null : b._id)}
-                          style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '10px',
-                            background: activeDropdownId === b._id ? '#e2e8f0' : '#f1f5f9',
-                            border: '1px solid #cbd5e1',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            color: '#334155'
-                          }}
-                        >
-                          <Settings size={18} />
-                        </button>
-
-                        {activeDropdownId === b._id && (
-                          <div style={{
-                            position: 'absolute',
-                            right: 0,
-                            top: '42px',
-                            background: '#ffffff',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '12px',
-                            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.12)',
-                            padding: '6px',
-                            zIndex: 50,
-                            minWidth: '160px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '4px'
-                          }}>
-                            <button
-                              type="button"
-                              onClick={() => { setActiveDropdownId(null); handleOpenEditModal(b); }}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '8px 12px',
-                                fontSize: '0.82rem',
-                                fontWeight: '700',
-                                color: '#2563eb',
-                                background: 'transparent',
-                                border: 'none',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                width: '100%'
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = '#eff6ff'}
-                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <Edit2 size={15} color="#2563eb" /> Edit Banner
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => { setActiveDropdownId(null); handleToggleActive(b); }}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '8px 12px',
-                                fontSize: '0.82rem',
-                                fontWeight: '700',
-                                color: b.isActive ? '#d97706' : '#16a34a',
-                                background: 'transparent',
-                                border: 'none',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                width: '100%'
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = b.isActive ? '#fffbeb' : '#f0fdf4'}
-                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <Power size={15} color={b.isActive ? '#d97706' : '#16a34a'} /> {b.isActive ? 'Deactivate' : 'Activate'}
-                            </button>
-
-                            <div style={{ height: '1px', background: '#f1f5f9', margin: '2px 0' }} />
-
-                            <button
-                              type="button"
-                              onClick={() => { setActiveDropdownId(null); handleDelete(b._id, b.title); }}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '8px 12px',
-                                fontSize: '0.82rem',
-                                fontWeight: '700',
-                                color: '#dc2626',
-                                background: 'transparent',
-                                border: 'none',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                width: '100%'
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
-                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                            >
-                              <Trash2 size={15} color="#dc2626" /> Delete Banner
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                    <td style={{ ...td, textAlign: 'right' }}>
+                      <RowMenu active={b.isActive} onEdit={() => handleOpenEditModal(b)} onToggle={() => handleToggleActive(b)} onDelete={() => setDeleteTarget(b)} />
                     </td>
                   </tr>
                 ))}
@@ -680,6 +440,8 @@ const SuperAdminBannersView = () => {
           </div>
         )}
       </div>
+
+      {deleteTarget && <DeleteModal banner={deleteTarget} busy={deleting} onClose={() => setDeleteTarget(null)} onConfirm={handleConfirmDelete} />}
 
       {/* CREATE / EDIT MODAL */}
       {modalOpen && (

@@ -105,7 +105,15 @@ export const AuthProvider = ({ children }) => {
 
     // Restore session
     const isImpersonationTab = sessionStorage.getItem('norozz_impersonation_tab') === '1';
-    const allUserKeys = [...new Set(Object.values(USER_KEY))];
+    // Several portals can be signed in at once (super admin + customer, ...). Restore the one that belongs to the
+    // page being opened first; the rest are only a fallback. Otherwise a refresh on the customer site would pick
+    // up the super admin session (it comes first in the list) and bounce the user to /super-admin.
+    const path = window.location.pathname;
+    const portalKey = path.startsWith('/super-admin') ? USER_KEY.superadmin
+      : path.startsWith('/city-admin') ? USER_KEY.cityAdmin
+      : path.startsWith('/partner') ? USER_KEY.partner
+      : USER_KEY.customer;
+    const allUserKeys = [portalKey, ...[...new Set(Object.values(USER_KEY))].filter((k) => k !== portalKey)];
     let restoredUser = null;
 
     for (const key of allUserKeys) {

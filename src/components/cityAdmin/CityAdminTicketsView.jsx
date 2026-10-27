@@ -181,6 +181,7 @@ const CityAdminTicketsView = ({ assignedCity }) => {
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid #f1f5f9', color: '#64748b', fontSize: '0.76rem', textTransform: 'uppercase' }}>
+                <th style={{ padding: '12px 14px', width: '48px' }}>#</th>
                 <th style={{ padding: '12px 14px' }}>Ticket ID</th>
                 <th style={{ padding: '12px 14px' }}>Customer / User</th>
                 <th style={{ padding: '12px 14px' }}>Category & Subject</th>
@@ -191,7 +192,7 @@ const CityAdminTicketsView = ({ assignedCity }) => {
               </tr>
             </thead>
             <tbody>
-              {tickets.map((ticket) => {
+              {tickets.map((ticket, idx) => {
                 const isResolved = ticket.status === 'Resolved' || ticket.status === 'Closed';
                 const isInProgress = ticket.status === 'In Progress';
                 return (
@@ -201,6 +202,7 @@ const CityAdminTicketsView = ({ assignedCity }) => {
                     onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
+                    <td style={{ padding: '14px', color: '#94a3b8', fontWeight: '700', width: '48px' }}>{idx + 1}</td>
                     <td style={{ padding: '14px', fontWeight: '900', color: '#2563eb' }}>
                       #{ticket.ticketId}
                     </td>

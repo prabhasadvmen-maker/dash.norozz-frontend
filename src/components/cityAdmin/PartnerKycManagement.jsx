@@ -147,6 +147,7 @@ const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
         <table style={{ width: '100%', minWidth: '760px', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <Th w="48px">#</Th>
               <Th>Partner</Th>
               <Th>Category</Th>
               <Th>Contact</Th>
@@ -158,12 +159,12 @@ const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: '40px 16px', textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>
+                <td colSpan={7} style={{ padding: '40px 16px', textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>
                   {partners.length === 0 ? `No service partners registered in ${assignedCity} yet.` : 'No partners match your filters.'}
                 </td>
               </tr>
             ) : (
-              rows.map((p) => {
+              rows.map((p, idx) => {
                 const status = (p.kycStatus || 'pending').toLowerCase();
                 const badge = KYC_BADGE[status] || KYC_BADGE.pending;
                 const isSuspended = p.status === 'suspended' || p.status === 'blocked';
@@ -178,6 +179,7 @@ const PartnerKycManagement = ({ assignedCity = 'Delhi NCR' }) => {
                     onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
+                    <td style={{ ...cell, color: '#94a3b8', fontWeight: 700 }}>{idx + 1}</td>
                     <td style={cell}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: '190px' }}>
                         <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg,#2563eb,#7c3aed)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.82rem', flexShrink: 0, overflow: 'hidden' }}>

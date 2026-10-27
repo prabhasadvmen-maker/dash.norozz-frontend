@@ -16,22 +16,23 @@ import SuperAdminLegalPoliciesView from '../components/superAdmin/SuperAdminLega
 import SuperAdminStarterPackView from '../components/superAdmin/SuperAdminStarterPackView';
 import SuperAdminNotificationsView from '../components/superAdmin/SuperAdminNotificationsView';
 import SuperAdminReportsView from '../components/superAdmin/SuperAdminReportsView';
+import SuperAdminPaymentsView from '../components/superAdmin/SuperAdminPaymentsView';
+import SuperAdminCustomersView from '../components/superAdmin/SuperAdminCustomersView';
+import SuperAdminPartnersView from '../components/superAdmin/SuperAdminPartnersView';
+import SuperAdminReviewsView from '../components/superAdmin/SuperAdminReviewsView';
+import SuperAdminSubCategoriesView from '../components/superAdmin/SuperAdminSubCategoriesView';
+import SuperAdminServicesView from '../components/superAdmin/SuperAdminServicesView';
+import SuperAdminCategoriesView from '../components/superAdmin/SuperAdminCategoriesView';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import { useSuperAdmin } from '../hooks/useSuperAdmin.js';
 import { useCatalog } from '../hooks/useCatalog.js';
 import { superAdminService } from '../services/superAdmin.service.js';
 import {
-  Users,
-  Briefcase,
   Grid,
-  Layers,
-  Wrench,
   CalendarCheck,
-  CreditCard,
   Bell,
   Settings,
   User,
-  Plus,
   X,
   Sparkles,
   Home,
@@ -39,12 +40,13 @@ import {
   Scissors,
   Paintbrush,
   Car,
-  Star,
   ShieldCheck,
   Eye,
-  Gift,
-  Trash2
+  Gift
 } from 'lucide-react';
+
+const fmtBookingDate = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
+const fmtBookingTime = (d) => (d ? new Date(d).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '');
 
 const SuperAdminPanel = ({ currentUser, onLogout }) => {
   const location = useLocation();
@@ -125,11 +127,8 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     services = [],
     skills = [],
     createCategory,
-    deleteCategory,
     createSubCategory,
-    deleteSubCategory,
     createService,
-    deleteService,
     createSkill,
     deleteSkill,
   } = useCatalog();
@@ -153,6 +152,8 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     faqs: 'FAQs Management',
     referral: 'Referral Program Setup',
     legalPolicies: 'Privacy Policy & Terms Rich Text Manager',
+    tickets: 'Support Tickets',
+    starterPack: 'Starter Pack Offer',
     customers: 'Customer Directory',
     partners: 'Marketplace Partners',
     partnerHiring: 'Partner Hiring Applications',
@@ -203,9 +204,6 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
   ]);
 
   // Catalog Filters
-  const [subCatFilterCategory, setSubCatFilterCategory] = useState('');
-  const [srvFilterCategory, setSrvFilterCategory] = useState('');
-  const [srvFilterSubCategory, setSrvFilterSubCategory] = useState('');
 
   // Package Management Modal State
   const [selectedServiceForPackages, setSelectedServiceForPackages] = useState(null);
@@ -499,80 +497,6 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     setNewSrvVideos((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const renderCategoryIcon = (cat) => {
-    const iconStr = cat.icon || cat.image || cat.thumbnail || '';
-    
-    // If base64 image or web image URL, render img element
-    if (typeof iconStr === 'string' && (iconStr.startsWith('data:image') || iconStr.startsWith('http://') || iconStr.startsWith('https://') || iconStr.startsWith('/uploads/'))) {
-      return (
-        <img
-          src={iconStr}
-          alt={cat.name}
-          style={{
-            width: '46px',
-            height: '46px',
-            borderRadius: '14px',
-            objectFit: 'cover',
-            border: '1.5px solid #e2e8f0',
-            boxShadow: '0 4px 10px rgba(0,0,0,0.06)',
-            flexShrink: 0
-          }}
-          onError={(e) => { e.target.style.display = 'none'; }}
-        />
-      );
-    }
-
-    // Map icon name or category name to appropriate Lucide Icon symbol
-    const nameLower = (cat.name || '').toLowerCase();
-    const iconLower = typeof iconStr === 'string' ? iconStr.toLowerCase() : '';
-
-    let IconComp = Grid;
-    let bg = '#ecfdf5';
-    let border = '#a7f3d0';
-    let color = '#10b981';
-
-    if (iconLower === 'sparkles' || nameLower.includes('beauty') || nameLower.includes('salon') || nameLower.includes('spa') || nameLower.includes('skin')) {
-      IconComp = Sparkles;
-      bg = '#f3e8ff'; border = '#e9d5ff'; color = '#7c3aed';
-    } else if (iconLower === 'home' || nameLower.includes('clean') || nameLower.includes('pest') || nameLower.includes('home')) {
-      IconComp = Home;
-      bg = '#eff6ff'; border = '#bfdbfe'; color = '#2563eb';
-    } else if (iconLower === 'zap' || nameLower.includes('electric') || nameLower.includes('wire')) {
-      IconComp = Zap;
-      bg = '#fffbeb'; border = '#fde68a'; color = '#d97706';
-    } else if (iconLower === 'wrench' || nameLower.includes('repair') || nameLower.includes('ac') || nameLower.includes('appliance') || nameLower.includes('plumb')) {
-      IconComp = Wrench;
-      bg = '#ecfdf5'; border = '#a7f3d0'; color = '#059669';
-    } else if (iconLower === 'scissors' || nameLower.includes('hair') || nameLower.includes('grooming') || nameLower.includes('barber')) {
-      IconComp = Scissors;
-      bg = '#fdf2f8'; border = '#fbcfe8'; color = '#db2777';
-    } else if (iconLower === 'paintbrush' || nameLower.includes('paint')) {
-      IconComp = Paintbrush;
-      bg = '#f0f9ff'; border = '#bae6fd'; color = '#0284c7';
-    } else if (nameLower.includes('driver') || nameLower.includes('car') || nameLower.includes('cab')) {
-      IconComp = Car;
-      bg = '#f0fdf4'; border = '#bbf7d0'; color = '#16a34a';
-    }
-
-    return (
-      <div style={{
-        width: '46px',
-        height: '46px',
-        borderRadius: '14px',
-        background: bg,
-        border: `1.5px solid ${border}`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: color,
-        boxShadow: '0 4px 10px rgba(0,0,0,0.03)',
-        flexShrink: 0
-      }}>
-        <IconComp size={24} color={color} />
-      </div>
-    );
-  };
-
   const handleCreateCategorySubmit = async (e) => {
     e.preventDefault();
     if (!newCatName.trim()) return;
@@ -808,550 +732,26 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
           )}
 
           {/* TAB 3: CUSTOMERS */}
-          {activeTab === 'customers' && (
-            <div style={{
-              background: '#ffffff',
-              borderRadius: '20px',
-              padding: '26px',
-              border: '1px solid #f0f0f0',
-              boxShadow: '0 8px 26px rgba(0, 0, 0, 0.03)'
-            }}>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: '18px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Users size={20} color="#10b981" /> Customer Directory ({customers.length} Registered)
-              </h3>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                  <thead>
-                    <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #e2e8f0', color: '#475569', fontSize: '0.78rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      <th style={{ padding: '12px', borderRadius: '8px 0 0 8px' }}>NAME</th>
-                      <th style={{ padding: '12px' }}>EMAIL</th>
-                      <th style={{ padding: '12px' }}>CITY</th>
-                      <th style={{ padding: '12px', borderRadius: '0 8px 8px 0' }}>STATUS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {customers.length === 0 ? (
-                      <tr><td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontWeight: '600' }}>No customers registered yet.</td></tr>
-                    ) : (
-                      customers.map((c) => (
-                        <tr key={c._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '12px', fontWeight: '800', color: '#0f172a' }}>{c.name}</td>
-                          <td style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: '600' }}>{c.email}</td>
-                          <td style={{ padding: '12px', fontSize: '0.85rem', color: '#2563eb', fontWeight: '700' }}>{c.city || 'Delhi NCR'}</td>
-                          <td style={{ padding: '12px' }}><span className="badge badge-success">ACTIVE</span></td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          {activeTab === 'customers' && <SuperAdminCustomersView customers={customers} />}
 
           {/* TAB 4: PARTNERS */}
-          {activeTab === 'partners' && (
-            <div style={{
-              background: '#ffffff',
-              borderRadius: '20px',
-              padding: '26px',
-              border: '1px solid #f0f0f0',
-              boxShadow: '0 8px 26px rgba(0, 0, 0, 0.03)'
-            }}>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: '18px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Briefcase size={20} color="#10b981" /> Marketplace Service Partners ({partners.length} Verified Agencies)
-              </h3>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                  <thead>
-                    <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #e2e8f0', color: '#475569', fontSize: '0.78rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      <th style={{ padding: '12px', borderRadius: '8px 0 0 8px' }}>TECHNICIAN / PARTNER</th>
-                      <th style={{ padding: '12px' }}>SKILL CATEGORY</th>
-                      <th style={{ padding: '12px' }}>EMAIL</th>
-                      <th style={{ padding: '12px' }}>CITY</th>
-                      <th style={{ padding: '12px', borderRadius: '0 8px 8px 0' }}>KYC STATUS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {partners.length === 0 ? (
-                      <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontWeight: '600' }}>No partners registered yet.</td></tr>
-                    ) : (
-                      partners.map((p) => (
-                        <tr key={p._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '12px', fontWeight: '800', color: '#0f172a' }}>{p.name}</td>
-                          <td style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: '600' }}>{p.category || 'Service Technician'}</td>
-                          <td style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: '600' }}>{p.email}</td>
-                          <td style={{ padding: '12px', fontSize: '0.85rem', color: '#2563eb', fontWeight: '700' }}>{p.assignedCity || p.city || 'Delhi NCR'}</td>
-                          <td style={{ padding: '12px' }}>
-                            <span className={`badge ${p.kycStatus === 'approved' ? 'badge-success' : 'badge-warning'}`}>
-                              {(p.kycStatus || 'pending').toUpperCase()}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          {activeTab === 'partners' && <SuperAdminPartnersView partners={partners} />}
 
           {/* TAB 5: CATEGORIES */}
-          {activeTab === 'categories' && (
-            <div style={{
-              background: '#ffffff',
-              borderRadius: '20px',
-              padding: '26px',
-              border: '1px solid #f0f0f0',
-              boxShadow: '0 8px 26px rgba(0, 0, 0, 0.03)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                    <Grid size={20} color="#10b981" /> Service Categories Master List ({categories.length})
-                  </h3>
-                  <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '4px 0 0 0' }}>Top-level categories for services</p>
-                </div>
-                <button
-                  onClick={() => setCatModalOpen(true)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '10px 18px',
-                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '12px',
-                    fontWeight: '700',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 14px rgba(16, 185, 129, 0.25)'
-                  }}
-                >
-                  <Plus size={16} /> Create Category
-                </button>
-              </div>
-
-              {categories.length === 0 ? (
-                <div style={{ padding: '30px', textAlign: 'center', color: '#64748b', fontWeight: '600' }}>No categories created yet. Click "Create Category" to add one.</div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-                  {categories.map((cat) => {
-                    const subCount = subCategories.filter(sc => (sc.category?._id || sc.category) === cat._id).length;
-                    const srvCount = services.filter(s => (s.category?._id || s.category) === cat._id).length;
-                    const catSkills = skills.filter((sk) => {
-                      const cId = typeof sk.category === 'object' ? sk.category?._id : sk.category;
-                      return cId === cat._id;
-                    });
-                    const iconUrl = cat.icon || cat.image;
-
-                    return (
-                      <div
-                        key={cat._id}
-                        style={{
-                          padding: '22px',
-                          background: '#ffffff',
-                          borderRadius: '18px',
-                          border: '1px solid #e2e8f0',
-                          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'space-between',
-                          transition: 'all 0.2s ease'
-                        }}
-                      >
-                        <div>
-                          {/* Top Row: Icon/Image + Name + Status Badge */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                              {renderCategoryIcon(cat)}
-
-                              <div>
-                                <div style={{ fontWeight: '800', fontSize: '1.1rem', color: '#0f172a', lineHeight: '1.2' }}>
-                                  {cat.name}
-                                </div>
-                                <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600', marginTop: '2px', fontFamily: 'monospace' }}>
-                                  /{cat.slug}
-                                </div>
-                              </div>
-                            </div>
-
-                            <span style={{
-                              fontSize: '0.72rem',
-                              fontWeight: '800',
-                              padding: '4px 10px',
-                              borderRadius: '9999px',
-                              background: '#ecfdf5',
-                              color: '#047857',
-                              border: '1px solid #a7f3d0',
-                              whiteSpace: 'nowrap'
-                            }}>
-                              ● ACTIVE
-                            </span>
-                          </div>
-
-                          {/* Description */}
-                          {cat.description && (
-                            <p style={{ fontSize: '0.85rem', color: '#475569', margin: '8px 0 14px 0', fontWeight: '500', lineHeight: '1.4' }}>
-                              {cat.description}
-                            </p>
-                          )}
-
-                          {/* Metrics Badges */}
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
-                            <span style={{
-                              fontSize: '0.78rem',
-                              fontWeight: '700',
-                              color: '#3b82f6',
-                              background: '#eff6ff',
-                              border: '1px solid #bfdbfe',
-                              padding: '4px 10px',
-                              borderRadius: '8px'
-                            }}>
-                              📁 <strong>{subCount}</strong> Subcategories
-                            </span>
-                            <span style={{
-                              fontSize: '0.78rem',
-                              fontWeight: '700',
-                              color: '#7c3aed',
-                              background: '#f5f3ff',
-                              border: '1px solid #ddd6fe',
-                              padding: '4px 10px',
-                              borderRadius: '8px'
-                            }}>
-                              🛠️ <strong>{srvCount}</strong> Services
-                            </span>
-                            <span style={{
-                              fontSize: '0.78rem',
-                              fontWeight: '700',
-                              color: '#059669',
-                              background: '#ecfdf5',
-                              border: '1px solid #a7f3d0',
-                              padding: '4px 10px',
-                              borderRadius: '8px'
-                            }}>
-                              ⚡ <strong>{catSkills.length}</strong> Skills
-                            </span>
-                          </div>
-
-                          {/* Skills Preview */}
-                          {catSkills.length > 0 && (
-                            <div style={{ marginBottom: '14px' }}>
-                              <div style={{ fontSize: '0.72rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>
-                                Onboarding Skills ({catSkills.length}):
-                              </div>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                                {catSkills.slice(0, 4).map((sk) => (
-                                  <span
-                                    key={sk._id}
-                                    style={{
-                                      fontSize: '0.74rem',
-                                      fontWeight: '700',
-                                      padding: '3px 8px',
-                                      borderRadius: '6px',
-                                      background: '#f8fafc',
-                                      border: '1px solid #e2e8f0',
-                                      color: '#334155'
-                                    }}
-                                  >
-                                    {sk.name}
-                                  </span>
-                                ))}
-                                {catSkills.length > 4 && (
-                                  <span style={{ fontSize: '0.74rem', fontWeight: '700', color: '#64748b', alignSelf: 'center' }}>
-                                    +{catSkills.length - 4} more
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Footer Action Row */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', paddingTop: '12px', borderTop: '1px dashed #e2e8f0' }}>
-                          <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600' }}>
-                            ID: <span style={{ fontFamily: 'monospace' }}>{cat._id.slice(-6)}</span>
-                          </span>
-                          <button
-                            onClick={() => deleteCategory(cat._id)}
-                            style={{
-                              background: '#fef2f2',
-                              color: '#dc2626',
-                              border: '1px solid #fecaca',
-                              padding: '6px 14px',
-                              borderRadius: '8px',
-                              fontWeight: '700',
-                              fontSize: '0.82rem',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                            title="Delete Category"
-                          >
-                            <Trash2 size={14} /> Delete Category
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+          {activeTab === 'categories' && <SuperAdminCategoriesView onCreate={() => setCatModalOpen(true)} />}
 
           {/* TAB 6: SUB CATEGORIES */}
-          {activeTab === 'subCategories' && (
-            <div className="mui-card" style={{ padding: '26px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', margin: 0, color: '#0f172a' }}>
-                    <Layers size={22} color="#7c3aed" /> Sub Categories Management ({subCategories.length})
-                  </h3>
-                  <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '4px 0 0 0', fontWeight: '500' }}>Sub-groupings belonging to parent categories</p>
-                </div>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  <select
-                    style={{
-                      width: '200px',
-                      padding: '8px 12px',
-                      fontSize: '0.85rem',
-                      background: '#f8fafc',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '10px',
-                      color: '#0f172a',
-                      fontWeight: '600',
-                      outline: 'none'
-                    }}
-                    value={subCatFilterCategory}
-                    onChange={(e) => setSubCatFilterCategory(e.target.value)}
-                  >
-                    <option value="">All Parent Categories</option>
-                    {categories.map((c) => (
-                      <option key={c._id} value={c._id}>{c.name}</option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={() => setSubCatModalOpen(true)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '9px 18px',
-                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '10px',
-                      fontWeight: '700',
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                      boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)'
-                    }}
-                  >
-                    <Plus size={16} /> Create SubCategory
-                  </button>
-                </div>
-              </div>
-
-              {subCategories.length === 0 ? (
-                <div style={{ padding: '30px', textAlign: 'center', color: '#64748b', fontWeight: '600' }}>No subcategories found. Click "Create SubCategory" to add one.</div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px' }}>
-                  {subCategories
-                    .filter((sc) => !subCatFilterCategory || (sc.category?._id || sc.category) === subCatFilterCategory)
-                    .map((sub) => {
-                      const parentCatName = typeof sub.category === 'object' ? sub.category?.name : categories.find(c => c._id === sub.category)?.name;
-                      const srvCount = services.filter(s => (s.subCategory?._id || s.subCategory) === sub._id).length;
-                      return (
-                        <div
-                          key={sub._id}
-                          style={{
-                            padding: '20px',
-                            background: '#ffffff',
-                            borderRadius: '16px',
-                            border: '1px solid #e2e8f0',
-                            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.03)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'space-between',
-                            transition: 'all 0.2s ease'
-                          }}
-                        >
-                          <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                              <div style={{ fontWeight: '800', fontSize: '1.05rem', color: '#0f172a' }}>{sub.name}</div>
-                              <span style={{
-                                fontSize: '0.72rem',
-                                fontWeight: '700',
-                                padding: '3px 10px',
-                                borderRadius: '9999px',
-                                background: '#f3e8ff',
-                                color: '#7c3aed',
-                                border: '1px solid #e9d5ff',
-                                whiteSpace: 'nowrap'
-                              }}>
-                                {parentCatName || 'Category Linked'}
-                              </span>
-                            </div>
-                            {sub.description && (
-                              <p style={{ fontSize: '0.85rem', color: '#475569', margin: '8px 0 10px 0', fontWeight: '500', lineHeight: '1.4' }}>{sub.description}</p>
-                            )}
-                            <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '10px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              🛠️ <strong style={{ color: '#0f172a' }}>{srvCount}</strong> Services attached
-                            </div>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '18px', paddingTop: '14px', borderTop: '1px dashed #e2e8f0' }}>
-                            <span style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace', fontWeight: '600' }}>/{sub.slug}</span>
-                            <button
-                              onClick={() => deleteSubCategory(sub._id)}
-                              style={{
-                                background: '#fef2f2',
-                                color: '#dc2626',
-                                border: '1px solid #fecaca',
-                                padding: '6px 12px',
-                                borderRadius: '8px',
-                                fontWeight: '700',
-                                fontSize: '0.82rem',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                              }}
-                              title="Delete SubCategory"
-                            >
-                              <Trash2 size={14} /> Delete
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
-            </div>
-          )}
+          {activeTab === 'subCategories' && <SuperAdminSubCategoriesView onCreate={() => setSubCatModalOpen(true)} />}
 
           {/* TAB 7: SERVICES */}
           {activeTab === 'services' && (
-            <div className="mui-card" style={{ padding: '26px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                    <Wrench size={20} color="#2563eb" /> Individual Service Packages & Pricing ({services.length})
-                  </h3>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>Specific services linked to a Category & SubCategory</p>
-                </div>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <select
-                    className="form-input"
-                    style={{ width: '160px', padding: '6px 12px', fontSize: '0.82rem' }}
-                    value={srvFilterCategory}
-                    onChange={(e) => {
-                      setSrvFilterCategory(e.target.value);
-                      setSrvFilterSubCategory('');
-                    }}
-                  >
-                    <option value="">All Categories</option>
-                    {categories.map((c) => (
-                      <option key={c._id} value={c._id}>{c.name}</option>
-                    ))}
-                  </select>
-
-                  <select
-                    className="form-input"
-                    style={{ width: '160px', padding: '6px 12px', fontSize: '0.82rem' }}
-                    value={srvFilterSubCategory}
-                    onChange={(e) => setSrvFilterSubCategory(e.target.value)}
-                  >
-                    <option value="">All SubCategories</option>
-                    {subCategories
-                      .filter(sc => !srvFilterCategory || (sc.category?._id || sc.category) === srvFilterCategory)
-                      .map((sc) => (
-                        <option key={sc._id} value={sc._id}>{sc.name}</option>
-                      ))}
-                  </select>
-
-                  <button onClick={() => setSrvModalOpen(true)} className="btn btn-primary"><Plus size={16} /> Create Service</button>
-                </div>
-              </div>
-
-              {services.length === 0 ? (
-                <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>No services found. Click "Create Service" to add one.</div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
-                  {services
-                    .filter((srv) => {
-                      const cId = srv.category?._id || srv.category;
-                      const scId = srv.subCategory?._id || srv.subCategory;
-                      if (srvFilterCategory && cId !== srvFilterCategory) return false;
-                      if (srvFilterSubCategory && scId !== srvFilterSubCategory) return false;
-                      return true;
-                    })
-                    .map((srv) => {
-                      const parentCatName = typeof srv.category === 'object' ? srv.category?.name : categories.find(c => c._id === srv.category)?.name;
-                      const parentSubCatName = typeof srv.subCategory === 'object' ? srv.subCategory?.name : subCategories.find(s => s._id === srv.subCategory)?.name;
-                      const srvImg = srv.thumbnail || srv.image;
-
-                      return (
-                        <div key={srv._id} style={{ padding: '18px', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                          <div>
-                            {srvImg && (
-                              <div style={{ width: '100%', height: '110px', borderRadius: '8px', overflow: 'hidden', marginBottom: '12px' }}>
-                                <img src={srvImg} alt={srv.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              </div>
-                            )}
-
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                              <div style={{ fontWeight: '800', fontSize: '1.02rem', color: 'var(--text-primary)' }}>{srv.name}</div>
-                              <div style={{ fontSize: '1rem', color: '#10b981', fontWeight: '800' }}>₹{srv.finalPrice || srv.price}</div>
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
-                              <span className="badge badge-purple" style={{ fontSize: '0.68rem' }}>{parentCatName || 'Category'}</span>
-                              <span className="badge badge-success" style={{ fontSize: '0.68rem' }}>{parentSubCatName || 'SubCategory'}</span>
-                              {Array.isArray(srv.gallery) && srv.gallery.length > 0 && (
-                                <span className="badge badge-blue" style={{ fontSize: '0.68rem', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' }}>
-                                  🖼️ {srv.gallery.length} Photos
-                                </span>
-                              )}
-                              {((Array.isArray(srv.videos) && srv.videos.length > 0) || srv.videoUrl) && (
-                                <span className="badge badge-warning" style={{ fontSize: '0.68rem', background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a' }}>
-                                  🎥 {Array.isArray(srv.videos) && srv.videos.length > 0 ? srv.videos.length : 1} Video
-                                </span>
-                              )}
-                            </div>
-
-                            {srv.description && (
-                              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '8px 0 4px 0' }}>{srv.description}</p>
-                            )}
-
-                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                              ⏱️ Duration: <strong>{srv.duration || '45 mins'}</strong>
-                              {srv.discount > 0 && <span style={{ marginLeft: '10px', color: '#ef4444' }}>Discount: ₹{srv.discount}</span>}
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px dashed #e2e8f0', gap: '8px', flexWrap: 'wrap' }}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedServiceForPackages(srv);
-                                setIsPkgModalOpen(true);
-                              }}
-                              className="btn btn-primary btn-sm"
-                              style={{ fontWeight: '800', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: '5px' }}
-                            >
-                              📦 Manage Packages
-                            </button>
-                            <button onClick={() => deleteService(srv._id)} className="btn btn-danger btn-sm" title="Delete Service">
-                              <Trash2 size={14} /> Delete
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
-            </div>
+            <SuperAdminServicesView
+              onCreate={() => setSrvModalOpen(true)}
+              onManagePackages={(srv) => {
+                setSelectedServiceForPackages(srv);
+                setIsPkgModalOpen(true);
+              }}
+            />
           )}
 
           {/* TAB 8: BOOKINGS */}
@@ -1364,18 +764,21 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '800' }}>
+                      <th style={{ padding: '12px' }}>#</th>
                       <th style={{ padding: '12px' }}>BOOKING REF</th>
                       <th style={{ padding: '12px' }}>CUSTOMER</th>
                       <th style={{ padding: '12px' }}>SERVICE</th>
+                      <th style={{ padding: '12px' }}>PLACED ON</th>
+                      <th style={{ padding: '12px' }}>SCHEDULED FOR</th>
                       <th style={{ padding: '12px' }}>AMOUNT</th>
                       <th style={{ padding: '12px' }}>STATUS</th>
                     </tr>
                   </thead>
                   <tbody>
                     {bookings.length === 0 ? (
-                      <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No bookings created yet.</td></tr>
+                      <tr><td colSpan={8} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No bookings created yet.</td></tr>
                     ) : (
-                      bookings.map((b) => {
+                      bookings.map((b, idx) => {
                         const custName = typeof b.customer === 'object' && b.customer?.name
                           ? b.customer.name
                           : (b.customer?.email || 'Customer');
@@ -1385,9 +788,18 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
 
                         return (
                           <tr key={b._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '12px', color: '#94a3b8', fontWeight: '700' }}>{idx + 1}</td>
                             <td style={{ padding: '12px', fontWeight: '800', color: '#2563eb' }}>{refCode}</td>
                             <td style={{ padding: '12px', fontWeight: '700' }}>{custName}</td>
                             <td style={{ padding: '12px' }}>{srvTitle}</td>
+                            <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>
+                              <div style={{ fontWeight: '700', color: '#0f172a' }}>{fmtBookingDate(b.createdAt)}</div>
+                              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{fmtBookingTime(b.createdAt)}</div>
+                            </td>
+                            <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>
+                              <div style={{ fontWeight: '700', color: '#0f172a' }}>{fmtBookingDate(b.bookingDate)}</div>
+                              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{b.timeSlot || '—'}</div>
+                            </td>
                             <td style={{ padding: '12px', fontWeight: '800', color: '#10b981' }}>₹{Number(bAmount).toLocaleString()}</td>
                             <td style={{ padding: '12px' }}><span className="badge badge-purple">{(b.status || 'Pending').toUpperCase()}</span></td>
                           </tr>
@@ -1400,195 +812,11 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
             </div>
           )}
 
-          {/* TAB 9: PAYMENTS / FINANCIAL OVERVIEW */}
-          {activeTab === 'payments' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <div style={{
-                background: '#ffffff',
-                borderRadius: '20px',
-                padding: '26px',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px', flexWrap: 'wrap', gap: '12px' }}>
-                  <div>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <CreditCard size={22} color="#10b981" /> NOROZZ FINANCIAL OVERVIEW
-                    </h3>
-                    <p style={{ fontSize: '0.84rem', color: '#64748b', margin: '4px 0 0 0', fontWeight: '500' }}>
-                      Master Dual-Sided Revenue, Partner Payouts & Double-Entry Ledger Summary
-                    </p>
-                  </div>
-                  <span style={{
-                    padding: '6px 14px',
-                    borderRadius: '9999px',
-                    background: '#ecfdf5',
-                    color: '#047857',
-                    fontSize: '0.78rem',
-                    fontWeight: '800',
-                    border: '1px solid #a7f3d0'
-                  }}>
-                    ● LIVE AUDIT LEDGER
-                  </span>
-                </div>
-
-                {/* Top Metrics Cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-                  <div style={{ padding: '18px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Gross Booking Value</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', marginTop: '6px' }}>₹1,00,000</div>
-                  </div>
-
-                  <div style={{ padding: '18px', background: '#eff6ff', borderRadius: '16px', border: '1px solid #bfdbfe' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#1d4ed8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Customer Platform Fees</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#2563eb', marginTop: '6px' }}>+ ₹5,000</div>
-                  </div>
-
-                  <div style={{ padding: '18px', background: '#f5f3ff', borderRadius: '16px', border: '1px solid #ddd6fe' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#6d28d9', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Partner Commissions</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#7c3aed', marginTop: '6px' }}>+ ₹5,000</div>
-                  </div>
-
-                  <div style={{ padding: '18px', background: '#ecfdf5', borderRadius: '16px', border: '1px solid #a7f3d0' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#047857', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Gross Platform Revenue</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#059669', marginTop: '6px' }}>₹10,000</div>
-                  </div>
-                </div>
-
-                {/* Ledger Breakdown Card */}
-                <div style={{ background: '#f8fafc', borderRadius: '16px', padding: '22px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: '0.88rem', fontWeight: '800', color: '#0f172a', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Platform Net Contribution & Revenue Deductions
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.9rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#334155', fontWeight: '600' }}>
-                      <span>Gross Platform Revenue</span>
-                      <span style={{ fontWeight: '800', color: '#0f172a' }}>₹10,000</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', fontWeight: '600' }}>
-                      <span>Customer Refunds & Adjustments</span>
-                      <span style={{ fontWeight: '800' }}>- ₹1,000</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#d97706', fontWeight: '600' }}>
-                      <span>Payment Gateway Charges (Razorpay / UPI)</span>
-                      <span style={{ fontWeight: '800' }}>- ₹300</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontWeight: '600' }}>
-                      <span>Statutory & Other Adjustments</span>
-                      <span style={{ fontWeight: '800' }}>- ₹200</span>
-                    </div>
-                    <div style={{ height: '1px', background: '#cbd5e1', margin: '6px 0' }} />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.15rem', fontWeight: '800' }}>
-                      <span style={{ color: '#0f172a' }}>Net Platform Revenue / Contribution</span>
-                      <span style={{ color: '#059669' }}>₹8,500</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* TAB 9: PAYMENTS & PAYOUTS */}
+          {activeTab === 'payments' && <SuperAdminPaymentsView />}
 
           {/* TAB 9.5: REVIEWS & RATINGS MODERATION */}
-          {activeTab === 'reviews' && (() => {
-            const liveReviews = (bookings || [])
-              .filter((b) => b.rating || b.customerRated || b.reviewComment)
-              .map((b) => ({
-                _id: b._id,
-                reviewerName: typeof b.customer === 'object' && b.customer?.name ? b.customer.name : (b.customer?.email || 'Customer'),
-                reviewerRole: 'CUSTOMER',
-                revieweeName: typeof b.partner === 'object' && (b.partner?.name || b.partner?.agencyName) ? (b.partner.name || b.partner.agencyName) : (b.partnerName || 'Service Partner'),
-                revieweeRole: 'PARTNER',
-                rating: b.rating || 5,
-                comment: b.reviewComment || 'Great service experience!',
-                status: 'PUBLISHED',
-                date: b.updatedAt ? new Date(b.updatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recent',
-              }));
-
-            const ratingsList = liveReviews.map(r => r.rating);
-            const avgRating = ratingsList.length > 0
-              ? (ratingsList.reduce((a, b) => a + b, 0) / ratingsList.length).toFixed(1)
-              : '5.0';
-
-            return (
-              <div className="mui-card" style={{ padding: '26px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                  <div>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: '900', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Star size={22} color="#f59e0b" fill="#f59e0b" /> Reviews & Two-Way Ratings Moderation
-                    </h3>
-                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '4px 0 0 0' }}>
-                      Manage customer and partner reviews, moderate inappropriate content, and view platform ratings
-                    </p>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <span className="badge badge-purple" style={{ padding: '6px 14px', fontSize: '0.8rem' }}>
-                      ⭐ {avgRating} Platform Average Rating
-                    </span>
-                  </div>
-                </div>
-
-                {/* Reviews Moderation Table */}
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                    <thead>
-                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '800' }}>
-                        <th style={{ padding: '12px' }}>REVIEWER</th>
-                        <th style={{ padding: '12px' }}>REVIEWEE</th>
-                        <th style={{ padding: '12px' }}>RATING</th>
-                        <th style={{ padding: '12px' }}>COMMENT / FEEDBACK</th>
-                        <th style={{ padding: '12px' }}>STATUS</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {liveReviews.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} style={{ padding: '28px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                            No customer or partner ratings submitted yet.
-                          </td>
-                        </tr>
-                      ) : (
-                        liveReviews.map((rev) => (
-                          <tr key={rev._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '12px' }}>
-                              <div style={{ fontWeight: '800', fontSize: '0.88rem', color: '#0f172a' }}>{rev.reviewerName}</div>
-                              <span className={`badge ${rev.reviewerRole === 'CUSTOMER' ? 'badge-blue' : 'badge-purple'}`} style={{ fontSize: '0.65rem' }}>
-                                {rev.reviewerRole}
-                              </span>
-                            </td>
-
-                            <td style={{ padding: '12px' }}>
-                              <div style={{ fontWeight: '800', fontSize: '0.88rem', color: '#0f172a' }}>{rev.revieweeName}</div>
-                              <span className={`badge ${rev.revieweeRole === 'CUSTOMER' ? 'badge-blue' : 'badge-purple'}`} style={{ fontSize: '0.65rem' }}>
-                                {rev.revieweeRole}
-                              </span>
-                            </td>
-
-                            <td style={{ padding: '12px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#f59e0b', fontWeight: '800' }}>
-                                <Star size={16} fill="#f59e0b" color="#f59e0b" />
-                                <span>{rev.rating}.0</span>
-                              </div>
-                            </td>
-
-                            <td style={{ padding: '12px', fontSize: '0.84rem', color: '#334155', maxWidth: '320px' }}>
-                              "{rev.comment}"
-                            </td>
-
-                            <td style={{ padding: '12px' }}>
-                              <span className={`badge ${rev.status === 'PUBLISHED' ? 'badge-success' : 'badge-warning'}`}>
-                                {rev.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            );
-          })()}
+          {activeTab === 'reviews' && <SuperAdminReviewsView />}
 
           {/* TAB 10: REPORTS */}
           {activeTab === 'reports' && <SuperAdminReportsView />}

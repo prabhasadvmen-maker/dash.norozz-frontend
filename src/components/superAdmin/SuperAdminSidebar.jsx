@@ -49,7 +49,6 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout, collapsed }) => 
         { id: 'payments', label: 'PAYMENTS', icon: CreditCard },
         { id: 'customers', label: 'CUSTOMERS', icon: Users },
         { id: 'partners', label: 'PARTNERS', icon: Briefcase },
-        { id: 'partnerHiring', label: 'PARTNER HIRING', icon: UserPlus },
         { id: 'tickets', label: 'SUPPORT TICKETS', icon: Headphones },
         { id: 'reviews', label: 'REVIEWS & RATINGS', icon: Star },
       ],
@@ -77,6 +76,12 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout, collapsed }) => 
       items: [
         { id: 'faqs', label: 'FAQS', icon: HelpCircle },
         { id: 'legalPolicies', label: 'PRIVACY & TERMS', icon: ShieldCheck },
+      ],
+    },
+    {
+      title: 'Hiring',
+      items: [
+        { id: 'partnerHiring', label: 'PARTNER HIRING', icon: UserPlus },
       ],
     },
   ];

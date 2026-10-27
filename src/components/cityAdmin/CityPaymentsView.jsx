@@ -395,23 +395,24 @@ const CityPaymentsView = ({ assignedCity = 'Delhi NCR' }) => {
           <table style={{ width: '100%', minWidth: '900px', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                {['Date', 'Booking', 'Customer', 'Partner', 'Method', 'Amount', 'Platform', 'Partner Earns', 'Settlement'].map((h, i) => (
-                  <th key={h} style={{ padding: '11px 10px', fontWeight: 800, whiteSpace: 'nowrap', textAlign: i >= 5 && i <= 7 ? 'right' : 'left' }}>{h}</th>
+                {['#', 'Date', 'Booking', 'Customer', 'Partner', 'Method', 'Amount', 'Platform', 'Partner Earns', 'Settlement'].map((h, i) => (
+                  <th key={h} style={{ padding: '11px 10px', fontWeight: 800, whiteSpace: 'nowrap', textAlign: i >= 6 && i <= 8 ? 'right' : 'left' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {txQuery.isLoading ? (
-                <tr><td colSpan={9}><EmptyState>Loading transactions…</EmptyState></td></tr>
+                <tr><td colSpan={10}><EmptyState>Loading transactions…</EmptyState></td></tr>
               ) : !tx?.items?.length ? (
-                <tr><td colSpan={9}><EmptyState>No transactions match these filters.</EmptyState></td></tr>
+                <tr><td colSpan={10}><EmptyState>No transactions match these filters.</EmptyState></td></tr>
               ) : (
-                tx.items.map((t) => {
+                tx.items.map((t, idx) => {
                   const badge = SETTLEMENT_BADGE[t.financialStatus] || { label: t.financialStatus, bg: '#f1f5f9', color: '#475569' };
                   const cell = { padding: '11px 10px', fontSize: '0.82rem', color: '#334155', whiteSpace: 'nowrap' };
                   const clip = { ...cell, maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis' };
                   return (
                     <tr key={t._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ ...cell, color: '#94a3b8', fontWeight: 700 }}>{(tx.page - 1) * tx.limit + idx + 1}</td>
                       <td style={{ ...cell, color: '#64748b' }}>{fmtDate(t.txnDate)}</td>
                       <td style={cell}>
                         <div style={{ fontWeight: 800, color: '#2563eb' }}>{t.bookingId}</div>

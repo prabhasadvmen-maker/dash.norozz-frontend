@@ -21,17 +21,44 @@ import { customerService } from '../../services/customer.service.js';
 import { axiosInstance } from '../../api/axiosInstance.js';
 import { toast } from '../../utils/toast.js';
 
+// Gets this device's real FCM token and saves it so admin broadcasts can reach it (safe to call repeatedly)
+const registerPushDevice = async () => {
+  const { requestPermissionAndGetToken } = await import('../../firebase.js');
+  const token = await requestPermissionAndGetToken();
+  await axiosInstance.post('/notifications/save-token', { token });
+};
+
 const CustomerNotificationsView = ({ onNavigate }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
   const [pushPermission, setPushPermission] = useState('default');
   const [enablingPush, setEnablingPush] = useState(false);
+  // 'idle' | 'registering' | 'registered' | 'failed' : whether THIS device's token reached the server
+  const [deviceState, setDeviceState] = useState({ status: 'idle', error: '' });
+
+  const runDeviceRegistration = async () => {
+    setDeviceState({ status: 'registering', error: '' });
+    try {
+      await registerPushDevice();
+      setDeviceState({ status: 'registered', error: '' });
+      return true;
+    } catch (err) {
+      const reason = err?.response?.data?.message || err?.code || err?.message || 'Unknown error';
+      console.warn('Push registration failed:', err);
+      setDeviceState({ status: 'failed', error: String(reason) });
+      return false;
+    }
+  };
 
   useEffect(() => {
     // Check browser notification permission status
     if ('Notification' in window) {
       setPushPermission(Notification.permission);
+      // Permission was already given earlier: make sure this device is registered without another tap
+      if (Notification.permission === 'granted') {
+        runDeviceRegistration();
+      }
     }
 
     fetchNotifications();
@@ -73,13 +100,11 @@ const CustomerNotificationsView = ({ onNavigate }) => {
       setPushPermission(permission);
 
       if (permission === 'granted') {
-        toast.success('Push Notifications Enabled! 🎉');
-        // Register token with backend if available
-        try {
-          const fakeToken = `token_${Math.random().toString(36).substring(2, 15)}`;
-          await axiosInstance.post('/notifications/save-token', { token: fakeToken });
-        } catch {
-          // Token save background catch
+        // Register this device's real FCM token so broadcasts can reach it
+        if (await runDeviceRegistration()) {
+          toast.success('Push Notifications Enabled! 🎉');
+        } else {
+          toast.error('Permission granted, but this device could not be registered for push. See the reason on this page.');
         }
       } else if (permission === 'denied') {
         toast.error('Notification permission blocked in browser settings.');
@@ -189,8 +214,20 @@ const CustomerNotificationsView = ({ onNavigate }) => {
         {/* Push Notification Toggle Button */}
         <div style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', padding: '12px 18px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.2)' }}>
           {pushPermission === 'granted' ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: '700' }}>
-              <CheckCircle2 size={18} color="#4ade80" /> Push Alerts Active
+            <div style={{ maxWidth: '320px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: '700' }}>
+                <CheckCircle2 size={18} color="#4ade80" /> Push Alerts Active
+              </div>
+              <div style={{ marginTop: '6px', fontSize: '0.74rem', lineHeight: 1.4, opacity: 0.95 }}>
+                {deviceState.status === 'registering' && 'Registering this device…'}
+                {deviceState.status === 'registered' && '✓ This device is registered for broadcasts'}
+                {deviceState.status === 'failed' && (
+                  <>
+                    ⚠ Device not registered: <strong style={{ overflowWrap: 'anywhere' }}>{deviceState.error}</strong>{' '}
+                    <button type="button" onClick={runDeviceRegistration} style={{ background: 'rgba(255,255,255,0.22)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff', borderRadius: '8px', padding: '2px 10px', fontWeight: 800, fontSize: '0.74rem', cursor: 'pointer' }}>Retry</button>
+                  </>
+                )}
+              </div>
             </div>
           ) : (
             <button

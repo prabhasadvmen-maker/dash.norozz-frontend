@@ -3,6 +3,8 @@ import { axiosInstance } from '../api/axiosInstance.js';
 export const superAdminService = {
   getDashboard: () => axiosInstance.get('/super-admin/dashboard'),
   getReportsOverview: (params) => axiosInstance.get('/super-admin/reports/overview', { params }),
+  getPaymentsLedger: () => axiosInstance.get('/super-admin/payments/ledger'),
+  getPaymentTransactions: (params) => axiosInstance.get('/super-admin/payments/transactions', { params }),
   exportReport: (params) => axiosInstance.get('/super-admin/reports/export', { params, responseType: 'blob' }),
   getCityAdmins: () => axiosInstance.get('/super-admin/city-admins'),
   createCityAdmin: (data) => axiosInstance.post('/super-admin/city-admins', data),
@@ -41,6 +43,17 @@ export const superAdminService = {
   toggleFaqStatus: (id) => axiosInstance.patch(`/super-admin/faqs/${id}/status`),
 
   // Support Tickets Management CRUD
+  // Push notifications
+  getPushSummary: () => axiosInstance.get('/notifications/summary'),
+  getPushHistory: (params) => axiosInstance.get('/notifications/history', { params }),
+  sendPush: (data) => axiosInstance.post('/notifications/send', data),
+  uploadPushImage: (formData) => axiosInstance.post('/notifications/upload-image', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+
+  // Review moderation
+  getReviewSummary: () => axiosInstance.get('/reviews/admin/summary'),
+  getReviews: (params) => axiosInstance.get('/reviews/admin/list', { params }),
+  moderateReview: (id, status) => axiosInstance.patch(`/reviews/admin/${id}/status`, { status }),
+  getTicketSummary: () => axiosInstance.get('/super-admin/tickets/summary'),
   getTickets: (params) => axiosInstance.get('/super-admin/tickets', { params }),
   updateTicketStatus: (id, data) => axiosInstance.put(`/super-admin/tickets/${id}`, data),
   replyToTicket: (id, message) => axiosInstance.post(`/super-admin/tickets/${id}/reply`, { message }),
