@@ -36,6 +36,13 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout, collapsed }) => 
       ],
     },
     {
+      title: 'Cities & Admins',
+      items: [
+        { id: 'cityAdmins', label: 'CITY ADMINS', icon: Building2 },
+        { id: 'cities', label: 'CITY MANAGEMENT', icon: MapPin },
+      ],
+    },
+    {
       title: 'Operations',
       items: [
         { id: 'bookings', label: 'BOOKINGS', icon: CalendarCheck },
@@ -45,13 +52,6 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout, collapsed }) => 
         { id: 'partnerHiring', label: 'PARTNER HIRING', icon: UserPlus },
         { id: 'tickets', label: 'SUPPORT TICKETS', icon: Headphones },
         { id: 'reviews', label: 'REVIEWS & RATINGS', icon: Star },
-      ],
-    },
-    {
-      title: 'Cities & Admins',
-      items: [
-        { id: 'cityAdmins', label: 'CITY ADMINS', icon: Building2 },
-        { id: 'cities', label: 'CITY MANAGEMENT', icon: MapPin },
       ],
     },
     {
