@@ -9,6 +9,7 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const saveLock = useRef(false);
+  const bodyRef = useRef(null);
   const queryClient = useQueryClient();
   // keeps the Services directory (package summary on each card) in step with changes made here
   const refreshCatalog = () => queryClient.invalidateQueries({ queryKey: ['catalog'] });
@@ -28,12 +29,13 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
   const [isPopular, setIsPopular] = useState(false);
   const [isRecommended, setIsRecommended] = useState(false);
   const [sortOrder, setSortOrder] = useState(0);
+  const [status, setStatus] = useState('active');
 
   const fetchPackages = () => {
     if (!service?._id) return;
     setLoading(true);
     catalogService
-      .getServicePackages(service._id)
+      .getAdminServicePackages(service._id)
       .then((res) => {
         const list = res.data?.data || res.data || [];
         setPackages(Array.isArray(list) ? list : []);
@@ -85,6 +87,7 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
     setPrice('');
     setDiscountType('none');
     setDiscountValue('');
+    setStatus('active');
     setDuration('45 mins');
     setFeatures([]);
     setFeatureInput('');
@@ -98,9 +101,10 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
     setEditingPackageId(pkg._id);
     setTitle(pkg.title || '');
     setDescription(pkg.description || '');
-    setPrice(pkg.price || 0);
+    setPrice(pkg.price ?? 0);
     setDiscountType(pkg.discountType || 'none');
-    setDiscountValue(pkg.discountValue || 0);
+    setDiscountValue(pkg.discountValue ?? 0);
+    setStatus(pkg.status === 'inactive' ? 'inactive' : 'active');
     setDuration(pkg.duration || '45 mins');
     setFeatures(Array.isArray(pkg.features) ? [...pkg.features] : []);
     setFeatureInput('');
@@ -108,6 +112,8 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
     setIsRecommended(Boolean(pkg.isRecommended));
     setSortOrder(pkg.sortOrder || 0);
     setIsFormOpen(true);
+    // the form renders at the top of the list; bring it into view when Edit was clicked further down
+    bodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSubmitPackageForm = async (e) => {
@@ -131,6 +137,7 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
       features,
       isPopular,
       isRecommended,
+      status,
       sortOrder: Number(sortOrder) || 0,
     };
 
@@ -263,7 +270,7 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
         </div>
 
         {/* Modal Body */}
-        <div style={{ padding: '24px', overflowY: 'auto', flex: 1, background: '#ffffff' }}>
+        <div ref={bodyRef} style={{ padding: '24px', overflowY: 'auto', flex: 1, background: '#ffffff' }}>
           
           {/* Top Bar Actions & Status Notice */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
@@ -500,6 +507,14 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
                   />
                   ⭐ Mark as Recommended
                 </label>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: '700' }}>Status:</span>
+                  <select className="form-input" style={{ width: '110px', padding: '4px 8px', fontSize: '0.8rem' }} value={status} onChange={(e) => setStatus(e.target.value)}>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ fontSize: '0.78rem', fontWeight: '700' }}>Sort Order:</span>
