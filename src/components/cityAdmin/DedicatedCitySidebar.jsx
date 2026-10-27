@@ -45,10 +45,9 @@ const DedicatedCitySidebar = ({
       height: '100vh',
       position: 'sticky',
       top: 0,
-      overflowY: 'auto',
+      overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'space-between',
       flexShrink: 0,
       transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
       borderRight: '1px solid rgba(255, 255, 255, 0.08)',
@@ -121,12 +120,13 @@ const DedicatedCitySidebar = ({
             </div>
           )}
         </div>
-        {!collapsed && (
-          <div style={{ marginTop: '10px', padding: '0 4px' }}>
-            <LanguageSelector compact style={{ width: '100%' }} />
-          </div>
-        )}
       </div>
+
+      {!collapsed && (
+        <div style={{ padding: '10px 12px 0 12px', flexShrink: 0 }}>
+          <LanguageSelector compact style={{ width: '100%' }} />
+        </div>
+      )}
 
       {/* 2. Main Menu Items Scrollable */}
       <div style={{
@@ -192,9 +192,10 @@ const DedicatedCitySidebar = ({
 
                   {item.badge && (
                     <span style={{
-                      fontSize: '0.65rem',
+                      fontSize: '0.62rem',
                       fontWeight: '800',
-                      padding: '2px 8px',
+                      padding: '2px 7px',
+                      whiteSpace: 'nowrap',
                       borderRadius: '9999px',
                       background: isActive ? 'rgba(255, 255, 255, 0.2)' : 'rgba(16, 185, 129, 0.15)',
                       color: isActive ? '#ffffff' : '#6ee7b7',

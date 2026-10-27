@@ -9,11 +9,13 @@ import CityManagementView from '../components/superAdmin/CityManagementView';
 import SuperAdminCouponsView from '../components/superAdmin/SuperAdminCouponsView';
 import SuperAdminBannersView from '../components/superAdmin/SuperAdminBannersView';
 import SuperAdminFaqsView from '../components/superAdmin/SuperAdminFaqsView';
+import SuperAdminPartnerHiringView from '../components/superAdmin/SuperAdminPartnerHiringView';
 import SuperAdminTicketsView from '../components/superAdmin/SuperAdminTicketsView';
 import SuperAdminReferralView from '../components/superAdmin/SuperAdminReferralView';
 import SuperAdminLegalPoliciesView from '../components/superAdmin/SuperAdminLegalPoliciesView';
 import SuperAdminStarterPackView from '../components/superAdmin/SuperAdminStarterPackView';
 import SuperAdminNotificationsView from '../components/superAdmin/SuperAdminNotificationsView';
+import SuperAdminReportsView from '../components/superAdmin/SuperAdminReportsView';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import { useSuperAdmin } from '../hooks/useSuperAdmin.js';
 import { useCatalog } from '../hooks/useCatalog.js';
@@ -26,7 +28,6 @@ import {
   Wrench,
   CalendarCheck,
   CreditCard,
-  BarChart3,
   Bell,
   Settings,
   User,
@@ -61,6 +62,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     if (p.includes('/super-admin/referral-program') || p.includes('/super-admin/referral')) return 'referral';
     if (p.includes('/super-admin/legal-policies') || p.includes('/super-admin/privacy-terms')) return 'legalPolicies';
     if (p.includes('/super-admin/customers')) return 'customers';
+    if (p.includes('/super-admin/partner-hiring')) return 'partnerHiring';
     if (p.includes('/super-admin/partners')) return 'partners';
     if (p.includes('/super-admin/categories')) return 'categories';
     if (p.includes('/super-admin/sub-categories')) return 'subCategories';
@@ -91,6 +93,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
       legalPolicies: '/super-admin/legal-policies',
       customers: '/super-admin/customers',
       partners: '/super-admin/partners',
+      partnerHiring: '/super-admin/partner-hiring',
       categories: '/super-admin/categories',
       subCategories: '/super-admin/sub-categories',
       services: '/super-admin/services',
@@ -152,6 +155,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
     legalPolicies: 'Privacy Policy & Terms Rich Text Manager',
     customers: 'Customer Directory',
     partners: 'Marketplace Partners',
+    partnerHiring: 'Partner Hiring Applications',
     categories: 'Categories Directory',
     skills: 'Skill Management',
     subCategories: 'Sub Categories',
@@ -776,6 +780,11 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
           {/* TAB 2.85: PROMOTIONAL BANNERS */}
           {activeTab === 'banners' && (
             <SuperAdminBannersView />
+          )}
+
+          {/* PARTNER HIRING APPLICATIONS */}
+          {activeTab === 'partnerHiring' && (
+            <SuperAdminPartnerHiringView />
           )}
 
           {/* TAB 2.87: FAQS MANAGEMENT */}
@@ -1582,16 +1591,7 @@ const SuperAdminPanel = ({ currentUser, onLogout }) => {
           })()}
 
           {/* TAB 10: REPORTS */}
-          {activeTab === 'reports' && (
-            <div className="mui-card" style={{ padding: '26px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <BarChart3 size={20} color="#2563eb" /> Growth & Financial Reports
-              </h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Export city revenue statements, partner payout summaries, and platform GST logs.
-              </p>
-            </div>
-          )}
+          {activeTab === 'reports' && <SuperAdminReportsView />}
 
           {/* TAB 11: NOTIFICATIONS */}
           {activeTab === 'notifications' && (

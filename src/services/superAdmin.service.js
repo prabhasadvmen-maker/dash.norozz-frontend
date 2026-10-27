@@ -2,6 +2,8 @@ import { axiosInstance } from '../api/axiosInstance.js';
 
 export const superAdminService = {
   getDashboard: () => axiosInstance.get('/super-admin/dashboard'),
+  getReportsOverview: (params) => axiosInstance.get('/super-admin/reports/overview', { params }),
+  exportReport: (params) => axiosInstance.get('/super-admin/reports/export', { params, responseType: 'blob' }),
   getCityAdmins: () => axiosInstance.get('/super-admin/city-admins'),
   createCityAdmin: (data) => axiosInstance.post('/super-admin/city-admins', data),
   updateCityAdmin: (id, data) => axiosInstance.put(`/super-admin/city-admins/${id}`, data),
@@ -48,6 +50,12 @@ export const superAdminService = {
   getAllPolicies: () => axiosInstance.get('/super-admin/policies'),
   getPolicy: (targetApp, type) => axiosInstance.get(`/super-admin/policies/${targetApp}/${type}`),
   savePolicy: (targetApp, type, data) => axiosInstance.post(`/super-admin/policies/${targetApp}/${type}`, data),
+
+  // Partner Hiring Applications
+  getHiringStats: () => axiosInstance.get('/super-admin/partner-hiring/stats'),
+  getHiringApplications: (params) => axiosInstance.get('/super-admin/partner-hiring', { params }),
+  getHiringApplication: (id) => axiosInstance.get(`/super-admin/partner-hiring/${id}`),
+  reviewHiringApplication: (id, data) => axiosInstance.patch(`/super-admin/partner-hiring/${id}/review`, data),
 
   // Starter Pack Management (New User Offers)
   getStarterPack: () => axiosInstance.get('/super-admin/starter-pack'),

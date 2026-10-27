@@ -22,31 +22,63 @@ import {
   ShieldCheck,
   Image,
   HelpCircle,
-  Headphones
+  Headphones,
+  UserPlus
 } from 'lucide-react';
 
 const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout, collapsed }) => {
-  const menuItems = [
-    { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, badge: 'Analytics' },
-    { id: 'cityAdmins', label: 'CITY ADMINS', icon: Building2, badge: 'Assign' },
-    { id: 'cities', label: 'CITY MANAGEMENT', icon: MapPin, badge: 'Dynamic' },
-    { id: 'tickets', label: 'SUPPORT TICKETS', icon: Headphones, badge: 'Helpdesk' },
-    { id: 'coupons', label: 'COUPONS & PROMOS', icon: Tag, badge: 'Offers' },
-    { id: 'starterPack', label: 'STARTER PACK', icon: Sparkles, badge: 'New User' },
-    { id: 'banners', label: 'PROMOTIONAL BANNERS', icon: Image, badge: 'Hero Banners' },
-    { id: 'faqs', label: 'FAQS MANAGEMENT', icon: HelpCircle, badge: 'Customer & Partner' },
-    { id: 'referral', label: 'REFERRAL PROGRAM', icon: Gift, badge: 'Rewards' },
-    { id: 'legalPolicies', label: 'PRIVACY & TERMS', icon: ShieldCheck, badge: 'Policy Editor' },
-    { id: 'customers', label: 'CUSTOMERS', icon: Users },
-    { id: 'partners', label: 'PARTNERS', icon: Briefcase },
-    { id: 'categories', label: 'CATEGORIES', icon: Grid },
-    { id: 'subCategories', label: 'SUB CATEGORIES', icon: Layers },
-    { id: 'services', label: 'SERVICES', icon: Wrench },
-    { id: 'bookings', label: 'BOOKINGS', icon: CalendarCheck },
-    { id: 'payments', label: 'PAYMENTS', icon: CreditCard },
-    { id: 'reviews', label: 'REVIEWS & RATINGS', icon: Star, badge: 'Moderation' },
-    { id: 'reports', label: 'REPORTS', icon: BarChart3 },
-    { id: 'notifications', label: 'NOTIFICATIONS', icon: Bell },
+  const menuGroups = [
+    {
+      title: 'Overview',
+      items: [
+        { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard },
+        { id: 'reports', label: 'REPORTS', icon: BarChart3 },
+      ],
+    },
+    {
+      title: 'Operations',
+      items: [
+        { id: 'bookings', label: 'BOOKINGS', icon: CalendarCheck },
+        { id: 'payments', label: 'PAYMENTS', icon: CreditCard },
+        { id: 'customers', label: 'CUSTOMERS', icon: Users },
+        { id: 'partners', label: 'PARTNERS', icon: Briefcase },
+        { id: 'partnerHiring', label: 'PARTNER HIRING', icon: UserPlus },
+        { id: 'tickets', label: 'SUPPORT TICKETS', icon: Headphones },
+        { id: 'reviews', label: 'REVIEWS & RATINGS', icon: Star },
+      ],
+    },
+    {
+      title: 'Cities & Admins',
+      items: [
+        { id: 'cityAdmins', label: 'CITY ADMINS', icon: Building2 },
+        { id: 'cities', label: 'CITY MANAGEMENT', icon: MapPin },
+      ],
+    },
+    {
+      title: 'Catalog',
+      items: [
+        { id: 'categories', label: 'CATEGORIES', icon: Grid },
+        { id: 'subCategories', label: 'SUB CATEGORIES', icon: Layers },
+        { id: 'services', label: 'SERVICES', icon: Wrench },
+      ],
+    },
+    {
+      title: 'Marketing',
+      items: [
+        { id: 'banners', label: 'PROMOTIONAL BANNERS', icon: Image },
+        { id: 'coupons', label: 'COUPONS & PROMOS', icon: Tag },
+        { id: 'starterPack', label: 'STARTER PACK', icon: Sparkles },
+        { id: 'referral', label: 'REFERRAL PROGRAM', icon: Gift },
+        { id: 'notifications', label: 'NOTIFICATIONS', icon: Bell },
+      ],
+    },
+    {
+      title: 'Content & Legal',
+      items: [
+        { id: 'faqs', label: 'FAQS', icon: HelpCircle },
+        { id: 'legalPolicies', label: 'PRIVACY & TERMS', icon: ShieldCheck },
+      ],
+    },
   ];
 
   const bottomItems = [
@@ -147,82 +179,78 @@ const SuperAdminSidebar = ({ activeTab, setActiveTab, onLogout, collapsed }) => 
         flexDirection: 'column',
         gap: '5px'
       }}>
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              title={collapsed ? item.label : undefined}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                width: '100%',
-                padding: collapsed ? '12px 10px' : '10px 14px',
-                justifyContent: collapsed ? 'center' : 'flex-start',
-                fontSize: '0.82rem',
-                fontWeight: isActive ? '800' : '600',
-                borderRadius: '12px',
-                border: 'none',
-                cursor: 'pointer',
-                background: isActive
-                  ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.22) 0%, rgba(5, 150, 105, 0.18) 100%)'
-                  : 'transparent',
-                color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.72)',
-                boxShadow: isActive ? '0 4px 14px rgba(16, 185, 129, 0.2)' : 'none',
-                borderLeft: isActive ? '3px solid #34d399' : '3px solid transparent',
-                transition: 'all 0.18s ease',
-                letterSpacing: '0.3px'
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-                  e.currentTarget.style.color = '#ffffff';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = 'rgba(255, 255, 255, 0.72)';
-                }
-              }}
-            >
-              <Icon size={18} color={isActive ? '#34d399' : 'rgba(255, 255, 255, 0.75)'} style={{ flexShrink: 0 }} />
+        {menuGroups.map((group, gi) => (
+          <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: gi === 0 ? 0 : '10px' }}>
+            {!collapsed ? (
+              <div style={{ fontSize: '0.64rem', fontWeight: 800, letterSpacing: '0.9px', textTransform: 'uppercase', color: 'rgba(110, 231, 183, 0.7)', padding: '4px 14px 4px' }}>
+                {group.title}
+              </div>
+            ) : (
+              gi !== 0 && <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.08)', margin: '2px 8px 6px' }} />
+            )}
+            {group.items.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  title={collapsed ? item.label : undefined}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    width: '100%',
+                    padding: collapsed ? '12px 10px' : '10px 14px',
+                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    fontSize: '0.82rem',
+                    fontWeight: isActive ? '800' : '600',
+                    borderRadius: '12px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: isActive
+                      ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.22) 0%, rgba(5, 150, 105, 0.18) 100%)'
+                      : 'transparent',
+                    color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.72)',
+                    boxShadow: isActive ? '0 4px 14px rgba(16, 185, 129, 0.2)' : 'none',
+                    borderLeft: isActive ? '3px solid #34d399' : '3px solid transparent',
+                    transition: 'all 0.18s ease',
+                    letterSpacing: '0.3px'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                      e.currentTarget.style.color = '#ffffff';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = 'rgba(255, 255, 255, 0.72)';
+                    }
+                  }}
+                >
+                  <Icon size={18} color={isActive ? '#34d399' : 'rgba(255, 255, 255, 0.75)'} style={{ flexShrink: 0 }} />
 
-              {!collapsed && (
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  width: '100%',
-                  overflow: 'hidden'
-                }}>
-                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {item.label}
-                  </span>
-
-                  {item.badge && (
-                    <span style={{
-                      fontSize: '0.62rem',
-                      fontWeight: '800',
-                      padding: '2px 8px',
-                      borderRadius: '9999px',
-                      background: isActive ? 'rgba(52, 211, 153, 0.25)' : 'rgba(255, 255, 255, 0.1)',
-                      color: isActive ? '#6ee7b7' : '#94a3b8',
-                      letterSpacing: '0.2px',
-                      marginLeft: '6px',
-                      flexShrink: 0
+                  {!collapsed && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      width: '100%',
+                      overflow: 'hidden'
                     }}>
-                      {item.badge}
-                    </span>
+                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {item.label}
+                      </span>
+
+                    </div>
                   )}
-                </div>
-              )}
-            </button>
-          );
-        })}
+                </button>
+              );
+            })}
+          </div>
+        ))}
       </div>
 
       {/* 3. Bottom Action Buttons */}

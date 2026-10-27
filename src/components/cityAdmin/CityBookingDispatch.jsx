@@ -47,7 +47,7 @@ const CityBookingDispatch = ({ assignedCity = 'Delhi NCR' }) => {
       border: '1px solid #e2e8f0',
       borderRadius: '20px',
       boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
-      padding: '26px'
+      padding: '22px'
     }}>
 
       {/* Header */}
@@ -64,18 +64,18 @@ const CityBookingDispatch = ({ assignedCity = 'Delhi NCR' }) => {
 
       {/* Table Container */}
       <div style={{ overflowX: 'auto', borderRadius: '14px', border: '1px solid #e2e8f0', background: '#ffffff', width: '100%' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'auto', minWidth: '860px' }}>
           <thead>
             <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               <th style={{ padding: '12px 8px', fontWeight: '800', whiteSpace: 'nowrap', textAlign: 'center', width: '45px' }}>SR NO.</th>
-              <th style={{ padding: '12px 10px', fontWeight: '800', whiteSpace: 'nowrap', width: '95px' }}>BOOKING REF</th>
-              <th style={{ padding: '12px 10px', fontWeight: '800', whiteSpace: 'nowrap' }}>CUSTOMER</th>
-              <th style={{ padding: '12px 10px', fontWeight: '800', whiteSpace: 'nowrap' }}>SERVICE REQUEST</th>
-              <th style={{ padding: '12px 10px', fontWeight: '800', whiteSpace: 'nowrap' }}>LOCALITY</th>
-              <th style={{ padding: '12px 10px', fontWeight: '800', whiteSpace: 'nowrap' }}>TECHNICIAN</th>
-              <th style={{ padding: '12px 10px', fontWeight: '800', whiteSpace: 'nowrap', width: '75px' }}>AMOUNT</th>
-              <th style={{ padding: '12px 10px', fontWeight: '800', whiteSpace: 'nowrap', width: '85px' }}>STATUS</th>
-              <th style={{ padding: '12px 12px', fontWeight: '800', whiteSpace: 'nowrap', textAlign: 'center', minWidth: '70px', width: '70px' }}>ACTION</th>
+              <th style={{ padding: '11px 8px', fontWeight: '800', whiteSpace: 'nowrap', width: '90px' }}>BOOKING REF</th>
+              <th style={{ padding: '11px 8px', fontWeight: '800', whiteSpace: 'nowrap' }}>CUSTOMER</th>
+              <th style={{ padding: '11px 8px', fontWeight: '800', whiteSpace: 'nowrap' }}>SERVICE REQUEST</th>
+              <th style={{ padding: '11px 8px', fontWeight: '800', whiteSpace: 'nowrap' }}>LOCALITY</th>
+              <th style={{ padding: '11px 8px', fontWeight: '800', whiteSpace: 'nowrap' }}>TECHNICIAN</th>
+              <th style={{ padding: '11px 8px', fontWeight: '800', whiteSpace: 'nowrap', width: '75px' }}>AMOUNT</th>
+              <th style={{ padding: '11px 8px', fontWeight: '800', whiteSpace: 'nowrap', width: '85px' }}>STATUS</th>
+              <th style={{ padding: '12px 8px', fontWeight: '800', whiteSpace: 'nowrap', textAlign: 'center', minWidth: '70px', width: '70px' }}>ACTION</th>
             </tr>
           </thead>
           <tbody>
@@ -107,51 +107,51 @@ const CityBookingDispatch = ({ assignedCity = 'Delhi NCR' }) => {
                     </td>
 
                     {/* 2. BOOKING REF */}
-                    <td style={{ padding: '12px 10px', fontWeight: '800', color: '#2563eb', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '11px 8px', fontWeight: '800', color: '#2563eb', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
                       {o.bookingNumber || o._id.substring(0, 8).toUpperCase()}
                     </td>
 
                     {/* 3. CUSTOMER */}
-                    <td style={{ padding: '12px 10px', fontWeight: '700', fontSize: '0.85rem', color: '#0f172a', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '11px 8px', fontWeight: '700', fontSize: '0.85rem', color: '#0f172a', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {o.customer?.name || 'Customer'}
                     </td>
 
                     {/* 4. SERVICE REQUEST */}
-                    <td style={{ padding: '12px 10px', fontWeight: '700', fontSize: '0.85rem', color: '#0f172a', maxWdith: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '11px 8px', fontWeight: '700', fontSize: '0.85rem', color: '#0f172a', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {o.packageName || o.packageSnapshot?.title || (typeof o.service === 'object' ? o.service?.name : o.serviceName || 'Service Package')}
                     </td>
 
                     {/* 5. LOCALITY */}
-                    <td style={{ padding: '12px 10px', fontSize: '0.8rem', color: '#475569', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '11px 8px', fontSize: '0.8rem', color: '#475569', whiteSpace: 'nowrap' }}>
                       <MapPin size={12} color="#2563eb" style={{ display: 'inline', marginRight: '4px' }} />
-                      {o.address?.city || assignedCity}
+                      <span style={{ display: 'inline-block', maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', verticalAlign: 'bottom' }}>{o.address?.city || assignedCity}</span>
                     </td>
 
                     {/* 6. TECHNICIAN */}
-                    <td style={{ padding: '12px 10px', fontSize: '0.82rem', fontWeight: '700', color: partnerName === 'Unassigned' ? '#ef4444' : '#059669', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '11px 8px', fontSize: '0.82rem', fontWeight: '700', color: partnerName === 'Unassigned' ? '#ef4444' : '#059669', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {partnerName}
                     </td>
 
                     {/* 7. AMOUNT */}
-                    <td style={{ padding: '12px 10px', fontWeight: '800', color: '#10b981', fontSize: '0.88rem', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '11px 8px', fontWeight: '800', color: '#10b981', fontSize: '0.88rem', whiteSpace: 'nowrap' }}>
                       ₹{o.totalAmount || o.financialSnapshot?.customerPayable || o.amount || 599}
                     </td>
 
                     {/* 8. STATUS */}
-                    <td style={{ padding: '12px 10px', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '11px 8px', whiteSpace: 'nowrap' }}>
                       <span className={`badge ${['Pending', 'pending'].includes(o.status) ? 'badge-warning' : ['Assigned', 'assigned'].includes(o.status) ? 'badge-purple' : 'badge-blue'}`}>
                         {o.status.toUpperCase()}
                       </span>
                     </td>
 
                     {/* 9. ACTION */}
-                    <td style={{ padding: '12px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '11px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                         <button
                           type="button"
                           onClick={() => handleOpenAssign(o)}
                           className="btn btn-primary btn-sm"
-                          style={{ padding: '5px 9px', fontSize: '0.76rem' }}
+                          style={{ padding: '5px 8px', fontSize: '0.74rem', whiteSpace: 'nowrap' }}
                         >
                           <UserCheck size={13} /> Assign
                         </button>

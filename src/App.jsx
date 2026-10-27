@@ -9,6 +9,7 @@ import { Crown, Building2, Briefcase, Smartphone, ShieldCheck, Sparkles } from '
 const SuperAdminLoginPage = lazy(() => import('./pages/SuperAdminLoginPage'));
 const CityAdminLoginPage = lazy(() => import('./pages/CityAdminLoginPage'));
 const PartnerAuthPage = lazy(() => import('./pages/PartnerAuthPage'));
+const PartnerHiringPage = lazy(() => import('./pages/PartnerHiringPage'));
 const PartnerOnboardingPage = lazy(() => import('./pages/PartnerOnboardingPage'));
 const CustomerAuthPage = lazy(() => import('./pages/CustomerAuthPage'));
 const SuperAdminPanel = lazy(() => import('./pages/SuperAdminPanel'));
@@ -237,6 +238,7 @@ function AppContent() {
             )
           }
         />
+        <Route path="/partner/hiring" element={<PartnerHiringPage />} />
         <Route
           path="/city-admin/login"
           element={

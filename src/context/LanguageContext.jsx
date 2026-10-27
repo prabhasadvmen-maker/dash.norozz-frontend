@@ -5,7 +5,7 @@ const LanguageContext = createContext();
 
 export const LanguageProvider = ({ children }) => {
   const [currentLanguage, setCurrentLanguageState] = useState(() => {
-    return localStorage.getItem('norozz_language') || 'hi-IN';
+    return localStorage.getItem('norozz_language') || 'en-IN';
   });
 
   const [loadingTranslation, setLoadingTranslation] = useState(false);

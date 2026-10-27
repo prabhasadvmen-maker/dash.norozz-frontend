@@ -231,14 +231,9 @@ const SuperAdminBannersView = () => {
       
       {/* HEADER ACTION BAR */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, color: 'var(--text-primary)' }}>
-            SuperAdmin Banner Management
-          </h3>
-          <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
-            Create & manage homepage hero banners, link them to service packages or categories, and attach promo codes for instant customer selection.
-          </p>
-        </div>
+        <p style={{ fontSize: '0.88rem', color: '#475569', margin: 0, maxWidth: '640px', lineHeight: 1.5 }}>
+          Create and manage homepage hero banners, link them to services or categories, and attach promo codes for one-tap customer discounts.
+        </p>
 
         <button
           type="button"
@@ -350,38 +345,38 @@ const SuperAdminBannersView = () => {
 
       {/* STATS CARDS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-        <div className="mui-card" style={{ padding: '20px', borderRadius: '18px', background: '#ffffff' }}>
+        <div className="mui-card" style={{ padding: '16px 20px', borderRadius: '16px', background: '#ffffff' }}>
           <div style={{ fontSize: '0.76rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
             Total Banners
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#0f172a', marginTop: '6px' }}>
+          <div style={{ fontSize: '1.6rem', fontWeight: '900', color: '#0f172a', marginTop: '6px' }}>
             {banners.length}
           </div>
         </div>
 
-        <div className="mui-card" style={{ padding: '20px', borderRadius: '18px', background: '#ffffff' }}>
+        <div className="mui-card" style={{ padding: '16px 20px', borderRadius: '16px', background: '#ffffff' }}>
           <div style={{ fontSize: '0.76rem', fontWeight: '800', color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
             Active Customer Banners
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#10b981', marginTop: '6px' }}>
+          <div style={{ fontSize: '1.6rem', fontWeight: '900', color: '#10b981', marginTop: '6px' }}>
             {banners.filter((b) => b.isActive).length}
           </div>
         </div>
 
-        <div className="mui-card" style={{ padding: '20px', borderRadius: '18px', background: '#ffffff' }}>
+        <div className="mui-card" style={{ padding: '16px 20px', borderRadius: '16px', background: '#ffffff' }}>
           <div style={{ fontSize: '0.76rem', fontWeight: '800', color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
             Category Linked
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#2563eb', marginTop: '6px' }}>
+          <div style={{ fontSize: '1.6rem', fontWeight: '900', color: '#2563eb', marginTop: '6px' }}>
             {banners.filter((b) => b.targetType === 'category').length}
           </div>
         </div>
 
-        <div className="mui-card" style={{ padding: '20px', borderRadius: '18px', background: '#ffffff' }}>
+        <div className="mui-card" style={{ padding: '16px 20px', borderRadius: '16px', background: '#ffffff' }}>
           <div style={{ fontSize: '0.76rem', fontWeight: '800', color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
             Service Linked
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#7c3aed', marginTop: '6px' }}>
+          <div style={{ fontSize: '1.6rem', fontWeight: '900', color: '#7c3aed', marginTop: '6px' }}>
             {banners.filter((b) => b.targetType === 'service').length}
           </div>
         </div>
@@ -457,16 +452,16 @@ const SuperAdminBannersView = () => {
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem', textAlign: 'left' }}>
+            <table style={{ width: '100%', minWidth: '860px', borderCollapse: 'collapse', fontSize: '0.88rem', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  <th style={{ padding: '14px 20px' }}>Banner Preview</th>
-                  <th style={{ padding: '14px 20px' }}>Banner Title & Text</th>
-                  <th style={{ padding: '14px 20px' }}>Click Target / Link</th>
-                  <th style={{ padding: '14px 20px' }}>Coupon Code</th>
-                  <th style={{ padding: '14px 20px' }}>Order</th>
-                  <th style={{ padding: '14px 20px' }}>Status</th>
-                  <th style={{ padding: '14px 20px', textAlign: 'right' }}>Actions</th>
+                  <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Banner Preview</th>
+                  <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Banner Title & Text</th>
+                  <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Click Target / Link</th>
+                  <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Coupon Code</th>
+                  <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Order</th>
+                  <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Status</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -474,10 +469,11 @@ const SuperAdminBannersView = () => {
                   <tr key={b._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     
                     {/* Preview Cell */}
-                    <td style={{ padding: '16px 20px' }}>
+                    <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
                       <div style={{
-                        width: '140px',
-                        height: '70px',
+                        width: '132px',
+                        height: '66px',
+                        flexShrink: 0,
                         borderRadius: '12px',
                         background: b.imageUrl ? `url(${b.imageUrl}) center/cover` : (b.gradientBg || 'linear-gradient(135deg, #09331E, #0f172a)'),
                         padding: '8px',
@@ -499,14 +495,16 @@ const SuperAdminBannersView = () => {
                     </td>
 
                     {/* Title & Subtitle */}
-                    <td style={{ padding: '16px 20px' }}>
-                      <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '0.95rem' }}>{b.title}</div>
-                      {b.subtitle && <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>{b.subtitle}</div>}
+                    <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
+                      <div style={{ maxWidth: '260px' }}>
+                        <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '0.92rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={b.title}>{b.title}</div>
+                        {b.subtitle && <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={b.subtitle}>{b.subtitle}</div>}
+                      </div>
                     </td>
 
                     {/* Click Target */}
-                    <td style={{ padding: '16px 20px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
                         <span style={{
                           padding: '3px 8px',
                           borderRadius: '6px',
@@ -518,14 +516,14 @@ const SuperAdminBannersView = () => {
                         }}>
                           {b.targetType}
                         </span>
-                        <span style={{ fontWeight: '700', fontSize: '0.82rem', color: '#334155' }}>
+                        <span style={{ fontWeight: '700', fontSize: '0.82rem', color: '#334155', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={b.targetValue || ''}>
                           {b.targetValue || 'None'}
                         </span>
                       </div>
                     </td>
 
                     {/* Coupon Code */}
-                    <td style={{ padding: '16px 20px' }}>
+                    <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
                       {b.couponCode ? (
                         <span style={{ background: '#ecfdf5', color: '#047857', border: '1px dashed #10b981', padding: '4px 10px', borderRadius: '8px', fontWeight: '800', fontSize: '0.8rem' }}>
                           🎟️ {b.couponCode}
@@ -536,12 +534,12 @@ const SuperAdminBannersView = () => {
                     </td>
 
                     {/* Order */}
-                    <td style={{ padding: '16px 20px', fontWeight: '800', color: '#475569' }}>
+                    <td style={{ padding: '14px 16px', fontWeight: '800', color: '#475569', whiteSpace: 'nowrap' }}>
                       #{b.displayOrder || 0}
                     </td>
 
                     {/* Status */}
-                    <td style={{ padding: '16px 20px' }}>
+                    <td style={{ padding: '14px 16px', verticalAlign: 'middle' }}>
                       <button
                         type="button"
                         onClick={() => handleToggleActive(b)}
@@ -561,7 +559,7 @@ const SuperAdminBannersView = () => {
                     </td>
 
                     {/* Actions Dropdown */}
-                    <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
                       <div style={{ position: 'relative', display: 'inline-block' }} onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"

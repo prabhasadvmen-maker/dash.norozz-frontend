@@ -3,6 +3,7 @@ import { axiosInstance } from '../api/axiosInstance.js';
 export const cityAdminService = {
   getDashboard: () => axiosInstance.get('/city-admin/dashboard'),
   getPartners: () => axiosInstance.get('/city-admin/partners'),
+  getPartnerProfile: (id) => axiosInstance.get(`/city-admin/partners/${id}/profile`),
   getCustomers: () => axiosInstance.get('/city-admin/customers'),
   approvePartner: (id) => axiosInstance.patch(`/city-admin/partners/${id}/approve`),
   rejectPartner: (id, reason) => axiosInstance.patch(`/city-admin/partners/${id}/reject`, { reason }),
@@ -14,6 +15,11 @@ export const cityAdminService = {
   assignBooking: (bookingId, partnerId) => axiosInstance.patch(`/city-admin/bookings/${bookingId}/assign`, { partnerId }),
   cancelBooking: (bookingId, reason) => axiosInstance.patch(`/city-admin/bookings/${bookingId}/cancel`, { reason }),
   getRevenue: () => axiosInstance.get('/city-admin/revenue'),
+  getPaymentsOverview: (params) => axiosInstance.get('/city-admin/payments/overview', { params }),
+  getPaymentTransactions: (params) => axiosInstance.get('/city-admin/payments/transactions', { params }),
+  exportPaymentTransactions: (params) => axiosInstance.get('/city-admin/payments/export', { params, responseType: 'blob' }),
+  getReportsOverview: (params) => axiosInstance.get('/city-admin/reports/overview', { params }),
+  exportReportBookings: (params) => axiosInstance.get('/city-admin/reports/export', { params, responseType: 'blob' }),
   getTickets: (params) => axiosInstance.get('/city-admin/tickets', { params }),
   updateTicketStatus: (id, data) => axiosInstance.put(`/city-admin/tickets/${id}`, data),
 };

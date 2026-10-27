@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import DedicatedCityNavbar from '../components/cityAdmin/DedicatedCityNavbar';
+import { useQueryClient } from '@tanstack/react-query';
+import CityReportsView from '../components/cityAdmin/CityReportsView';
+import CityPaymentsView from '../components/cityAdmin/CityPaymentsView';
 import DedicatedCitySidebar from '../components/cityAdmin/DedicatedCitySidebar';
 import CityMetricCards from '../components/cityAdmin/CityMetricCards';
 import CityCharts from '../components/cityAdmin/CityCharts';
@@ -12,8 +15,6 @@ import { useCityAdmin } from '../hooks/useCityAdmin.js';
 import { cityService } from '../services/city.service.js';
 import {
   Briefcase,
-  CreditCard,
-  BarChart3,
   Headphones,
   User,
   Eye
@@ -62,7 +63,8 @@ const CityAdminPanel = ({ currentUser, onLogout }) => {
     }
   }, [location.pathname, navigate]);
 
-  const { partners, revenue, refetch, approvePartner, rejectPartner, updateDocumentStatus, suspendPartner, activatePartner } = useCityAdmin();
+  const { partners, refetch, approvePartner, rejectPartner, updateDocumentStatus, suspendPartner, activatePartner } = useCityAdmin();
+  const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPartner, setSelectedPartner] = useState(null);
   const [partnerModalOpen, setPartnerModalOpen] = useState(false);
@@ -91,11 +93,10 @@ const CityAdminPanel = ({ currentUser, onLogout }) => {
   const handleRefresh = () => {
     setRefreshing(true);
     refetch();
+    queryClient.invalidateQueries({ queryKey: ['cityAdmin', 'payments'] });
+    queryClient.invalidateQueries({ queryKey: ['cityAdmin', 'reports'] });
     setTimeout(() => setRefreshing(false), 600);
   };
-
-  const cityGmv = revenue?.cityRevenueGmv ?? 0;
-  const cityCommission = revenue?.cityCommission ?? 0;
 
   const [settingsForm, setSettingsForm] = useState({
     autoAssign: true,
@@ -286,28 +287,10 @@ const CityAdminPanel = ({ currentUser, onLogout }) => {
           )}
 
           {/* TAB 5: PAYMENTS */}
-          {activeTab === 'payments' && (
-            <div className="mui-card" style={{ padding: '26px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CreditCard size={20} color="#7c3aed" /> {assignedCity} Revenue & Daily Settlements
-              </h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Gross Daily GMV: <strong>₹{Number(cityGmv).toLocaleString()}</strong> • City Commission Earned: <strong>₹{Number(cityCommission).toLocaleString()}</strong>.
-              </p>
-            </div>
-          )}
+          {activeTab === 'payments' && <CityPaymentsView assignedCity={assignedCity} />}
 
           {/* TAB 6: REPORTS */}
-          {activeTab === 'reports' && (
-            <div className="mui-card" style={{ padding: '26px' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '800', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <BarChart3 size={20} color="#2563eb" /> {assignedCity} City Performance Reports
-              </h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Download weekly order completion, partner SLA ratings, and cancellation logs.
-              </p>
-            </div>
-          )}
+          {activeTab === 'reports' && <CityReportsView assignedCity={assignedCity} />}
 
           {/* TAB 7: HELP & SUPPORT HUB */}
           {(activeTab === 'support' || activeTab === 'help' || activeTab === 'tickets') && (
