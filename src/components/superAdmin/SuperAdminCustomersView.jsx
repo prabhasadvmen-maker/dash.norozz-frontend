@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Users, UserCheck, UserPlus, UserX, Search, ChevronLeft, ChevronRight, X, Mail, Phone, MapPin, Wallet } from 'lucide-react';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
 
 const PAGE_SIZE = 10;
 
@@ -35,7 +36,7 @@ const initials = (name) => String(name || '?').trim().split(/\s+/).slice(0, 2).m
 
 const Avatar = ({ c, size = 38 }) => (
   c.profileImage
-    ? <img src={c.profileImage} alt={c.name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid #e2e8f0' }} />
+    ? <img src={resolveMediaUrl(c.profileImage)} alt={c.name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid #e2e8f0' }} />
     : <div style={{ width: size, height: size, borderRadius: '50%', background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: size * 0.36, flexShrink: 0 }}>{initials(c.name)}</div>
 );
 
