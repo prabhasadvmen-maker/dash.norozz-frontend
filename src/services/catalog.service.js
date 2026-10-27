@@ -31,7 +31,7 @@ export const catalogService = {
 
   // Service Packages
   getServicePackages: (serviceId) => axiosInstance.get(`/packages/service/${serviceId}`),
-  getAdminServicePackages: (serviceId) => axiosInstance.get(`/packages/admin/service/${serviceId}`),
+  getAdminServicePackages: (serviceId) => axiosInstance.get(`/packages/admin/service/${serviceId}`, { silent: true }), // caller falls back to the public list, so no error toast
   getPackageById: (packageId) => axiosInstance.get(`/packages/${packageId}`),
   createPackage: (serviceId, data) => axiosInstance.post(`/packages/service/${serviceId}`, data),
   updatePackage: (packageId, data) => axiosInstance.put(`/packages/${packageId}`, data),

@@ -173,7 +173,7 @@ axiosInstance.interceptors.response.use(
     const isProtectedPortal = originalRequest.url?.includes('/super-admin/') ||
                               originalRequest.url?.includes('/city-admin/') ||
                               originalRequest.url?.includes('/partner/');
-    if (!(status === 401 && isProtectedPortal)) {
+    if (!(status === 401 && isProtectedPortal) && !originalRequest.silent) {
       toast.error(message);
     }
 
