@@ -7,6 +7,7 @@ import { toast } from '../../utils/toast.js';
 const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const saveLock = useRef(false);
   const bodyRef = useRef(null);
@@ -34,14 +35,19 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
   const fetchPackages = () => {
     if (!service?._id) return;
     setLoading(true);
+    setLoadFailed(false);
+    const toList = (res) => {
+      const list = res.data?.data || res.data || [];
+      return Array.isArray(list) ? list : [];
+    };
     catalogService
       .getAdminServicePackages(service._id)
-      .then((res) => {
-        const list = res.data?.data || res.data || [];
-        setPackages(Array.isArray(list) ? list : []);
-      })
+      .then((res) => setPackages(toList(res)))
+      // the admin list needs an up-to-date API; fall back to the public (active-only) list instead of showing nothing
+      .catch(() => catalogService.getServicePackages(service._id).then((res) => setPackages(toList(res))))
       .catch((err) => {
         console.error('Fetch packages error:', err);
+        setLoadFailed(true);
         toast.error('Failed to load packages for this service.');
       })
       .finally(() => setLoading(false));
@@ -49,6 +55,7 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
 
   useEffect(() => {
     if (isOpen && service?._id) {
+      setPackages([]);
       fetchPackages();
       setIsFormOpen(false);
     }
@@ -296,7 +303,7 @@ const AdminPackageManagementModal = ({ isOpen, onClose, service }) => {
           </div>
 
           {/* Warning Banner if 0 active packages */}
-          {packages.filter((p) => p.status === 'active').length === 0 && !isFormOpen && (
+          {!loading && !loadFailed && packages.filter((p) => p.status === 'active').length === 0 && !isFormOpen && (
             <div style={{
               display: 'flex',
               alignItems: 'center',
