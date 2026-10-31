@@ -30,6 +30,7 @@ import { customerService } from '../../services/customer.service.js';
 import { payWithGateway } from '../../utils/razorpay.js';
 import { catalogService } from '../../services/catalog.service.js';
 import { paymentService } from '../../services/payment.service.js';
+import { bookingService } from '../../services/booking.service.js';
 import { geoapifyService } from '../../services/geoapify.service.js';
 import { toast } from '../../utils/toast.js';
 
@@ -56,8 +57,8 @@ const AddressMapPicker = ({ onLocationSelect, onMapReady, onLocateGps, isLocatin
         shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
       });
 
-      const defaultLat = 26.0494; // Nizamabad / Azamgarh coords
-      const defaultLng = 83.0565;
+      const defaultLat = 28.6139; // Delhi NCR (platform's main service area); the pin moves to the customer's GPS / searched address
+      const defaultLng = 77.209;
 
       const map = L.map(mapContainerRef.current, {
         center: [defaultLat, defaultLng],
@@ -269,7 +270,7 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
 
   // Package Data (Loaded Live from Backend Service object)
   const [packageList, setPackageList] = useState([]);
-  const [selectedPackageIndex, setSelectedPackageIndex] = useState(1);
+  const [selectedPackageIndex, setSelectedPackageIndex] = useState(0);
   const [selectedPackageId, setSelectedPackageId] = useState(service?.packageId || service?.package?._id || service?.selectedPackage?._id || null);
 
   // Address Data (Loaded Live from Backend Customer Profile)
@@ -400,45 +401,30 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
         })
         .catch((err) => {
           console.warn('Fetch packages warning in BookingFlowPage:', err);
-          createFallbackPackages();
+          setPackageList([]);
         });
     } else {
       createFallbackPackages();
     }
 
+    // Without configured packages the service's own price is used; no invented tiers or prices
     function createFallbackPackages() {
-      const basePrice = service?.finalPrice || service?.price || 1499;
-      const serviceName = service?.name || service?.title || 'Service';
-      
-      const fallbacks = [
-        {
-          id: 'basic',
-          title: `${serviceName} (Basic)`,
-          price: Math.max(299, Math.round(basePrice * 0.7)),
-          formattedPrice: `₹${Math.max(299, Math.round(basePrice * 0.7)).toLocaleString()}`,
-          features: ['Essential service coverage', 'Verified professional', 'Standard completion update'],
-          isPopular: false
-        },
-        {
-          id: 'standard',
-          title: `${serviceName} (Standard)`,
-          price: basePrice,
-          formattedPrice: `₹${basePrice.toLocaleString()}`,
-          features: ['Complete deep service & inspection', '30-day post-service warranty', 'High pressure equipment & sterilisation'],
-          isPopular: true
-        },
-        {
-          id: 'premium',
-          title: `${serviceName} (Premium)`,
-          price: Math.round(basePrice * 1.5),
-          formattedPrice: `₹${Math.round(basePrice * 1.5).toLocaleString()}`,
-          features: ['Comprehensive maximum coverage', 'Senior/experienced technician', 'Priority support & premium treatment'],
-          isPopular: false
-        }
-      ];
-
-      setPackageList(fallbacks);
-      setSelectedPackageIndex(1);
+      const price = Number(service?.finalPrice || service?.price);
+      if (Number.isFinite(price) && price > 0) {
+        setPackageList([
+          {
+            id: 'service',
+            title: service?.name || service?.title || 'Service',
+            price,
+            formattedPrice: `₹${price.toLocaleString()}`,
+            features: [],
+            isPopular: false,
+          },
+        ]);
+        setSelectedPackageIndex(0);
+      } else {
+        setPackageList([]);
+      }
     }
   }, [service?._id, service?.serviceId, service?.name]);
 
@@ -471,15 +457,41 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
     }
   }, [addressesCount, userAddressStr]);
 
-  const currentPackage = packageList[selectedPackageIndex] || packageList[1] || packageList[0] || { title: 'Standard Deep Clean', price: 1499, formattedPrice: '₹1,499' };
-  const activeAddressObj = savedAddresses.find((a) => a.id === selectedAddressId) || savedAddresses[0] || { address: currentUser?.address || 'Please add delivery address' };
+  const currentPackage = packageList[selectedPackageIndex] || packageList[0] || null;
+  const activeAddressObj = savedAddresses.find((a) => a.id === selectedAddressId) || savedAddresses[0] || { address: currentUser?.address || '' };
 
-  // Calculations: Selected package price takes HIGHEST priority!
-  const baseSubtotal = currentPackage?.price || service?.finalPrice || service?.price || 799;
-  const subtotal = appliedStarterPack ? Number(appliedStarterPack.offerPrice || 139) : baseSubtotal;
-  const platformFee = Math.round(subtotal * (customerPlatformFeePercent / 100));
-  const couponDiscountVal = appliedCoupon ? (appliedCoupon.discountAmount ?? (appliedCoupon.discount || 0)) : 0;
-  const totalAmount = Math.max(0, subtotal + platformFee - couponDiscountVal);
+  // Local estimate, used only until the server quote arrives
+  const localSubtotal = appliedStarterPack ? Number(appliedStarterPack.offerPrice || 0) : Number(currentPackage?.price ?? service?.finalPrice ?? service?.price ?? 0);
+  const localFee = Math.round(localSubtotal * (customerPlatformFeePercent / 100));
+  const localDiscount = appliedCoupon ? (appliedCoupon.discountAmount ?? (appliedCoupon.discount || 0)) : 0;
+
+  // The server decides the price (per-category fee rules, coupon limits, starter pack), so what is shown is what is charged
+  const [quote, setQuote] = useState(null);
+  const quoteCategoryId = service?.category?._id || service?.category || service?.categoryId;
+  const quoteServiceId = service?.serviceId || service?._id;
+  const quotePackageId = currentPackage?._id || null;
+  const quoteCoupon = appliedStarterPack ? undefined : appliedCoupon?.code;
+  const quoteStarter = Boolean(appliedStarterPack);
+
+  useEffect(() => {
+    if (!quoteCategoryId || !quoteServiceId) return undefined;
+    let cancelled = false;
+    bookingService
+      .quoteBooking({ category: quoteCategoryId, service: quoteServiceId, packageId: quotePackageId, couponCode: quoteCoupon, useStarterPack: quoteStarter })
+      .then((res) => {
+        if (!cancelled) setQuote(res?.data || null);
+      })
+      .catch(() => {
+        // The interceptor already toasted the reason (e.g. an expired coupon); keep showing the local estimate
+        if (!cancelled) setQuote(null);
+      });
+    return () => { cancelled = true; };
+  }, [quoteCategoryId, quoteServiceId, quotePackageId, quoteCoupon, quoteStarter]);
+
+  const subtotal = quote ? Number(quote.servicePrice) : localSubtotal;
+  const platformFee = quote ? Number(quote.platformFee) : localFee;
+  const couponDiscountVal = quote ? Number(quote.discount) : localDiscount;
+  const totalAmount = quote ? Number(quote.total) : Math.max(0, localSubtotal + localFee - localDiscount);
 
   // Leaflet Map References for Select Address Step
   const activeMapRef = useRef(null);
@@ -671,9 +683,8 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
         setCouponCodeInput('');
         setCurrentStep('booking_summary');
       }
-    } catch (err) {
-      const errMsg = err.response?.data?.message || err.message || 'Failed to apply coupon';
-      toast.error(errMsg);
+    } catch {
+      // The reason (invalid / expired / limit reached) is already shown by the axios interceptor
     } finally {
       setApplyingCoupon(false);
     }
@@ -737,7 +748,7 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
         const res = await createBooking({
           category: categoryId,
           service: serviceId,
-          packageId: service?.packageId || service?.package?._id || currentPackage?._id || null,
+          packageId: currentPackage?._id || service?.packageId || service?.package?._id || null,
           packageName: currentPackage?.title || service?.name || service?.title,
           addressTitle: activeAddressObj.label || 'Home',
           addressLine: activeAddressObj.address,
@@ -771,7 +782,7 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
       setConfirmedOrder({
         bookingId: booking.bookingId,
         serviceTitle: service?.name || service?.title,
-        packageName: currentPackage.title,
+        packageName: currentPackage?.title,
         dateAndTime: `${selectedDate} • ${selectedTimeSlot}`,
         address: activeAddressObj.address,
         amount: booking.amount ?? totalAmount,
@@ -832,6 +843,11 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
 
             {/* Scrollable Package Options */}
             <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {packageList.length === 0 && (
+                <div style={{ padding: '32px 16px', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem', fontWeight: '600' }}>
+                  No packages are available for this service right now. Please try again later.
+                </div>
+              )}
               {packageList.map((pkg, index) => {
                 const isSelected = selectedPackageIndex === index;
 
@@ -900,6 +916,7 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
               <button
                 type="button"
                 onClick={() => setCurrentStep('select_address')}
+                disabled={!currentPackage}
                 style={{
                   width: '100%',
                   padding: '16px',
@@ -909,11 +926,12 @@ const BookingFlowPage = ({ service, currentUser, onBackToServices, onNavigateToB
                   fontWeight: '800',
                   fontSize: '1rem',
                   border: 'none',
-                  cursor: 'pointer',
+                  cursor: currentPackage ? 'pointer' : 'not-allowed',
+                  opacity: currentPackage ? 1 : 0.5,
                   boxShadow: '0 8px 24px rgba(16, 185, 129, 0.35)'
                 }}
               >
-                Continue with {currentPackage.title.split(' ')[0]}
+                {currentPackage ? `Continue with ${currentPackage.title}` : 'No packages available'}
               </button>
             </div>
           </div>

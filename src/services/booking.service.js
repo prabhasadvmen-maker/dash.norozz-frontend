@@ -2,6 +2,8 @@ import { axiosInstance } from '../api/axiosInstance.js';
 
 export const bookingService = {
   createBooking: (data) => axiosInstance.post('/bookings', data),
+  // Server-side price (service + platform fee - discount): the single source of truth for what the customer pays
+  quoteBooking: (data) => axiosInstance.post('/bookings/quote', data),
   payBooking: (id, paymentMethod = 'UPI') => axiosInstance.post(`/bookings/${id}/pay`, { paymentMethod }),
   assignPartner: (id, partnerId) => axiosInstance.patch(`/bookings/${id}/assign`, { partnerId }),
   acceptBooking: (id) => axiosInstance.patch(`/bookings/${id}/accept`),

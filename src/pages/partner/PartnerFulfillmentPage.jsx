@@ -199,7 +199,7 @@ const FulfillmentRouteMap = ({ partnerCoords, customerCoords, fullAddressStr }) 
 };
 
 const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) => {
-  const { updateBookingStatus, completeBooking } = useBookings();
+  const { updateBookingStatus, completeBooking, acceptBooking } = useBookings();
   const [chatOpen, setChatOpen] = useState(false);
   const [voiceCallOpen, setVoiceCallOpen] = useState(false);
   const [isIncomingCall, setIsIncomingCall] = useState(false);
@@ -325,67 +325,63 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
     }
   }, [booking]);
 
-  // Dynamically generate Execution Checklist based on Partner's offeredServices or booked service
+  // Add-on services this partner may actually add to the job. Comes from the server, which only returns active services
+  // the partner is authorised for (the partner profile can still hold ids of services the admin has since deleted).
+  const [offeredAddOns, setOfferedAddOns] = useState([]);
+  const offeredBookingId = (fullBookingData || booking)?._id;
+
+  useEffect(() => {
+    if (!offeredBookingId) return undefined;
+    let cancelled = false;
+    partnerService
+      .getOfferedServices({ bookingId: offeredBookingId })
+      .then((res) => {
+        if (!cancelled) setOfferedAddOns(Array.isArray(res?.data) ? res.data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setOfferedAddOns([]);
+      });
+    return () => { cancelled = true; };
+  }, [offeredBookingId]);
+
+  // Execution checklist: the booked (prepaid) service first, then the add-ons the partner can offer
   useEffect(() => {
     const activeBooking = fullBookingData || booking;
     if (!activeBooking) return;
 
-    const isHexObjectId = (str) => typeof str === 'string' && /^[0-9a-fA-F]{24}$/.test(str);
-    const bookedServiceTitle = activeBooking.packageName || activeBooking.service?.name || activeBooking.serviceTitle || 'Basic Haircut';
-    const baseP = activeBooking.amount || activeBooking.totalAmount || activeBooking.service?.finalPrice || 276;
+    const bookedServiceTitle = activeBooking.packageName || activeBooking.service?.name || activeBooking.serviceTitle || 'Booked service';
+    const baseP = activeBooking.amount || activeBooking.totalAmount || activeBooking.service?.finalPrice || 0;
+    const bookedServiceId = String(activeBooking.service?._id || activeBooking.service || '');
+    const dbExtras = activeBooking.extraServices || [];
 
-    // Priority 1: Check Partner's offeredServices array (from partner profile or active booking)
-    const partnerOffered = currentUser?.offeredServices || activeBooking?.partner?.offeredServices;
+    // One row per service (its packages are chosen in the package picker)
+    const byService = new Map();
+    offeredAddOns.forEach((item) => {
+      const key = String(item.serviceId || '');
+      if (!key || key === bookedServiceId) return;
+      const price = Number(item.finalPrice ?? item.price) || 0;
+      const existing = byService.get(key);
+      if (!existing || price < existing.price) {
+        byService.set(key, { serviceId: key, text: item.serviceName || item.name, price });
+      }
+    });
 
-    if (partnerOffered && Array.isArray(partnerOffered) && partnerOffered.length > 0) {
-      const dbExtras = activeBooking?.extraServices || [];
-
-      const items = partnerOffered.map((srv, idx) => {
-        let textStr = '';
-        let itemPrice = 150;
-        let sId = null;
-
-        if (typeof srv === 'object' && srv !== null) {
-          textStr = srv.name || srv.title || srv.serviceName || srv.packageName;
-          itemPrice = srv.price || srv.finalPrice || 150;
-          sId = srv._id;
-        } else if (typeof srv === 'string' && !isHexObjectId(srv)) {
-          textStr = srv;
-        } else if (typeof srv === 'string' && isHexObjectId(srv)) {
-          sId = srv;
-        }
-
-        if (!textStr || isHexObjectId(textStr)) {
-          textStr = idx === 0 ? bookedServiceTitle : `Extra Service Option ${idx + 1}`;
-        }
-
-        const isPrimary = idx === 0 || textStr.toLowerCase() === bookedServiceTitle.toLowerCase();
-
-        // Match with DB extraServices if already added
-        const matchedDbExtra = dbExtras.find(
-          (ex) => (sId && String(ex.serviceId) === String(sId)) || (ex.name && ex.name.toLowerCase().includes(textStr.toLowerCase()))
-        );
-
-        return {
-          id: idx + 1,
-          text: textStr,
-          price: isPrimary ? baseP : (matchedDbExtra ? matchedDbExtra.price : itemPrice),
-          isBooked: isPrimary,
-          completed: isPrimary || Boolean(matchedDbExtra),
-          packageName: matchedDbExtra ? matchedDbExtra.packageName : null,
-          rawServiceObj: typeof srv === 'object' ? srv : null,
-          serviceId: sId || (typeof srv === 'object' ? srv._id : (isHexObjectId(srv) ? srv : null)),
-        };
+    const items = [{ id: 1, text: bookedServiceTitle, price: baseP, isBooked: true, completed: true }];
+    [...byService.values()].forEach((svc, idx) => {
+      const matchedDbExtra = dbExtras.find((ex) => String(ex.serviceId) === svc.serviceId);
+      items.push({
+        id: idx + 2,
+        text: svc.text,
+        price: matchedDbExtra ? matchedDbExtra.price : svc.price,
+        isBooked: false,
+        completed: Boolean(matchedDbExtra),
+        packageName: matchedDbExtra ? matchedDbExtra.packageName : null,
+        rawServiceObj: null,
+        serviceId: svc.serviceId,
       });
-      setChecklist(items);
-      return;
-    }
-
-    // Priority 2: Fallback single primary booked service (No fake extra services)
-    setChecklist([
-      { id: 1, text: bookedServiceTitle, price: baseP, isBooked: true, completed: true },
-    ]);
-  }, [fullBookingData, booking, currentUser]);
+    });
+    setChecklist(items);
+  }, [fullBookingData, booking, offeredAddOns]);
 
   // Initialize and persist Work Timer based on start timestamp (Prevents reset to 0)
   useEffect(() => {
@@ -512,6 +508,7 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
   const partnerCoords = { lat: pLat, lng: pLng };
 
   // Geoapify Live Road Distance & Driving Time State
+  const [acceptingAssigned, setAcceptingAssigned] = useState(false);
   const [geoapifyRouteInfo, setGeoapifyRouteInfo] = useState(null);
 
   useEffect(() => {
@@ -555,7 +552,7 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
       toast.success('✅ OTP Verified Successfully!');
       setStep(5); // Move to Service Execution step
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Invalid OTP. Please check customer code.');
+      if (err instanceof Error) toast.error(err.message); // API errors are already toasted by the axios interceptor
     } finally {
       setOtpVerifying(false);
     }
@@ -637,7 +634,7 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
       toast.success(`➕ Added Extra Service: ${selectedServiceForPackages.text} (${pkg.title}) (+₹${pkg.finalPrice || pkg.price})`);
       setShowPackageModal(false);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Error adding extra package');
+      if (err instanceof Error) toast.error(err.message); // API errors are already toasted by the axios interceptor
     } finally {
       setAddingExtraService(false);
     }
@@ -664,7 +661,7 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
       if (onComplete) onComplete();
       if (onBack) onBack();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Error completing payment & service');
+      if (err instanceof Error) toast.error(err.message); // API errors are already toasted by the axios interceptor
     } finally {
       setCompletingPayment(false);
     }
@@ -683,7 +680,7 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
       if (onComplete) onComplete();
       if (onBack) onBack();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Error completing service');
+      if (err instanceof Error) toast.error(err.message); // API errors are already toasted by the axios interceptor
     } finally {
       setCompletingPayment(false);
     }
@@ -912,7 +909,7 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                           const claimed = res.data?.data || res.data;
                           if (claimed) setFullBookingData(claimed);
                         } catch (err) {
-                          toast.error(err.response?.data?.message || 'Failed to accept job.');
+                          if (err instanceof Error) toast.error(err.message); // API errors are already toasted by the axios interceptor
                         }
                       }
                     }}
@@ -921,12 +918,39 @@ const PartnerFulfillmentPage = ({ booking, currentUser, onBack, onComplete }) =>
                   >
                     ✓ Accept This Job Offer
                   </button>
+                ) : String(currentBooking.status).toLowerCase() === 'assigned' ? (
+                  <button
+                    type="button"
+                    disabled={acceptingAssigned}
+                    onClick={async () => {
+                      // Admin / auto-assigned jobs must be accepted first (this also sends the customer OTP)
+                      setAcceptingAssigned(true);
+                      try {
+                        await acceptBooking(rawId);
+                        const res = await partnerService.getBookingDetails(rawId);
+                        const accepted = res?.data?.data || res?.data;
+                        if (accepted) setFullBookingData(accepted);
+                      } catch {
+                        // API errors are already toasted by the axios interceptor
+                      } finally {
+                        setAcceptingAssigned(false);
+                      }
+                    }}
+                    className="btn"
+                    style={{ padding: '13px', background: '#16a34a', color: '#ffffff', fontWeight: '800', fontSize: '1rem', borderRadius: '14px', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: acceptingAssigned ? 0.7 : 1 }}
+                  >
+                    {acceptingAssigned ? 'Accepting…' : '✓ Accept Assigned Job'}
+                  </button>
                 ) : (
                   <button
                     type="button"
                     onClick={async () => {
                       if (rawId && !rawId.toString().startsWith('demo')) {
-                        await updateBookingStatus({ id: rawId, status: 'On The Way' });
+                        try {
+                          await updateBookingStatus({ id: rawId, status: 'On The Way' });
+                        } catch {
+                          return; // keep the partner on this step; the error is already toasted
+                        }
                       }
                       setStep(2); // Go to Navigation
                     }}

@@ -1,11 +1,9 @@
-import React, { useState } from 'react';
 import { Navigation, Play, CheckCircle2, MapPin, Clock } from 'lucide-react';
 import { useBookings } from '../../hooks/useBookings.js';
 import { toast } from '../../utils/toast.js';
 
 const UpcomingBookingCard = ({ booking, onViewAllClick, onOpenFulfillment }) => {
-  const { updateBookingStatus, completeBooking } = useBookings();
-  const [jobStarted, setJobStarted] = useState(false);
+  const { updateBookingStatus, acceptBooking } = useBookings();
 
   if (!booking) {
     return (
@@ -38,38 +36,32 @@ const UpcomingBookingCard = ({ booking, onViewAllClick, onOpenFulfillment }) => 
   const activeBooking = {
     rawId: booking._id,
     id: booking.bookingId || booking.bookingNumber || `UC-${booking._id?.toString().slice(-5).toUpperCase()}`,
-    serviceTitle: booking.packageName || booking.service?.name || booking.serviceTitle || 'AC Service & Gas Charge',
-    slotTime: booking.timeSlot || booking.bookingTimeSlot || '10:30 AM',
+    serviceTitle: booking.packageName || booking.service?.name || booking.serviceTitle || 'Service',
+    slotTime: booking.timeSlot || booking.bookingTimeSlot || 'Time not set',
     customerName: booking.customer?.name || 'Customer',
     customerPhone: booking.customer?.phone || '',
     address: typeof booking.address === 'object'
-      ? `${booking.address?.addressLine ? booking.address.addressLine + ', ' : ''}${booking.address?.city || booking.city || 'Delhi NCR'}`
-      : (booking.address || booking.city || 'HSR Layout Sector 2, Bengaluru'),
+      ? [booking.address?.addressLine, booking.address?.city || booking.city].filter(Boolean).join(', ') || 'Address not available'
+      : (booking.address || booking.city || 'Address not available'),
     status: booking.status || 'Accepted',
   };
 
   const handleNavigate = () => {
-    if (onOpenFulfillment) {
-      onOpenFulfillment(activeBooking);
-    } else {
-      toast.info(`Opening Google Maps Navigation for ${activeBooking.customerName}...`);
-      window.open(`https://maps.google.com/?q=${encodeURIComponent(activeBooking.address)}`, '_blank');
-    }
+    window.open(`https://maps.google.com/?q=${encodeURIComponent(activeBooking.address)}`, '_blank', 'noopener');
   };
 
   const handleNextAction = async () => {
-    if (onOpenFulfillment) {
-      onOpenFulfillment(booking || activeBooking);
+    // Assigned jobs must be accepted before anything else (sends the customer OTP)
+    if (activeBooking.status === 'Assigned') {
+      try {
+        await acceptBooking(activeBooking.rawId);
+      } catch {
+        // API errors are already toasted by the axios interceptor
+      }
       return;
     }
-    if (!booking) {
-      if (!jobStarted) {
-        setJobStarted(true);
-        toast.success(`Status updated to ON THE WAY for ${activeBooking.customerName}!`);
-      } else {
-        toast.success(`Job Completed! Earnings added to your wallet.`);
-        setJobStarted(false);
-      }
+    if (onOpenFulfillment) {
+      onOpenFulfillment(booking);
       return;
     }
 
@@ -172,9 +164,12 @@ const UpcomingBookingCard = ({ booking, onViewAllClick, onOpenFulfillment }) => 
 
         {/* Payout & Financial Breakdown Card */}
         {(() => {
-          const serviceVal = booking?.financialSnapshot?.servicePrice || booking?.packageSnapshot?.finalPrice || (booking?.amount > 400 ? Math.round(booking.amount * 0.909) : booking?.amount) || 399;
-          const comm = booking?.financialSnapshot?.partnerCommission ?? Math.round(serviceVal * 0.10);
-          const netEarning = booking?.financialSnapshot?.partnerNetEarning ?? (serviceVal - comm);
+          const snap = booking?.financialSnapshot;
+          const serviceVal = snap?.servicePrice ?? booking?.packageSnapshot?.finalPrice ?? booking?.amount;
+          const comm = snap?.partnerCommission;
+          const netEarning = snap?.partnerNetEarning;
+          // Only show the payout breakdown when the server computed it; never guess an amount
+          if (serviceVal == null || comm == null || netEarning == null) return null;
 
           return (
             <div style={{ padding: '10px 14px', background: '#f0fdf4', borderRadius: '14px', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem' }}>
@@ -235,7 +230,11 @@ const UpcomingBookingCard = ({ booking, onViewAllClick, onOpenFulfillment }) => 
               boxShadow: '0 4px 14px rgba(22, 163, 74, 0.3)'
             }}
           >
-            {activeBooking.status === 'Accepted' || activeBooking.status === 'Assigned' ? (
+            {activeBooking.status === 'Assigned' ? (
+              <>
+                <CheckCircle2 size={16} /> Accept Job
+              </>
+            ) : activeBooking.status === 'Accepted' ? (
               <>
                 <Navigation size={16} /> On The Way
               </>

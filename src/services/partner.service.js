@@ -15,6 +15,12 @@ export const partnerService = {
   getRating: () => axiosInstance.get('/partner/rating'),
   getProfile: () => axiosInstance.get('/partner/profile'),
   updateProfile: (data) => axiosInstance.put('/partner/profile', data),
+  // Photo uploads need the multipart-enabled auth route; /partner/profile only accepts JSON and would drop the file
+  uploadProfileImage: (file) => {
+    const formData = new FormData();
+    formData.append('profileImage', file);
+    return axiosInstance.put('/partner/auth/profile', formData);
+  },
   getAvailability: () => axiosInstance.get('/partner/availability'),
   updateAvailability: (data) => axiosInstance.put('/partner/availability', data),
   getNotifications: () => axiosInstance.get('/partner/notifications'),

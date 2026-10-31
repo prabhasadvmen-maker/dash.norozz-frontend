@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { catalogService } from '../../services/catalog.service.js';
+import { cityService } from '../../services/city.service.js';
 import {
   Search,
   MapPin,
@@ -26,7 +27,7 @@ import LanguageSelector from '../common/LanguageSelector.jsx';
 const DedicatedCustomerNavbar = ({
   currentUser,
   onLogout,
-  selectedCity = 'Bodeli',
+  selectedCity = '',
   onCitySelect,
   activeTab = 'home',
   onNavigateTab,
@@ -37,7 +38,17 @@ const DedicatedCustomerNavbar = ({
   const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const cities = ['Bodeli', 'Delhi NCR', 'Mumbai', 'Bengaluru', 'Hyderabad', 'Pune', 'Kolkata'];
+  const [cities, setCities] = useState([]);
+
+  // Only cities the platform actually operates in
+  useEffect(() => {
+    cityService.getActiveCities()
+      .then((res) => {
+        const list = res?.data || [];
+        if (Array.isArray(list)) setCities(list.map((c) => c.name).filter(Boolean));
+      })
+      .catch(() => {});
+  }, []);
 
   // Search State & Live Query Handler
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,7 +69,7 @@ const DedicatedCustomerNavbar = ({
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => window.removeEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Live API Search Debounce
@@ -213,7 +224,7 @@ const DedicatedCustomerNavbar = ({
               }}
             >
               <MapPin size={14} color="#10b981" />
-              <span>{currentUser?.city || selectedCity || 'Bodeli'}</span>
+              <span>{currentUser?.city || selectedCity || 'Select city'}</span>
               <ChevronDown size={13} color="#64748b" />
             </button>
 
@@ -230,6 +241,9 @@ const DedicatedCustomerNavbar = ({
                 width: '170px',
                 zIndex: 200
               }}>
+                {cities.length === 0 && (
+                  <div style={{ padding: '8px 16px', fontSize: '0.8rem', color: '#64748b' }}>No cities available</div>
+                )}
                 {cities.map((city) => (
                   <div
                     key={city}

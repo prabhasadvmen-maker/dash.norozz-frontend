@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import {
   User,
   Phone,
-  Clock,
   Briefcase,
   FileText,
   ExternalLink,
@@ -18,21 +17,14 @@ import {
   Upload,
   ShieldCheck,
   Share2,
-  ArrowUpRight,
   Lock,
   Bell,
   Globe,
-  KeyRound,
   Plus,
   Trash2,
   Camera,
-  CreditCard,
-  Sparkles,
-  TrendingUp,
   AlertCircle,
   ChevronRight,
-  Building2,
-  DollarSign,
   Eye,
   X,
   ArrowLeft,
@@ -50,20 +42,16 @@ import {
   Search,
   Volume2,
   Vibrate,
-  Sliders,
   ChevronDown,
   ChevronUp,
-  Shield,
-  Fingerprint,
-  FileCode,
-  Award
 } from 'lucide-react';
 import { catalogService } from '../../services/catalog.service.js';
 import { cityService } from '../../services/city.service.js';
 import { partnerService } from '../../services/partner.service.js';
 import { axiosInstance } from '../../api/axiosInstance.js';
 import { toast } from '../../utils/toast.js';
-import { payWithGateway } from '../../utils/razorpay.js';
+import PartnerProfileOverview from './PartnerProfileOverview.jsx';
+import { formatAddress } from '../../utils/formatAddress.js';
 
 const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTabChange, onUpdateUser }) => {
   const [activeSubTab, setActiveSubTab] = useState(initialSubTab);
@@ -98,13 +86,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
   const [citiesMap, setCitiesMap] = useState({});
   const [servicesMap, setServicesMap] = useState({});
   const [saving, setSaving] = useState(false);
-  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
-  const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [withdrawing, setWithdrawing] = useState(false);
 
-  const [depositModalOpen, setDepositModalOpen] = useState(false);
-  const [depositAmount, setDepositAmount] = useState('');
-  const [isDepositing, setIsDepositing] = useState(false);
 
   const user = partnerData || {};
   const kycStatus = user.kycStatus || 'pending';
@@ -142,7 +124,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
     gender: user.gender || 'Male',
     experience: user.experience || '3-5 Years',
     workRadius: user.workRadius || 8,
-    address: user.address || '',
+    address: formatAddress(user.address),
     localities: user.localities ? [...user.localities] : [],
     newLocalityInput: '',
     profileImage: user.profileImage || '',
@@ -220,12 +202,6 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
     priority: 'Medium',
   });
   const [submittingComplaint, setSubmittingComplaint] = useState(false);
-
-  // Wallet & Earnings Control Center State
-  const [earningsTimeframe, setEarningsTimeframe] = useState('overview'); // 'overview', 'daily', 'weekly', 'monthly'
-  const [walletData, setWalletData] = useState(null);
-  const [earningsData, setEarningsData] = useState(null);
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
 
   // FAQ Knowledge Base (Live backend fetched)
   const [faqs, setFaqs] = useState([
@@ -317,23 +293,6 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
       setSettingsForm((prev) => ({ ...prev, language: user.preferredLanguage }));
     }
   }, [partnerData]);
-
-  // Fetch Wallet & Earnings data on mount / tab switch
-  useEffect(() => {
-    partnerService.getWallet()
-      .then((res) => {
-        const val = res.data?.data || res.data;
-        if (val) setWalletData(val);
-      })
-      .catch((err) => console.error('Failed to fetch wallet:', err));
-
-    partnerService.getEarnings()
-      .then((res) => {
-        const val = res.data?.data || res.data;
-        if (val) setEarningsData(val);
-      })
-      .catch((err) => console.error('Failed to fetch earnings analytics:', err));
-  }, [activeSubTab]);
 
   // Load chat messages and complaints when opening settings / chat screen
   useEffect(() => {
@@ -472,60 +431,6 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
     }
   };
 
-  const handleConfirmWithdrawal = async (e) => {
-    e.preventDefault();
-    const amt = Number(withdrawAmount);
-    if (!amt || amt <= 0) {
-      return toast.error('Please enter a valid withdrawal amount');
-    }
-    const currentBal = walletData?.walletBalance ?? user.walletBalance ?? 0;
-    if (amt > currentBal) {
-      return toast.error(`Insufficient balance. Available: ₹${currentBal.toLocaleString('en-IN')}`);
-    }
-
-    setIsWithdrawing(true);
-    try {
-      const res = await partnerService.requestWithdrawal(amt);
-      toast.success(res.data?.message || `₹${amt.toLocaleString('en-IN')} transferred to your bank account!`);
-      setWithdrawModalOpen(false);
-      setWithdrawAmount('');
-      const updatedWallet = await partnerService.getWallet();
-      if (updatedWallet.data?.data) setWalletData(updatedWallet.data.data);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Withdrawal request failed');
-    } finally {
-      setIsWithdrawing(false);
-    }
-  };
-
-  const handleConfirmDeposit = async (e) => {
-    e?.preventDefault();
-    const amt = Number(depositAmount);
-    if (!amt || amt <= 0) {
-      return toast.error('Please enter a valid deposit amount');
-    }
-
-    setIsDepositing(true);
-    try {
-      await payWithGateway({ type: 'wallet_recharge', amount: amt, user, description: 'NOROZZ partner wallet top-up' });
-      toast.success(`₹${amt.toLocaleString('en-IN')} added to your wallet!`);
-      setDepositModalOpen(false);
-      setDepositAmount('');
-      const updatedWallet = await partnerService.getWallet();
-      const newBal = updatedWallet.data?.data?.walletBalance ?? updatedWallet.data?.walletBalance;
-      if (updatedWallet.data?.data) {
-        setWalletData(updatedWallet.data.data);
-      }
-      if (onUpdateUser && newBal !== undefined) {
-        onUpdateUser({ ...user, walletBalance: newBal });
-      }
-    } catch (err) {
-      toast.error(err?.message || err.response?.data?.message || 'Deposit failed');
-    } finally {
-      setIsDepositing(false);
-    }
-  };
-
   // Uploaded Documents local state
   const docs = user.documents || {};
   const [documentsState, setDocumentsState] = useState({
@@ -628,10 +533,6 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
       }
     }
 
-    if (!namesList.length) {
-      namesList.push('General Service Technician');
-    }
-
     return Array.from(new Set(namesList));
   };
 
@@ -642,7 +543,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
       if (citiesMap[rawCity]) return citiesMap[rawCity];
       if (!rawCity.match(/^[0-9a-fA-F]{24}$/)) return rawCity;
     }
-    return 'Delhi NCR';
+    return '';
   };
 
   useEffect(() => {
@@ -702,25 +603,23 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
 
     setSaving(true);
     try {
-      const formData = new FormData();
-      formData.append('profileImage', file);
-
-      // Local preview URL
+      // Local preview while the upload is in flight
       const localPreviewUrl = URL.createObjectURL(file);
       setEditForm((prev) => ({ ...prev, profileImage: localPreviewUrl }));
 
-      const res = await partnerService.updateProfile(formData);
-      toast.success('📸 Profile picture updated successfully!');
-
-      const updatedUser = res.data?.user || res.data?.data || res.data;
-      if (updatedUser) {
-        if (onUpdateUser) onUpdateUser(updatedUser);
-        if (updatedUser.profileImage) {
-          setEditForm((prev) => ({ ...prev, profileImage: updatedUser.profileImage }));
-        }
+      const res = await partnerService.uploadProfileImage(file);
+      const updatedUser = res?.data?.user;
+      if (!updatedUser?.profileImage) {
+        throw new Error('The server did not return the new photo.');
       }
+      toast.success('Profile photo updated.');
+      setEditForm((prev) => ({ ...prev, profileImage: updatedUser.profileImage }));
+      if (onUpdateUser) onUpdateUser(updatedUser);
+      URL.revokeObjectURL(localPreviewUrl);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update profile picture.');
+      // API errors are already toasted by the axios interceptor; only report our own failure here
+      if (err instanceof Error) toast.error(err.message);
+      setEditForm((prev) => ({ ...prev, profileImage: user.profileImage || '' }));
     } finally {
       setSaving(false);
     }
@@ -737,7 +636,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
       gender: u.gender || 'Male',
       experience: u.experience || '3-5 Years',
       workRadius: u.workRadius || 8,
-      address: u.address || '',
+      address: formatAddress(u.address),
       localities: u.localities ? [...u.localities] : [],
       newLocalityInput: '',
       profileImage: u.profileImage || '',
@@ -757,7 +656,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
       const initialExperience = user.experience || '3-5 Years';
       const initialWorkRadius = Number(user.workRadius || 8);
       const initialLocalities = JSON.stringify(user.localities || []);
-      const initialAddress = (user.address || '').trim();
+      const initialAddress = formatAddress(user.address);
       const initialProfileImage = user.profileImage || '';
 
       const currentName = (editForm.name || '').trim();
@@ -991,7 +890,7 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                 width: '14px',
                 height: '14px',
                 borderRadius: '50%',
-                background: '#10b981',
+                background: user.isOnline === false ? '#94a3b8' : '#10b981',
                 border: '2px solid #064e3b',
                 zIndex: 2
               }}
@@ -1064,9 +963,10 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', flexWrap: 'wrap', fontSize: '0.82rem' }}>
+              {user.userId && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 255, 255, 0.08)', padding: '3px 10px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
                 <span style={{ fontSize: '0.72rem', opacity: 0.7, fontWeight: '700' }}>ID:</span>
-                <span style={{ fontWeight: '800', letterSpacing: '0.5px', color: '#6ee7b7' }}>{user.userId || 'NRZ-P-309983'}</span>
+                <span style={{ fontWeight: '800', letterSpacing: '0.5px', color: '#6ee7b7' }}>{user.userId}</span>
                 <button
                   type="button"
                   onClick={handleCopyUserId}
@@ -1076,11 +976,14 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                   {copiedId ? <Check size={13} color="#4ade80" /> : <Copy size={13} />}
                 </button>
               </div>
+              )}
 
+              {user.phone && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#a7f3d0' }}>
                 <Phone size={13} color="#34d399" />
-                <span style={{ fontWeight: '700' }}>{user.phone || '+919918309983'}</span>
+                <span style={{ fontWeight: '700' }}>{user.phone}</span>
               </div>
+              )}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                 {resolvedCategoryNames.map((catName, idx) => (
@@ -1104,168 +1007,15 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
       {/* SUB-TAB 1: PROFILE OVERVIEW */}
       {/* ------------------------------------------------------------- */}
       {activeSubTab === 'overview' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-            
-            {/* Personal Details Card */}
-            <div style={{ background: '#ffffff', borderRadius: '18px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ padding: '8px', borderRadius: '10px', background: '#e0f2fe', color: '#0284c7' }}>
-                    <User size={18} />
-                  </div>
-                  Personal Information
-                </h3>
-                <button onClick={() => handleSwitchTab('edit')} style={{ color: '#2563eb', background: '#eff6ff', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer' }}>
-                  Edit Details
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
-                  <span style={{ color: '#64748b', fontSize: '0.86rem', fontWeight: '600' }}>Full Name</span>
-                  <span style={{ color: '#0f172a', fontSize: '0.88rem', fontWeight: '700' }}>{user.name || 'Technician Partner'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
-                  <span style={{ color: '#64748b', fontSize: '0.86rem', fontWeight: '600' }}>Mobile Phone</span>
-                  <span style={{ color: '#0f172a', fontSize: '0.88rem', fontWeight: '700' }}>{user.phone || 'N/A'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
-                  <span style={{ color: '#64748b', fontSize: '0.86rem', fontWeight: '600' }}>Email Address</span>
-                  <span style={{ color: '#0f172a', fontSize: '0.88rem', fontWeight: '700' }}>{user.email || 'N/A'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
-                  <span style={{ color: '#64748b', fontSize: '0.86rem', fontWeight: '600' }}>Date of Birth</span>
-                  <span style={{ color: '#0f172a', fontSize: '0.88rem', fontWeight: '700' }}>{user.dob || 'N/A'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
-                  <span style={{ color: '#64748b', fontSize: '0.86rem', fontWeight: '600' }}>Gender</span>
-                  <span style={{ color: '#0f172a', fontSize: '0.88rem', fontWeight: '700' }}>{user.gender || 'Male'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '4px' }}>
-                  <span style={{ color: '#64748b', fontSize: '0.86rem', fontWeight: '600' }}>Base City / Zone</span>
-                  <span style={{ color: '#16a34a', fontSize: '0.88rem', fontWeight: '800' }}>{resolvedCityName}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Service & Operating Details Card */}
-            <div style={{ background: '#ffffff', borderRadius: '18px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ padding: '8px', borderRadius: '10px', background: '#dcfce7', color: '#16a34a' }}>
-                    <Briefcase size={18} />
-                  </div>
-                  Service & Operational Area
-                </h3>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
-                  <span style={{ color: '#64748b', fontSize: '0.84rem', fontWeight: '600', display: 'block', marginBottom: '8px' }}>
-                    Service Categories (Active Booking Dispatches)
-                  </span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {resolvedCategoryNames.map((catName, idx) => (
-                      <span key={idx} style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', padding: '4px 12px', borderRadius: '12px', fontSize: '0.82rem', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <Briefcase size={13} /> {catName}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
-                  <span style={{ color: '#64748b', fontSize: '0.84rem', fontWeight: '600', display: 'block', marginBottom: '8px' }}>
-                    Offered Partner Services (Selected Specializations)
-                  </span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {resolvedOfferedServices.length > 0 ? (
-                      resolvedOfferedServices.map((svcName, idx) => (
-                        <span key={idx} style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', padding: '4px 12px', borderRadius: '12px', fontSize: '0.82rem', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <CheckCircle2 size={13} color="#16a34a" /> {svcName}
-                        </span>
-                      ))
-                    ) : (
-                      <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontStyle: 'italic' }}>
-                        All services in selected category enabled
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
-                  <span style={{ color: '#64748b', fontSize: '0.86rem', fontWeight: '600' }}>Work Experience</span>
-                  <span style={{ color: '#0f172a', fontSize: '0.88rem', fontWeight: '700' }}>{user.experience || '3-5 Years'}</span>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
-                  <span style={{ color: '#64748b', fontSize: '0.86rem', fontWeight: '600' }}>Operating Radius</span>
-                  <span style={{ color: '#16a34a', fontSize: '0.88rem', fontWeight: '800' }}>{user.workRadius || 8} km</span>
-                </div>
-
-                <div>
-                  <span style={{ color: '#64748b', fontSize: '0.84rem', fontWeight: '600', display: 'block', marginBottom: '8px' }}>
-                    Active Service Localities
-                  </span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {user.localities?.length > 0 ? (
-                      user.localities.map((loc, idx) => (
-                        <span key={idx} style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', padding: '4px 10px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: '700' }}>
-                          📍 {loc}
-                        </span>
-                      ))
-                    ) : (
-                      <>
-                        <span style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', padding: '4px 10px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: '700' }}>📍 Connaught Place (Central Delhi)</span>
-                        <span style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', padding: '4px 10px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: '700' }}>📍 South Extension Part 1 & 2</span>
-                        <span style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', padding: '4px 10px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: '700' }}>📍 Dwarka Sector 10-14</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Quick Shortcuts to Bank & Documents */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-            <div
-              onClick={() => handleSwitchTab('bank')}
-              style={{ background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)', padding: '20px', borderRadius: '16px', border: '1px solid #a7f3d0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-            >
-              <div>
-                <div style={{ fontWeight: '800', fontSize: '0.95rem', color: '#065f46' }}>Bank Account & UPI</div>
-                <div style={{ fontSize: '0.8rem', color: '#047857' }}>{bank.bankName || 'HDFC Bank'} • {bank.accountNumber ? `•••• ${bank.accountNumber.slice(-4)}` : 'Verified'}</div>
-              </div>
-              <Landmark size={24} color="#059669" />
-            </div>
-
-            <div
-              onClick={() => handleSwitchTab('documents')}
-              style={{ background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)', padding: '20px', borderRadius: '16px', border: '1px solid #bae6fd', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-            >
-              <div>
-                <div style={{ fontWeight: '800', fontSize: '0.95rem', color: '#075985' }}>KYC Identity Verification</div>
-                <div style={{ fontSize: '0.8rem', color: '#0284c7' }}>Aadhaar, PAN & Passbook docs uploaded</div>
-              </div>
-              <FileText size={24} color="#0284c7" />
-            </div>
-
-            <div
-              onClick={() => handleSwitchTab('referral')}
-              style={{ background: 'linear-gradient(135deg, #fdf4ff, #fae8ff)', padding: '20px', borderRadius: '16px', border: '1px solid #f5d0fe', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-            >
-              <div>
-                <div style={{ fontWeight: '800', fontSize: '0.95rem', color: '#701a75' }}>Refer & Earn Program</div>
-                <div style={{ fontSize: '0.8rem', color: '#86198f' }}>Code: {referralCode} • Earn ₹{referralBonusAmount}/partner</div>
-              </div>
-              <Gift size={24} color="#c026d3" />
-            </div>
-          </div>
-
-        </div>
+        <PartnerProfileOverview
+          user={user}
+          categoryNames={resolvedCategoryNames}
+          offeredServices={resolvedOfferedServices}
+          cityName={resolvedCityName}
+          referralCode={referralData?.referralCode || user.referralCode || ''}
+          referralBonus={referralData?.referralBonusAmount ?? null}
+          onSwitchTab={handleSwitchTab}
+        />
       )}
 
       {/* ------------------------------------------------------------- */}
@@ -2065,411 +1815,6 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
                 </table>
               </div>
             )}
-          </div>
-
-        </div>
-      )}
-
-      {/* ------------------------------------------------------------- */}
-      {/* SUB-TAB 6: WALLET & EARNINGS CONTROL CENTER (Figma Specs) */}
-      {/* ------------------------------------------------------------- */}
-      {activeSubTab === 'wallet' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-          
-          {/* TOP HERO CARD: EARNINGS & WALLET BALANCE */}
-          <div style={{
-            background: 'linear-gradient(135deg, #14532d 0%, #16a34a 60%, #22c55e 100%)',
-            borderRadius: '24px',
-            padding: '28px',
-            color: '#ffffff',
-            boxShadow: '0 16px 36px rgba(22, 163, 74, 0.25)',
-            position: 'relative',
-            overflow: 'hidden'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
-              <div>
-                <div style={{ fontSize: '0.8rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Wallet size={18} /> Total Earned Cash Balance
-                  <span style={{ background: 'rgba(255,255,255,0.25)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.72rem' }}>+15.4%</span>
-                </div>
-                <div style={{ fontSize: '2.8rem', fontWeight: '900', marginTop: '8px', letterSpacing: '-1px' }}>
-                  ₹{(walletData?.walletBalance ?? user.walletBalance ?? 0).toLocaleString('en-IN')}.00
-                </div>
-                <div style={{ fontSize: '0.84rem', opacity: 0.9, marginTop: '4px' }}>
-                  Auto-settlement linked to {walletData?.bankDetails?.bankName || bankForm?.bankName || 'Verified Bank Account'} (•••• {walletData?.bankDetails?.accountNumber ? walletData.bankDetails.accountNumber.slice(-4) : (bankForm?.accountNumber ? bankForm.accountNumber.slice(-4) : '••••')})
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => setWithdrawModalOpen(true)}
-                  style={{
-                    padding: '12px 22px',
-                    background: '#ffffff',
-                    color: '#16a34a',
-                    border: 'none',
-                    borderRadius: '14px',
-                    fontWeight: '900',
-                    fontSize: '0.92rem',
-                    cursor: 'pointer',
-                    boxShadow: '0 6px 18px rgba(0,0,0,0.15)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  <ArrowUpRight size={18} /> Withdraw Cash
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDepositModalOpen(true)}
-                  style={{
-                    padding: '12px 20px',
-                    background: 'rgba(255, 255, 255, 0.18)',
-                    color: '#ffffff',
-                    border: '1px solid rgba(255, 255, 255, 0.35)',
-                    borderRadius: '14px',
-                    fontWeight: '800',
-                    fontSize: '0.88rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  + Add Deposit
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Stats Strip */}
-            <div style={{ marginTop: '24px', borderTop: '1px solid rgba(255,255,255,0.25)', paddingTop: '18px', display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-              <div>
-                <div style={{ fontSize: '0.74rem', opacity: 0.8, fontWeight: '700', textTransform: 'uppercase' }}>Security Deposit</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: '900' }}>₹{(walletData?.securityDeposit ?? 0).toLocaleString('en-IN')}</div>
-              </div>
-              <div style={{ borderLeft: '1px solid rgba(255,255,255,0.25)', paddingLeft: '24px' }}>
-                <div style={{ fontSize: '0.74rem', opacity: 0.8, fontWeight: '700', textTransform: 'uppercase' }}>Pending Clearance</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: '900', color: '#fef08a' }}>₹{(walletData?.pendingClearance ?? 0).toLocaleString('en-IN')}</div>
-              </div>
-              <div style={{ borderLeft: '1px solid rgba(255,255,255,0.25)', paddingLeft: '24px' }}>
-                <div style={{ fontSize: '0.74rem', opacity: 0.8, fontWeight: '700', textTransform: 'uppercase' }}>Total Lifetime Earned</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: '900' }}>₹{(walletData?.totalEarned ?? 0).toLocaleString('en-IN')}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* TIMEFRAME SELECTION TABS */}
-          <div style={{ background: '#ffffff', borderRadius: '20px', padding: '8px', border: '1px solid #e2e8f0', display: 'flex', gap: '6px' }}>
-            {[
-              { key: 'overview', label: 'Overview & Performance' },
-              { key: 'daily', label: 'Daily Earnings' },
-              { key: 'weekly', label: 'Weekly Breakdown' },
-              { key: 'monthly', label: 'Monthly Breakdown' },
-            ].map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setEarningsTimeframe(t.key)}
-                style={{
-                  flex: 1,
-                  padding: '12px 14px',
-                  borderRadius: '14px',
-                  border: 'none',
-                  fontSize: '0.86rem',
-                  fontWeight: '800',
-                  cursor: 'pointer',
-                  background: earningsTimeframe === t.key ? '#16a34a' : 'transparent',
-                  color: earningsTimeframe === t.key ? '#ffffff' : '#64748b',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          {/* SCREEN 1: OVERVIEW & PERFORMANCE */}
-          {earningsTimeframe === 'overview' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div style={{ background: '#ffffff', borderRadius: '22px', padding: '24px', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-                  <div>
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: '900', color: '#0f172a', margin: 0 }}>Monthly Performance Trend</h3>
-                    <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '2px 0 0 0' }}>Earnings trajectory for past 7 months</p>
-                  </div>
-                  <span style={{ fontSize: '0.82rem', fontWeight: '800', color: '#16a34a', background: '#f0fdf4', padding: '6px 12px', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
-                    📈 +15.4% Growth
-                  </span>
-                </div>
-
-                {/* CSS Bar Chart */}
-                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: '180px', paddingTop: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
-                  {(earningsData?.overview?.monthlyTrend || [
-                    { month: 'Jan', val: 32000, height: '40%' },
-                    { month: 'Feb', val: 41000, height: '52%' },
-                    { month: 'Mar', val: 48000, height: '62%' },
-                    { month: 'Apr', val: 56000, height: '72%' },
-                    { month: 'May', val: 62000, height: '78%' },
-                    { month: 'Jun', val: 74000, height: '88%' },
-                    { month: 'Jul', val: earningsData?.overview?.totalEarned || 85200, height: '100%' },
-                  ]).map((item, idx) => (
-                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '40px' }}>
-                      <span style={{ fontSize: '0.68rem', fontWeight: '800', color: '#16a34a' }}>₹{(item.val/1000).toFixed(0)}k</span>
-                      <div style={{
-                        width: '28px',
-                        height: item.height,
-                        background: idx === 6 ? 'linear-gradient(180deg, #16a34a 0%, #15803d 100%)' : '#e2e8f0',
-                        borderRadius: '8px 8px 0 0',
-                        transition: 'all 0.3s ease'
-                      }} />
-                      <span style={{ fontSize: '0.76rem', fontWeight: '700', color: '#64748b' }}>{item.month}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Bottom Metric Cards Matching Figma */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '20px' }}>
-                  <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '14px', border: '1px solid #f1f5f9', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '700' }}>TOTAL JOBS</div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#0f172a', marginTop: '2px' }}>{earningsData?.overview?.totalJobs ?? 0}</div>
-                  </div>
-                  <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '14px', border: '1px solid #f1f5f9', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '700' }}>AVG / JOB</div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>₹{earningsData?.overview?.avgPerJob ?? 0}</div>
-                  </div>
-                  <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '14px', border: '1px solid #f1f5f9', textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '700' }}>TOTAL EARNED</div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#2563eb', marginTop: '2px' }}>₹{(earningsData?.overview?.totalEarned ?? 0).toLocaleString('en-IN')}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* SCREEN 2: DAILY EARNINGS (Figma Match) */}
-          {earningsTimeframe === 'daily' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* Header Navigator */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', padding: '14px 20px', borderRadius: '18px', border: '1px solid #e2e8f0' }}>
-                <button type="button" style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer' }}>‹ Prev</button>
-                <div style={{ fontWeight: '900', fontSize: '0.96rem', color: '#0f172a' }}>{earningsData?.daily?.dateLabel || 'Today'}</div>
-                <button type="button" style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer' }}>Next ›</button>
-              </div>
-
-              {/* Total Earned Today Card */}
-              <div style={{ background: '#ffffff', borderRadius: '22px', padding: '24px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '700' }}>Total Earned Today</div>
-                  <div style={{ fontSize: '2.2rem', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>
-                    ₹{(earningsData?.daily?.totalEarnedToday ?? 0).toLocaleString('en-IN')}
-                  </div>
-                </div>
-                <span style={{ background: '#dcfce7', color: '#15803d', padding: '6px 14px', borderRadius: '20px', fontWeight: '800', fontSize: '0.84rem' }}>
-                  {earningsData?.daily?.percentageChange || '0%'} vs Yesterday
-                </span>
-              </div>
-
-              {/* Hourly Activity Bar Graph */}
-              <div style={{ background: '#ffffff', borderRadius: '22px', padding: '24px', border: '1px solid #e2e8f0' }}>
-                <h4 style={{ fontSize: '0.8rem', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>
-                  HOURLY ACTIVITY
-                </h4>
-                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: '140px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
-                  {(earningsData?.daily?.hourlyActivity || []).map((item, idx) => (
-                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', width: '40px' }}>
-                      {item.val > 0 && <span style={{ fontSize: '0.68rem', fontWeight: '800', color: '#16a34a' }}>₹{item.val}</span>}
-                      <div style={{
-                        width: '24px',
-                        height: item.val > 0 ? `${(item.val / 1200) * 100}px` : '4px',
-                        background: item.val > 0 ? '#16a34a' : '#cbd5e1',
-                        borderRadius: '6px 6px 0 0'
-                      }} />
-                      <span style={{ fontSize: '0.74rem', fontWeight: '700', color: '#64748b' }}>{item.hour}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Completed Jobs Breakdown List */}
-              <div style={{ background: '#ffffff', borderRadius: '22px', padding: '24px', border: '1px solid #e2e8f0' }}>
-                <h4 style={{ fontSize: '0.8rem', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '14px' }}>
-                  COMPLETED JOBS TODAY
-                </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {(!earningsData?.daily?.completedJobs || earningsData.daily.completedJobs.length === 0) ? (
-                    <div style={{ padding: '16px', textAlign: 'center', color: '#64748b', fontSize: '0.84rem' }}>
-                      No service jobs completed today yet.
-                    </div>
-                  ) : (
-                    earningsData.daily.completedJobs.map((j, idx) => (
-                      <div key={idx} style={{ padding: '14px 18px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontWeight: '800', fontSize: '0.92rem', color: '#0f172a' }}>{j.serviceName}</div>
-                          <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>Customer: {j.customerName} • {j.time}</div>
-                        </div>
-                        <div style={{ fontWeight: '900', fontSize: '1.05rem', color: '#16a34a' }}>+ ₹{j.amount}</div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* SCREEN 3: WEEKLY BREAKDOWN (Figma Match) */}
-          {earningsTimeframe === 'weekly' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* Week Navigator Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', padding: '14px 20px', borderRadius: '18px', border: '1px solid #e2e8f0' }}>
-                <button type="button" style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer' }}>‹ Prev Week</button>
-                <div style={{ fontWeight: '900', fontSize: '0.96rem', color: '#0f172a' }}>{earningsData?.weekly?.weekLabel || 'Current Week'}</div>
-                <button type="button" style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer' }}>Next Week ›</button>
-              </div>
-
-              {/* Total Earned This Week Card */}
-              <div style={{ background: '#ffffff', borderRadius: '22px', padding: '24px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '700' }}>Total Earned This Week</div>
-                  <div style={{ fontSize: '2.2rem', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>
-                    ₹{(earningsData?.weekly?.totalEarnedWeek ?? 0).toLocaleString('en-IN')}
-                  </div>
-                </div>
-                <span style={{ background: '#dcfce7', color: '#15803d', padding: '6px 14px', borderRadius: '20px', fontWeight: '800', fontSize: '0.84rem' }}>
-                  {earningsData?.weekly?.percentageChange || '0%'} vs Last Week
-                </span>
-              </div>
-
-              {/* Daily Breakdown Bar Chart */}
-              <div style={{ background: '#ffffff', borderRadius: '22px', padding: '24px', border: '1px solid #e2e8f0' }}>
-                <h4 style={{ fontSize: '0.8rem', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>
-                  DAILY BREAKDOWN
-                </h4>
-                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: '150px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
-                  {(earningsData?.weekly?.dailyBreakdown || []).map((item, idx) => (
-                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', width: '36px' }}>
-                      {item.val > 0 && <span style={{ fontSize: '0.68rem', fontWeight: '800', color: '#16a34a' }}>₹{(item.val/1000).toFixed(1)}k</span>}
-                      <div style={{
-                        width: '24px',
-                        height: item.val > 0 ? `${(item.val / 4200) * 110}px` : '4px',
-                        background: item.val > 0 ? 'linear-gradient(180deg, #16a34a, #15803d)' : '#cbd5e1',
-                        borderRadius: '6px 6px 0 0'
-                      }} />
-                      <span style={{ fontSize: '0.74rem', fontWeight: '700', color: '#64748b' }}>{item.day}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Busiest Day Highlight Card */}
-              <div style={{ background: '#f0fdf4', padding: '20px', borderRadius: '18px', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Award size={24} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: '800', fontSize: '0.96rem', color: '#14532d' }}>
-                    Busiest Day: {earningsData?.weekly?.busiestDay || 'None'}
-                  </div>
-                  <div style={{ fontSize: '0.82rem', color: '#166534', marginTop: '2px' }}>
-                    {earningsData?.weekly?.busiestDayDetails || 'No completed jobs recorded this week yet'}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* SCREEN 4: MONTHLY BREAKDOWN (Figma Match) */}
-          {earningsTimeframe === 'monthly' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* Month Navigator Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', padding: '14px 20px', borderRadius: '18px', border: '1px solid #e2e8f0' }}>
-                <button type="button" style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer' }}>‹ Prev Month</button>
-                <div style={{ fontWeight: '900', fontSize: '0.96rem', color: '#0f172a' }}>{earningsData?.monthly?.monthLabel || 'Current Month'}</div>
-                <button type="button" style={{ background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer' }}>Next Month ›</button>
-              </div>
-
-              {/* Total Earned This Month Card */}
-              <div style={{ background: '#ffffff', borderRadius: '22px', padding: '24px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '700' }}>Total Earned This Month</div>
-                  <div style={{ fontSize: '2.2rem', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>
-                    ₹{(earningsData?.monthly?.totalEarnedMonth ?? 0).toLocaleString('en-IN')}
-                  </div>
-                </div>
-                <span style={{ background: '#dcfce7', color: '#15803d', padding: '6px 14px', borderRadius: '20px', fontWeight: '800', fontSize: '0.84rem' }}>
-                  {earningsData?.monthly?.percentageChange || '0%'} vs Last Month
-                </span>
-              </div>
-
-              {/* Weekly Breakdown Bar Graph */}
-              <div style={{ background: '#ffffff', borderRadius: '22px', padding: '24px', border: '1px solid #e2e8f0' }}>
-                <h4 style={{ fontSize: '0.8rem', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>
-                  WEEKLY BREAKDOWN
-                </h4>
-                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: '140px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
-                  {(earningsData?.monthly?.weeklyBreakdown || []).map((item, idx) => (
-                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', width: '50px' }}>
-                      {item.val > 0 && <span style={{ fontSize: '0.7rem', fontWeight: '800', color: '#16a34a' }}>₹{(item.val/1000).toFixed(1)}k</span>}
-                      <div style={{
-                        width: '32px',
-                        height: item.val > 0 ? `${(item.val / 13000) * 100}px` : '4px',
-                        background: item.val > 0 ? 'linear-gradient(180deg, #16a34a, #15803d)' : '#cbd5e1',
-                        borderRadius: '6px 6px 0 0'
-                      }} />
-                      <span style={{ fontSize: '0.76rem', fontWeight: '700', color: '#64748b' }}>{item.week}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Monthly Stats Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
-                <div style={{ background: '#ffffff', borderRadius: '18px', padding: '18px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '700' }}>Average Weekly Earned</div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#0f172a', marginTop: '2px' }}>
-                    ₹{(earningsData?.monthly?.avgWeeklyEarned ?? 0).toLocaleString('en-IN')}
-                  </div>
-                </div>
-
-                <div style={{ background: '#ffffff', borderRadius: '18px', padding: '18px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '700' }}>Active Working Days</div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>
-                    {earningsData?.monthly?.activeDays ?? 0} Days
-                  </div>
-                </div>
-
-                <div style={{ background: '#ffffff', borderRadius: '18px', padding: '18px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '700' }}>Payout Destination</div>
-                  <div style={{ fontSize: '1.05rem', fontWeight: '800', color: '#2563eb', marginTop: '4px' }}>
-                    {bankForm?.bankName ? `${bankForm.bankName} (•••• ${bankForm.accountNumber ? bankForm.accountNumber.slice(-4) : '••••'})` : 'Bank Account Not Linked'}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* REAL-TIME TRANSACTIONS LEDGER */}
-          <div style={{ background: '#ffffff', borderRadius: '22px', padding: '24px', border: '1px solid #e2e8f0' }}>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: '900', color: '#0f172a', margin: '0 0 16px 0' }}>Recent Wallet Transactions Ledger</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {(!walletData?.transactions || walletData.transactions.length === 0) ? (
-                <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '0.86rem' }}>
-                  No wallet transactions recorded yet. Completed service job payouts will be credited here automatically.
-                </div>
-              ) : (
-                walletData.transactions.map((t, idx) => (
-                  <div key={t.transactionId || idx} style={{ padding: '14px 18px', background: '#f8fafc', borderRadius: '14px', border: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontWeight: '800', fontSize: '0.9rem', color: '#0f172a' }}>{t.title || t.desc || 'Service Job Payout'}</div>
-                      <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px' }}>
-                        {t.transactionId || `TXN-${idx + 100}`} • {t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent'}
-                      </div>
-                    </div>
-                    <span style={{ fontWeight: '900', fontSize: '1rem', color: t.type === 'Credit' ? '#16a34a' : '#dc2626' }}>
-                      {t.type === 'Credit' ? '+' : '-'} ₹{Number(t.amount || 0).toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
           </div>
 
         </div>
@@ -3555,182 +2900,6 @@ const PartnerProfileView = ({ partnerData = {}, initialSubTab = 'overview', onTa
         </div>
       )}
 
-      {/* ------------------------------------------------------------- */}
-      {/* BANK WITHDRAWAL MODAL POPUP */}
-      {/* ------------------------------------------------------------- */}
-      {withdrawModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div style={{ background: '#ffffff', borderRadius: '24px', padding: '28px', maxWidth: '440px', width: '100%', border: '1px solid #e2e8f0', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#0f172a', margin: 0 }}>Instant Bank Payout</h3>
-                <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '2px 0 0 0' }}>Transfer earnings directly to your bank account</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setWithdrawModalOpen(false)}
-                style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-              >
-                <X size={18} color="#64748b" />
-              </button>
-            </div>
-
-            <form onSubmit={handleConfirmWithdrawal} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ background: '#f0fdf4', padding: '16px', borderRadius: '16px', border: '1px solid #bbf7d0' }}>
-                <div style={{ fontSize: '0.76rem', color: '#166534', fontWeight: '700', textTransform: 'uppercase' }}>Available Wallet Balance</div>
-                <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>
-                  ₹{(walletData?.walletBalance ?? user.walletBalance ?? 0).toLocaleString('en-IN')}.00
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.82rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  Enter Amount to Withdraw (₹)
-                </label>
-                <input
-                  type="number"
-                  placeholder="e.g. 5000"
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  min="1"
-                  max={walletData?.walletBalance ?? user.walletBalance ?? 0}
-                  required
-                  style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '1rem', fontWeight: '800', outline: 'none' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.82rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  Select Bank Account
-                </label>
-                <div style={{ padding: '12px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '0.86rem', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span>{walletData?.bankDetails?.bankName || 'HDFC Bank'} •••• {walletData?.bankDetails?.accountNumber ? walletData.bankDetails.accountNumber.slice(-4) : '4920'}</span>
-                  <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '10px' }}>Primary Verified</span>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-                <button
-                  type="button"
-                  onClick={() => setWithdrawModalOpen(false)}
-                  style={{ flex: 1, padding: '12px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isWithdrawing}
-                  style={{ flex: 1.5, padding: '12px', background: '#16a34a', color: '#ffffff', border: 'none', borderRadius: '12px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                >
-                  {isWithdrawing ? 'Processing...' : 'Confirm & Transfer Cash'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ------------------------------------------------------------- */}
-      {/* WALLET ADD DEPOSIT / TOP-UP MODAL POPUP */}
-      {/* ------------------------------------------------------------- */}
-      {depositModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div style={{ background: '#ffffff', borderRadius: '24px', padding: '28px', maxWidth: '440px', width: '100%', border: '1px solid #e2e8f0', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#0f172a', margin: 0 }}>Add Deposit to Wallet</h3>
-                <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '2px 0 0 0' }}>Top-up wallet balance for platform dispatches & commission</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDepositModalOpen(false)}
-                style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-              >
-                <X size={18} color="#64748b" />
-              </button>
-            </div>
-
-            <form onSubmit={handleConfirmDeposit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ background: '#f0fdf4', padding: '16px', borderRadius: '16px', border: '1px solid #bbf7d0' }}>
-                <div style={{ fontSize: '0.76rem', color: '#166534', fontWeight: '700', textTransform: 'uppercase' }}>Current Wallet Balance</div>
-                <div style={{ fontSize: '1.8rem', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>
-                  ₹{(walletData?.walletBalance ?? user.walletBalance ?? 0).toLocaleString('en-IN')}.00
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.82rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  Enter Deposit Amount (₹)
-                </label>
-                <input
-                  type="number"
-                  placeholder="e.g. 1000"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  min="1"
-                  required
-                  style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '1rem', fontWeight: '800', outline: 'none' }}
-                />
-              </div>
-
-              {/* Quick Preset Amount Selector Chips */}
-              <div>
-                <label style={{ fontSize: '0.78rem', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '8px' }}>
-                  Quick Amount Select:
-                </label>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {[500, 1000, 2000, 5000].map((amt) => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => setDepositAmount(String(amt))}
-                      style={{
-                        padding: '8px 14px',
-                        background: Number(depositAmount) === amt ? '#16a34a' : '#f1f5f9',
-                        color: Number(depositAmount) === amt ? '#ffffff' : '#334155',
-                        border: 'none',
-                        borderRadius: '10px',
-                        fontSize: '0.82rem',
-                        fontWeight: '800',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      + ₹{amt.toLocaleString('en-IN')}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.82rem', fontWeight: '800', color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  Payment Method
-                </label>
-                <div style={{ padding: '12px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '0.86rem', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span>⚡ Instant UPI / NetBanking / Razorpay</span>
-                  <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '10px' }}>0% Gateway Fee</span>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-                <button
-                  type="button"
-                  onClick={() => setDepositModalOpen(false)}
-                  style={{ flex: 1, padding: '12px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '12px', fontWeight: '800', cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isDepositing}
-                  style={{ flex: 1.5, padding: '12px', background: '#16a34a', color: '#ffffff', border: 'none', borderRadius: '12px', fontWeight: '900', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                >
-                  {isDepositing ? 'Processing Deposit...' : 'Confirm & Add Deposit'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
     </div>
   );

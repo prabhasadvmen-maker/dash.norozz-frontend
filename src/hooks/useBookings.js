@@ -3,7 +3,8 @@ import { bookingService } from '../services/booking.service.js';
 import { toast } from '../utils/toast.js';
 import { useAuthContext } from '../contexts/AuthContext.jsx';
 
-export const useBookings = (enabled = true) => {
+// myBookings is customer-only (the endpoint 403s for partners/admins), so it is fetched only when a caller asks for it
+export const useBookings = (enabled = false) => {
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthContext();
 

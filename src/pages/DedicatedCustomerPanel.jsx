@@ -45,7 +45,7 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
     }
   };
 
-  const { dashboard, popularServices, refetch: refetchCustomer } = useCustomer(activeTab);
+  const { dashboard, popularServices, categories, refetch: refetchCustomer } = useCustomer(activeTab);
   const { myBookings } = useBookings(activeTab === 'bookings');
   const { updateUser } = useAuth();
 
@@ -111,26 +111,30 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
     setIsDetailModalOpen(true);
   };
 
+  const handleCitySelect = async (city) => {
+    if (!city || city === currentUser?.city) return;
+    try {
+      await authService.updateCustomerProfile({ city });
+      updateUser({ city });
+      toast.success(`Showing services for ${city}`);
+    } catch {
+      // API errors are already toasted by the axios interceptor
+    }
+  };
+
   const handleDetectLocation = async (isManual = false) => {
     if (detectingLocation) return;
     setDetectingLocation(true);
 
     const updateProfileWithDetails = async (formattedAddress, city, state, country, sourceMessage) => {
       try {
-        const tokenToUse = localStorage.getItem('norozz_token');
-        await authService.updateCustomerProfile(
-          {
-            address: formattedAddress,
-            city: city,
-            state: state,
-            country: country,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${tokenToUse}`,
-            },
-          }
-        );
+        // The axios client attaches the customer's current access token itself
+        await authService.updateCustomerProfile({
+          address: formattedAddress,
+          city: city,
+          state: state,
+          country: country,
+        });
 
         updateUser({
           address: formattedAddress,
@@ -307,6 +311,13 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
     );
   }
 
+  // Coupons are entered at checkout, so make that easy instead of pretending it was applied already
+  const handleCopyCoupon = (code) => {
+    if (!code) return;
+    navigator.clipboard?.writeText(code).catch(() => {});
+    toast.success(`Code ${code} copied. Paste it at checkout to get the discount.`);
+  };
+
   const walletBalance = dashboard?.walletBalance ?? dashboard?.wallet?.balance ?? currentUser?.walletBalance ?? 0;
 
   return (
@@ -316,6 +327,8 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
       <DedicatedCustomerNavbar
         currentUser={currentUser}
         onLogout={onLogout}
+        selectedCity={currentUser?.city || ''}
+        onCitySelect={handleCitySelect}
         activeTab={activeTab}
         onNavigateTab={handleNavigateTab}
         onSelectService={(service) => handleOpenServiceDetails(service)}
@@ -333,6 +346,7 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
             {/* Dark Navy Hero Section */}
             <HomeBannerSlider
               banners={dashboard?.banners || []}
+              categories={categories}
               onSelectCategory={(cat) => {
                 setSelectedCategoryFilter(cat);
                 setActiveTab('services');
@@ -340,9 +354,7 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
               onSelectService={(srv) => {
                 handleOpenServiceDetails(srv);
               }}
-              onApplyCoupon={(code) => {
-                toast.success(`🎉 Offer Coupon '${code}' selected! Discount will apply at booking checkout.`);
-              }}
+              onApplyCoupon={handleCopyCoupon}
             />
 
             {/* Starter Pack Offer Banner for New Users */}
@@ -362,7 +374,15 @@ const DedicatedCustomerPanel = ({ currentUser, onLogout }) => {
             />
 
             {/* Deals and Offers & Why people trust Norozz */}
-            <CustomerHomeSections />
+            <CustomerHomeSections
+              offers={dashboard?.offers || []}
+              categories={categories}
+              onApplyCoupon={handleCopyCoupon}
+              onSelectCategory={(cat) => {
+                setSelectedCategoryFilter(cat);
+                setActiveTab('services');
+              }}
+            />
 
             {/* Top Rated Services */}
             <FeaturedServices

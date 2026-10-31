@@ -1,473 +1,209 @@
-import React, { useState, useEffect } from 'react';
-import { Star, ShieldCheck, Users, ArrowRight, Sparkles, Zap, ChevronLeft, ChevronRight, Tag } from 'lucide-react';
-import { customerService } from '../../services/customer.service.js';
+import { useState, useEffect, useCallback } from 'react';
+import { ArrowRight, ChevronLeft, ChevronRight, Tag, ShieldCheck } from 'lucide-react';
 
-const HomeBannerSlider = ({ banners: propBanners, onSelectCategory, onSelectService, onApplyCoupon }) => {
-  const [liveBanners, setLiveBanners] = useState(propBanners || []);
-  const [currentIndex, setCurrentIndex] = useState(0);
+const AUTOPLAY_MS = 5000;
+const DEFAULT_GRADIENT = 'linear-gradient(135deg, #09331E 0%, #064e3b 50%, #0f172a 100%)';
 
-  const quickTags = [
-    { label: '✨ AC Repair', category: 'AC & Appliance Repair' },
-    { label: '🧹 Home Cleaning', category: 'Full Home Deep Cleaning' },
-    { label: '💇 Salon & Spa', category: 'Salon for Women & Spa' },
-    { label: '⚡ Electrician', category: 'Electrician & Home Wiring' },
-    { label: '🔧 Plumbing', category: 'Plumbing & Leakage Repair' },
-    { label: '✂️ Men Grooming', category: 'Salon for Men & Grooming' },
-  ];
+const arrowStyle = {
+  position: 'absolute',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  width: '36px',
+  height: '36px',
+  borderRadius: '50%',
+  background: 'rgba(15, 23, 42, 0.45)',
+  backdropFilter: 'blur(6px)',
+  border: '1px solid rgba(255, 255, 255, 0.35)',
+  color: '#ffffff',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  zIndex: 5,
+};
 
-  // Fetch live banners from backend if not passed as prop
+const HomeBannerSlider = ({ banners = [], categories = [], onSelectCategory, onSelectService, onApplyCoupon }) => {
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [brokenImages, setBrokenImages] = useState({});
+
+  const count = banners.length;
+  const safeIndex = count > 0 ? Math.min(index, count - 1) : 0;
+  const active = count > 0 ? banners[safeIndex] : null;
+
+  const go = useCallback((next) => {
+    if (count > 0) setIndex(((next % count) + count) % count);
+  }, [count]);
+
   useEffect(() => {
-    if (propBanners && propBanners.length > 0) {
-      setLiveBanners(propBanners);
-      return;
-    }
-
-    customerService.getBanners()
-      .then((res) => {
-        const list = res.data?.data || res.data || [];
-        if (Array.isArray(list) && list.length > 0) {
-          setLiveBanners(list);
-        }
-      })
-      .catch((err) => {
-        console.warn('Live banners fetch warning:', err);
-      });
-  }, [propBanners]);
-
-  // Auto Slider Timer
-  useEffect(() => {
-    if (!liveBanners || liveBanners.length <= 1) return;
-    const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % liveBanners.length);
-    }, 5000);
+    if (count <= 1 || paused) return undefined;
+    const timer = setInterval(() => setIndex((prev) => (prev + 1) % count), AUTOPLAY_MS);
     return () => clearInterval(timer);
-  }, [liveBanners]);
-
-  const activeBanner = liveBanners.length > 0 ? liveBanners[currentIndex] : null;
+  }, [count, paused]);
 
   const handleBannerClick = (banner) => {
-    if (!banner) return;
-
-    if (banner.couponCode && onApplyCoupon) {
-      onApplyCoupon(banner.couponCode);
+    if (!banner) {
+      onSelectCategory?.(null);
+      return;
     }
+    if (banner.couponCode) onApplyCoupon?.(banner.couponCode);
 
-    if (banner.targetType === 'category' && banner.targetValue) {
-      if (onSelectCategory) onSelectCategory(banner.targetValue);
-    } else if (banner.targetType === 'service' && banner.targetValue) {
-      if (onSelectService) {
-        onSelectService({ name: banner.targetValue, title: banner.targetValue });
-      } else if (onSelectCategory) {
-        onSelectCategory(banner.targetValue);
-      }
-    } else if (onSelectCategory) {
-      onSelectCategory('AC & Appliance Repair');
+    if (banner.targetType === 'service' && banner.targetValue) {
+      if (onSelectService) onSelectService({ name: banner.targetValue, title: banner.targetValue });
+      else onSelectCategory?.(banner.targetValue);
+    } else if (banner.targetType === 'category' && banner.targetValue) {
+      onSelectCategory?.(banner.targetValue);
+    } else {
+      onSelectCategory?.(null); // no specific target: open the full service directory
     }
   };
 
-  const bgStyle = activeBanner?.imageUrl
-    ? `url(${activeBanner.imageUrl}) center/cover no-repeat`
-    : (activeBanner?.gradientBg || 'linear-gradient(135deg, #09331E 0%, #064e3b 50%, #0f172a 100%)');
+  const hasText = Boolean(active && (active.title || active.subtitle || active.badgeText));
+  const showImage = Boolean(active?.imageUrl) && !brokenImages[active._id || active.imageUrl];
 
-  return (
-    <div style={{
-      background: bgStyle,
-      borderRadius: '24px',
-      padding: '36px 40px',
-      color: '#ffffff',
-      marginBottom: '36px',
-      boxShadow: '0 20px 50px rgba(9, 51, 30, 0.25)',
-      position: 'relative',
-      overflow: 'hidden',
-      border: '1px solid rgba(16, 185, 129, 0.25)',
-      transition: 'background 0.5s ease-in-out'
-    }}>
-      {/* Overlay for Image banners to ensure contrast */}
-      {activeBanner?.imageUrl && (
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(15, 23, 42, 0.92) 0%, rgba(15, 23, 42, 0.5) 100%)', zIndex: 0 }} />
-      )}
+  const frame = {
+    position: 'relative',
+    borderRadius: '20px',
+    overflow: 'hidden',
+    marginBottom: '32px',
+    boxShadow: '0 12px 32px rgba(15, 23, 42, 0.14)',
+    border: '1px solid #e2e8f0',
+    background: '#0f172a',
+  };
 
-      {/* Background Glow Orb */}
-      <div style={{
-        position: 'absolute',
-        top: '-60px',
-        right: '-60px',
-        width: '280px',
-        height: '280px',
-        borderRadius: '50%',
-        background: 'rgba(16, 185, 129, 0.12)',
-        pointerEvents: 'none',
-        filter: 'blur(40px)',
-        zIndex: 0
-      }} />
-
-      {/* Slider Controls (Next/Prev Arrows) */}
-      {liveBanners.length > 1 && (
-        <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', gap: '8px', zIndex: 10 }}>
+  const controls = count > 1 && (
+    <>
+      <button type="button" aria-label="Previous banner" onClick={(e) => { e.stopPropagation(); go(safeIndex - 1); }} style={{ ...arrowStyle, left: '12px' }}>
+        <ChevronLeft size={20} />
+      </button>
+      <button type="button" aria-label="Next banner" onClick={(e) => { e.stopPropagation(); go(safeIndex + 1); }} style={{ ...arrowStyle, right: '12px' }}>
+        <ChevronRight size={20} />
+      </button>
+      <div style={{ position: 'absolute', bottom: '12px', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '6px', zIndex: 5 }}>
+        {banners.map((b, i) => (
           <button
+            key={b._id || i}
             type="button"
-            onClick={() => setCurrentIndex((prev) => (prev - 1 + liveBanners.length) % liveBanners.length)}
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              background: 'rgba(255, 255, 255, 0.15)',
-              backdropFilter: 'blur(6px)',
-              border: '1px solid rgba(255, 255, 255, 0.25)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-            }}
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setCurrentIndex((prev) => (prev + 1) % liveBanners.length)}
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              background: 'rgba(255, 255, 255, 0.15)',
-              backdropFilter: 'blur(6px)',
-              border: '1px solid rgba(255, 255, 255, 0.25)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-            }}
-          >
-            <ChevronRight size={18} />
-          </button>
-        </div>
-      )}
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px', alignItems: 'center', position: 'relative', zIndex: 1 }}>
-        
-        {/* Left Column: Dynamic Banner Headline, Subtitle, CTA & Tags */}
-        <div>
-          {(!activeBanner || activeBanner.badgeText) && (
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '4px 12px',
-            borderRadius: '9999px',
-            background: 'rgba(16, 185, 129, 0.2)',
-            border: '1px solid rgba(52, 211, 153, 0.4)',
-            color: '#34d399',
-            fontSize: '0.74rem',
-            fontWeight: '800',
-            letterSpacing: '0.5px',
-            textTransform: 'uppercase',
-            marginBottom: '16px'
-          }}>
-            <Sparkles size={13} color="#34d399" /> {activeBanner ? activeBanner.badgeText : 'NOROZZ GUARANTEED HOME SERVICES'}
-          </div>
-          )}
-
-          <h1 style={{
-            fontSize: '2.4rem',
-            fontWeight: '900',
-            lineHeight: 1.15,
-            margin: '0 0 16px 0',
-            letterSpacing: '-0.5px',
-            color: '#ffffff'
-          }}>
-            {activeBanner ? activeBanner.title : 'Premium On-Demand Services'} <br />
-            {!activeBanner && (
-              <span style={{
-                background: 'linear-gradient(135deg, #34d399 0%, #a7f3d0 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent'
-              }}>at Your Doorstep</span>
-            )}
-          </h1>
-
-          <p style={{
-            fontSize: '0.92rem',
-            color: '#a7f3d0',
-            lineHeight: 1.6,
-            marginBottom: '24px',
-            maxWidth: '460px',
-            fontWeight: '500'
-          }}>
-            {activeBanner ? activeBanner.subtitle : 'Book background-verified professionals for deep cleaning, AC repair, grooming, and plumbing. Upfront pricing with 100% satisfaction guarantee.'}
-          </p>
-
-          {/* CTA Button */}
-          <div style={{ marginBottom: '28px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => handleBannerClick(activeBanner)}
-              style={{
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                color: '#ffffff',
-                border: '1px solid #34d399',
-                borderRadius: '9999px',
-                padding: '12px 28px',
-                fontSize: '0.88rem',
-                fontWeight: '800',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                boxShadow: '0 8px 24px rgba(16, 185, 129, 0.4)',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <span>{activeBanner?.couponCode ? `Claim ${activeBanner.couponCode} Offer` : 'Explore & Book Now'}</span>
-              <ArrowRight size={16} />
-            </button>
-
-            {activeBanner?.couponCode && (
-              <span style={{ fontSize: '0.8rem', background: 'rgba(254, 240, 138, 0.2)', border: '1px dashed #fef08a', color: '#fef08a', padding: '6px 14px', borderRadius: '14px', fontWeight: '800', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                <Tag size={14} color="#fef08a" /> Code: {activeBanner.couponCode}
-              </span>
-            )}
-
-            <span style={{ fontSize: '0.78rem', color: '#6ee7b7', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-              <Zap size={14} color="#fde047" /> 30-Min Instant Dispatch
-            </span>
-          </div>
-
-          {/* Popular Services Pills */}
-          <div style={{ marginBottom: '24px' }}>
-            <div style={{ fontSize: '0.68rem', fontWeight: '800', color: '#6ee7b7', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '10px' }}>
-              POPULAR SERVICE CATEGORIES
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {quickTags.map((tag, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => onSelectCategory && onSelectCategory(tag.category)}
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.08)',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    borderRadius: '16px',
-                    padding: '6px 14px',
-                    fontSize: '0.78rem',
-                    fontWeight: '700',
-                    color: '#ffffff',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(16, 185, 129, 0.25)';
-                    e.currentTarget.style.borderColor = '#34d399';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                  }}
-                >
-                  {tag.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Trust Highlights */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', fontSize: '0.78rem', fontWeight: '700', color: '#ffffff', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(255, 255, 255, 0.08)', padding: '4px 10px', borderRadius: '8px' }}>
-              <Star size={14} fill="#f59e0b" color="#f59e0b" />
-              <span>4.9 Star Rating</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(255, 255, 255, 0.08)', padding: '4px 10px', borderRadius: '8px' }}>
-              <ShieldCheck size={14} color="#34d399" />
-              <span>Verified Experts</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(255, 255, 255, 0.08)', padding: '4px 10px', borderRadius: '8px' }}>
-              <Users size={14} color="#60a5fa" />
-              <span>50k+ Happy Customers</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: Bright, Vibrant 2x2 Photo Showcase */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-          
-          <div
-            onClick={() => onSelectCategory && onSelectCategory('Salon for Women & Spa')}
-            style={{
-              height: '145px',
-              borderRadius: '16px',
-              overflow: 'hidden',
-              border: '2.5px solid #ffffff',
-              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
-              position: 'relative',
-              background: '#ffffff',
-              cursor: 'pointer'
-            }}
-          >
-            <img
-              src="https://images.unsplash.com/photo-1560750588-73207b1ef5b8?w=800&auto=format&fit=crop"
-              alt="Salon & Spa"
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-            <div style={{
-              position: 'absolute',
-              bottom: '8px',
-              left: '8px',
-              background: 'rgba(15, 23, 42, 0.85)',
-              backdropFilter: 'blur(6px)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              padding: '4px 10px',
-              borderRadius: '8px',
-              fontSize: '0.72rem',
-              fontWeight: '800',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}>
-              <span>💇 Salon & Spa</span>
-            </div>
-          </div>
-
-          <div
-            onClick={() => onSelectCategory && onSelectCategory('Full Home Deep Cleaning')}
-            style={{
-              height: '145px',
-              borderRadius: '16px',
-              overflow: 'hidden',
-              border: '2.5px solid #ffffff',
-              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
-              position: 'relative',
-              background: '#ffffff',
-              cursor: 'pointer'
-            }}
-          >
-            <img
-              src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&auto=format&fit=crop"
-              alt="Deep Cleaning"
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-            <div style={{
-              position: 'absolute',
-              bottom: '8px',
-              left: '8px',
-              background: 'rgba(15, 23, 42, 0.85)',
-              backdropFilter: 'blur(6px)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              padding: '4px 10px',
-              borderRadius: '8px',
-              fontSize: '0.72rem',
-              fontWeight: '800',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}>
-              <span>🧹 Deep Cleaning</span>
-            </div>
-          </div>
-
-          <div
-            onClick={() => onSelectCategory && onSelectCategory('AC & Appliance Repair')}
-            style={{
-              height: '145px',
-              borderRadius: '16px',
-              overflow: 'hidden',
-              border: '2.5px solid #ffffff',
-              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
-              position: 'relative',
-              background: '#ffffff',
-              cursor: 'pointer'
-            }}
-          >
-            <img
-              src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&auto=format&fit=crop"
-              alt="AC & Repair"
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-            <div style={{
-              position: 'absolute',
-              bottom: '8px',
-              left: '8px',
-              background: 'rgba(15, 23, 42, 0.85)',
-              backdropFilter: 'blur(6px)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              padding: '4px 10px',
-              borderRadius: '8px',
-              fontSize: '0.72rem',
-              fontWeight: '800',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}>
-              <span>⚡ AC & Repair</span>
-            </div>
-          </div>
-
-          <div
-            onClick={() => onSelectCategory && onSelectCategory('Plumbing & Leakage Repair')}
-            style={{
-              height: '145px',
-              borderRadius: '16px',
-              overflow: 'hidden',
-              border: '2.5px solid #ffffff',
-              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
-              position: 'relative',
-              background: '#ffffff',
-              cursor: 'pointer'
-            }}
-          >
-            <img
-              src="https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&auto=format&fit=crop"
-              alt="Plumbing"
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-            <div style={{
-              position: 'absolute',
-              bottom: '8px',
-              left: '8px',
-              background: 'rgba(15, 23, 42, 0.85)',
-              backdropFilter: 'blur(6px)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              padding: '4px 10px',
-              borderRadius: '8px',
-              fontSize: '0.72rem',
-              fontWeight: '800',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}>
-              <span>🔧 Plumbing</span>
-            </div>
-          </div>
-
-        </div>
-
+            aria-label={`Go to banner ${i + 1}`}
+            aria-current={i === safeIndex}
+            onClick={(e) => { e.stopPropagation(); go(i); }}
+            style={{ width: i === safeIndex ? '22px' : '8px', height: '8px', borderRadius: '4px', border: 'none', background: i === safeIndex ? '#ffffff' : 'rgba(255,255,255,0.55)', boxShadow: '0 0 0 1px rgba(15,23,42,0.25)', cursor: 'pointer', transition: 'all 0.25s ease', padding: 0 }}
+          />
+        ))}
       </div>
+    </>
+  );
 
-      {/* Pagination Dots */}
-      {liveBanners.length > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '24px', position: 'relative', zIndex: 10 }}>
-          {liveBanners.map((_, idx) => (
+  const couponChip = active?.couponCode && (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(15,23,42,0.78)', color: '#fef08a', border: '1px dashed #fde047', padding: '5px 12px', borderRadius: '9999px', fontSize: '0.78rem', fontWeight: '800' }}>
+      <Tag size={13} /> Code: {active.couponCode}
+    </span>
+  );
+
+  // 1. Image banner: the picture is the banner. It is shown whole (never cropped) at a fixed, sensible height;
+  //    a blurred copy fills any side gutters so portrait / square artwork still looks intentional.
+  if (active && showImage) {
+    const imageKey = active._id || active.imageUrl;
+    return (
+      <div style={{ ...frame, height: 'clamp(190px, 30vw, 360px)', cursor: 'pointer' }} onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onClick={() => handleBannerClick(active)}>
+        <img
+          src={active.imageUrl}
+          alt=""
+          aria-hidden="true"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(28px)', transform: 'scale(1.2)', opacity: 0.75 }}
+        />
+        <img
+          src={active.imageUrl}
+          alt={active.title || 'Offer banner'}
+          onError={() => setBrokenImages((prev) => ({ ...prev, [imageKey]: true }))}
+          style={{ position: 'relative', display: 'block', width: '100%', height: '100%', objectFit: 'contain' }}
+        />
+
+        {hasText && (
+          <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '48px 24px 20px', background: 'linear-gradient(to top, rgba(15,23,42,0.85), rgba(15,23,42,0))', color: '#ffffff', pointerEvents: 'none' }}>
+            {active.badgeText && <span style={{ display: 'inline-block', background: 'rgba(255,255,255,0.2)', padding: '3px 10px', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: '800', textTransform: 'uppercase', marginBottom: '6px' }}>{active.badgeText}</span>}
+            {active.title && <div style={{ fontSize: '1.4rem', fontWeight: '800', lineHeight: 1.2 }}>{active.title}</div>}
+            {active.subtitle && <div style={{ fontSize: '0.9rem', opacity: 0.92, marginTop: '4px' }}>{active.subtitle}</div>}
+          </div>
+        )}
+
+        {couponChip && <div style={{ position: 'absolute', top: '14px', left: '14px', zIndex: 5 }}>{couponChip}</div>}
+
+        <button
+          type="button"
+          style={{ position: 'absolute', right: '20px', bottom: '34px', zIndex: 5, background: '#ffffff', color: '#0f172a', border: 'none', borderRadius: '9999px', padding: '11px 24px', fontSize: '0.92rem', fontWeight: '800', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 6px 18px rgba(15,23,42,0.3)' }}
+        >
+          Book Now <ArrowRight size={16} />
+        </button>
+
+        {controls}
+      </div>
+    );
+  }
+
+  // 2. Text banner (gradient background) configured by the admin
+  if (active) {
+    return (
+      <div style={{ ...frame, background: active.gradientBg || DEFAULT_GRADIENT, color: '#ffffff', padding: '44px 56px 52px', minHeight: '220px', display: 'flex', alignItems: 'center' }} onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+        <div style={{ maxWidth: '560px', position: 'relative', zIndex: 1 }}>
+          {active.badgeText && (
+            <span style={{ display: 'inline-block', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.35)', padding: '4px 12px', borderRadius: '9999px', fontSize: '0.74rem', fontWeight: '800', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '14px' }}>
+              {active.badgeText}
+            </span>
+          )}
+          {active.title && <h1 style={{ fontSize: '2.2rem', fontWeight: '800', lineHeight: 1.15, margin: '0 0 10px 0', letterSpacing: '-0.5px' }}>{active.title}</h1>}
+          {active.subtitle && <p style={{ fontSize: '1rem', lineHeight: 1.55, margin: '0 0 22px 0', opacity: 0.92 }}>{active.subtitle}</p>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <button
-              key={idx}
               type="button"
-              onClick={() => setCurrentIndex(idx)}
-              style={{
-                width: currentIndex === idx ? '24px' : '8px',
-                height: '8px',
-                borderRadius: '4px',
-                background: currentIndex === idx ? '#34d399' : 'rgba(255, 255, 255, 0.3)',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease'
-              }}
-            />
-          ))}
+              onClick={() => handleBannerClick(active)}
+              style={{ background: '#ffffff', color: '#0f172a', border: 'none', borderRadius: '9999px', padding: '12px 26px', fontSize: '0.92rem', fontWeight: '800', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+            >
+              {active.couponCode ? `Claim ${active.couponCode}` : 'Book Now'} <ArrowRight size={16} />
+            </button>
+            {couponChip}
+          </div>
         </div>
-      )}
+        {controls}
+      </div>
+    );
+  }
+
+  // 3. Nothing configured by the admin: a plain brand hero with the real categories
+  const quickCategories = (categories || []).slice(0, 6);
+  return (
+    <div style={{ ...frame, background: DEFAULT_GRADIENT, color: '#ffffff', padding: '44px 56px' }}>
+      <div style={{ maxWidth: '620px' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(52,211,153,0.4)', color: '#6ee7b7', padding: '4px 12px', borderRadius: '9999px', fontSize: '0.74rem', fontWeight: '800', textTransform: 'uppercase', marginBottom: '14px' }}>
+          <ShieldCheck size={13} /> Verified professionals
+        </span>
+        <h1 style={{ fontSize: '2.2rem', fontWeight: '800', lineHeight: 1.15, margin: '0 0 10px 0', letterSpacing: '-0.5px' }}>Home services, at your doorstep</h1>
+        <p style={{ fontSize: '1rem', lineHeight: 1.55, margin: '0 0 22px 0', color: '#a7f3d0' }}>
+          Book background-verified professionals with upfront pricing.
+        </p>
+        <button
+          type="button"
+          onClick={() => handleBannerClick(null)}
+          style={{ background: '#ffffff', color: '#0f172a', border: 'none', borderRadius: '9999px', padding: '12px 26px', fontSize: '0.92rem', fontWeight: '800', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+        >
+          Explore services <ArrowRight size={16} />
+        </button>
+
+        {quickCategories.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '24px' }}>
+            {quickCategories.map((cat) => (
+              <button
+                key={cat._id || cat.name}
+                type="button"
+                onClick={() => onSelectCategory?.(cat)}
+                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: '9999px', padding: '6px 14px', fontSize: '0.8rem', fontWeight: '700', color: '#ffffff', cursor: 'pointer' }}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

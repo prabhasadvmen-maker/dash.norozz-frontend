@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { RefreshCw, LogOut, ShieldCheck, Lock, Menu, Briefcase, MapPin, ChevronDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { RefreshCw, LogOut, ShieldCheck, Lock, Menu, MapPin, ChevronDown } from 'lucide-react';
 import LanguageSelector from '../common/LanguageSelector.jsx';
 
 const DedicatedPartnerNavbar = ({
@@ -19,236 +19,110 @@ const DedicatedPartnerNavbar = ({
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
-    const handleOutsideClick = () => setDropdownOpen(false);
-    if (dropdownOpen) {
-      window.addEventListener('click', handleOutsideClick);
-    }
-    return () => window.removeEventListener('click', handleOutsideClick);
+    if (!dropdownOpen) return undefined;
+    const close = () => setDropdownOpen(false);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
   }, [dropdownOpen]);
 
   const partnerName = currentUser?.name || currentUser?.agencyName || 'Service Partner';
-  const partnerEmail = currentUser?.email || currentUser?.phone || 'partner@norozz.com';
+  const partnerContact = currentUser?.email || currentUser?.phone || '';
   const displayCategory = categoryNames || 'Service Technician';
+  const displayCity = cityName || '';
   const initialLetter = (partnerName[0] || 'P').toUpperCase();
 
   return (
-    <header className="card card-glow" style={{
-      margin: 0,
-      borderRadius: '0 0 24px 24px',
-      padding: '14px 24px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      position: 'sticky',
-      top: 0,
-      zIndex: 100,
-      background: 'rgba(255, 255, 255, 0.96)',
-      backdropFilter: 'blur(12px)',
-      borderBottom: '1px solid #e2e8f0',
-      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)'
-    }}>
-      {/* Left Title & Mobile Menu Toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+    <header className="pnav">
+      {/* Left: menu toggle + portal title */}
+      <div className="pnav-left">
         {setCollapsed && (
-          <button
-            type="button"
-            onClick={() => setCollapsed(!collapsed)}
-            className="btn btn-ghost"
-            style={{ padding: '8px', borderRadius: '12px' }}
-          >
-            <Menu size={20} color="#0f172a" />
+          <button type="button" className="pnav-icon-btn" onClick={() => setCollapsed(!collapsed)} aria-label="Toggle sidebar">
+            <Menu size={20} />
           </button>
         )}
-
-        <div>
-          <h1 style={{
-            fontSize: '1.2rem',
-            fontWeight: '800',
-            color: '#0f172a',
-            margin: 0,
-            letterSpacing: '-0.3px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            NOROZZ Technician Portal
-          </h1>
-          <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
-              <Briefcase size={12} color="#10b981" /> {partnerName} ({displayCategory})
-            </span>
-            <span style={{ color: '#cbd5e1' }}>•</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
-              <MapPin size={12} color="#2563eb" /> {cityName || 'Delhi NCR'}
-            </span>
-          </div>
+        <div className="pnav-title-wrap">
+          <h1 className="pnav-title">Technician Portal</h1>
+          {displayCity && (
+            <div className="pnav-sub">
+              <MapPin size={12} color="#2563eb" />
+              <span>{displayCity}</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Right Controls: KYC Status, Online Toggle, Language Selector, Refresh & User Dropdown */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <span className={`badge ${isApproved ? 'badge-success' : 'badge-warning'}`} style={{ padding: '6px 14px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '800' }}>
+      {/* Right: status, controls, profile */}
+      <div className="pnav-right">
+        <span className={`pnav-kyc ${isApproved ? 'ok' : 'pending'}`}>
           {isApproved ? <ShieldCheck size={14} /> : <Lock size={14} />}
-          {isApproved ? 'VERIFIED TECHNICIAN' : 'KYC PENDING APPROVAL'}
+          <span className="pnav-hide-sm">{isApproved ? 'Verified' : 'KYC Pending'}</span>
         </span>
 
-        {/* Online / Offline Toggle Pill */}
         {onToggleOnlineClick && (
           <button
             type="button"
             onClick={onToggleOnlineClick}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
-              borderRadius: '9999px',
-              fontSize: '0.78rem',
-              fontWeight: '800',
-              background: isOnline ? '#ecfdf5' : '#fef2f2',
-              color: isOnline ? '#047857' : '#dc2626',
-              border: `1px solid ${isOnline ? '#a7f3d0' : '#fecaca'}`,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
+            className={`pnav-status ${isOnline ? 'online' : 'offline'}`}
+            aria-pressed={isOnline}
           >
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isOnline ? '#10b981' : '#ef4444' }} />
-            <span>{isOnline ? 'Online' : 'Offline'}</span>
+            <span className="pnav-dot" />
+            {isOnline ? 'Online' : 'Offline'}
           </button>
         )}
 
-        {/* Sarvam AI Language Selector */}
-        <LanguageSelector compact />
+        <div className="pnav-hide-sm">
+          <LanguageSelector compact />
+        </div>
 
-        {/* Refresh Button */}
         <button
           type="button"
           onClick={onRefresh}
           disabled={refreshing}
-          title="Refresh Data"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '7px 14px',
-            background: '#ecfdf5',
-            border: '1px solid #a7f3d0',
-            borderRadius: '9999px',
-            color: '#047857',
-            fontWeight: '700',
-            fontSize: '0.8rem',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
-          }}
+          title="Refresh data"
+          aria-label="Refresh data"
+          className="pnav-icon-btn bordered"
         >
-          <RefreshCw size={14} style={{ animation: refreshing ? 'spin 0.8s linear infinite' : 'none', color: '#059669' }} />
-          <span>Refresh</span>
+          <RefreshCw size={16} style={{ animation: refreshing ? 'pnav-spin 0.8s linear infinite' : 'none' }} />
         </button>
 
-        {/* Clickable User Profile Pill & Dropdown */}
+        <span className="pnav-divider" />
+
+        {/* Profile chip & dropdown */}
         <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-          <div
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '6px 12px 6px 12px',
-              borderRadius: '9999px',
-              background: dropdownOpen ? '#f1f5f9' : '#f8fafc',
-              border: '1px solid #cbd5e1',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
+          <button
+            type="button"
+            className={`pnav-profile ${dropdownOpen ? 'open' : ''}`}
+            onClick={() => setDropdownOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={dropdownOpen}
           >
-            <div style={{
-              width: '34px',
-              height: '34px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: '900',
-              fontSize: '0.88rem',
-              boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
-            }}>
-              {initialLetter}
-            </div>
+            <span className="pnav-avatar">{initialLetter}</span>
+            <span className="pnav-profile-text pnav-hide-md">
+              <span className="pnav-profile-name">{partnerName}</span>
+              <span className="pnav-profile-role">{displayCategory}</span>
+            </span>
+            <ChevronDown size={16} color="#64748b" style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
+          </button>
 
-            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: '800', color: '#0f172a', lineHeight: '1.2' }}>
-                {partnerName}
-              </span>
-              <span style={{ fontSize: '0.68rem', color: '#059669', fontWeight: '700', whiteSpace: 'nowrap' }}>
-                {displayCategory}
-              </span>
-            </div>
-
-            <ChevronDown
-              size={16}
-              color="#64748b"
-              style={{
-                transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s ease'
-              }}
-            />
-          </div>
-
-          {/* User Dropdown Menu */}
           {dropdownOpen && (
-            <div style={{
-              position: 'absolute',
-              right: 0,
-              top: '48px',
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-              borderRadius: '16px',
-              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.12)',
-              width: '250px',
-              padding: '8px',
-              zIndex: 200,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '4px'
-            }}>
-              <div style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: '800', color: '#0f172a' }}>
-                  {partnerName}
-                </div>
-                <div style={{ fontSize: '0.74rem', color: '#64748b', wordBreak: 'break-all', marginTop: '2px' }}>
-                  {partnerEmail}
-                </div>
-                <div style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: '700', marginTop: '4px' }}>
-                  {displayCategory} ({cityName || 'Delhi NCR'})
+            <div className="pnav-menu" role="menu">
+              <div className="pnav-menu-head">
+                <div className="pnav-menu-name">{partnerName}</div>
+                {partnerContact && <div className="pnav-menu-contact">{partnerContact}</div>}
+                <div className="pnav-menu-role">
+                  {displayCategory}{displayCity ? ` · ${displayCity}` : ''}
                 </div>
               </div>
-
               <button
                 type="button"
+                role="menuitem"
+                className="pnav-logout"
                 onClick={() => {
                   setDropdownOpen(false);
-                  onLogout && onLogout();
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: '10px',
-                  border: 'none',
-                  background: '#fef2f2',
-                  color: '#ef4444',
-                  fontWeight: '700',
-                  fontSize: '0.82rem',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.15s ease',
-                  marginTop: '4px'
+                  onLogout?.();
                 }}
               >
-                <LogOut size={16} color="#ef4444" /> Sign Out & Logout
+                <LogOut size={16} /> Sign out
               </button>
             </div>
           )}
@@ -256,10 +130,40 @@ const DedicatedPartnerNavbar = ({
       </div>
 
       <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
+        .pnav { position: sticky; top: 0; z-index: 100; height: 68px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: rgba(255,255,255,0.97); backdrop-filter: blur(12px); border-bottom: 1px solid #e2e8f0; }
+        .pnav-left, .pnav-right { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .pnav-title-wrap { min-width: 0; }
+        .pnav-title { margin: 0; font-size: 1.1rem; font-weight: 800; color: #0f172a; letter-spacing: -0.2px; white-space: nowrap; }
+        .pnav-sub { display: flex; align-items: center; gap: 4px; margin-top: 1px; font-size: 0.76rem; font-weight: 600; color: #64748b; white-space: nowrap; }
+        .pnav-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: #334155; cursor: pointer; transition: background 0.15s ease; }
+        .pnav-icon-btn:hover { background: #f1f5f9; }
+        .pnav-icon-btn.bordered { border-color: #e2e8f0; background: #ffffff; }
+        .pnav-icon-btn:disabled { opacity: 0.6; cursor: default; }
+        .pnav-kyc { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 9999px; font-size: 0.76rem; font-weight: 700; white-space: nowrap; }
+        .pnav-kyc.ok { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+        .pnav-kyc.pending { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+        .pnav-status { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 9999px; font-size: 0.8rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
+        .pnav-status.online { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+        .pnav-status.offline { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .pnav-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+        .pnav-status.online .pnav-dot { box-shadow: 0 0 0 3px rgba(16,185,129,0.2); }
+        .pnav-divider { width: 1px; height: 28px; background: #e2e8f0; }
+        .pnav-profile { display: inline-flex; align-items: center; gap: 10px; padding: 4px 10px 4px 4px; border-radius: 9999px; border: 1px solid #e2e8f0; background: #ffffff; cursor: pointer; text-align: left; }
+        .pnav-profile:hover, .pnav-profile.open { background: #f8fafc; }
+        .pnav-avatar { width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #10b981, #059669); color: #fff; font-weight: 800; font-size: 0.9rem; flex-shrink: 0; }
+        .pnav-profile-text { display: flex; flex-direction: column; max-width: 150px; }
+        .pnav-profile-name { font-size: 0.82rem; font-weight: 700; color: #0f172a; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pnav-profile-role { font-size: 0.7rem; font-weight: 600; color: #059669; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pnav-menu { position: absolute; right: 0; top: calc(100% + 8px); width: 250px; padding: 8px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 12px 32px rgba(15,23,42,0.12); z-index: 200; }
+        .pnav-menu-head { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; margin-bottom: 6px; }
+        .pnav-menu-name { font-size: 0.86rem; font-weight: 700; color: #0f172a; }
+        .pnav-menu-contact { font-size: 0.75rem; color: #64748b; margin-top: 2px; word-break: break-all; }
+        .pnav-menu-role { font-size: 0.72rem; font-weight: 600; color: #059669; margin-top: 4px; }
+        .pnav-logout { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: none; border-radius: 10px; background: #fef2f2; color: #dc2626; font-size: 0.83rem; font-weight: 700; cursor: pointer; }
+        .pnav-logout:hover { background: #fee2e2; }
+        @keyframes pnav-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @media (max-width: 1100px) { .pnav-hide-md { display: none !important; } .pnav-profile { padding-right: 8px; } }
+        @media (max-width: 720px) { .pnav { padding: 0 14px; height: 60px; } .pnav-hide-sm { display: none !important; } .pnav-divider { display: none; } .pnav-right { gap: 8px; } }
       `}</style>
     </header>
   );

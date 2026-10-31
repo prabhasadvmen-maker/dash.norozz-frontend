@@ -17,13 +17,14 @@ import {
 import { usePartner } from '../../hooks/usePartner.js';
 import { toast } from '../../utils/toast.js';
 
-const PartnerWalletCard = () => {
+const PartnerWalletCard = ({ onWithdraw }) => {
   const { wallet, refetchWallet } = usePartner('wallet');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const balance = wallet?.walletBalance ?? wallet?.balance ?? wallet?.availableBalance ?? 0;
-  const transactions = wallet?.transactions || wallet?.recentTransactions || [];
-  const securityDeposit = wallet?.securityDeposit ?? 500;
+  const allTransactions = wallet?.transactions || wallet?.recentTransactions || [];
+  const transactions = allTransactions.slice(0, 8);
+  const securityDeposit = wallet?.securityDeposit ?? 0;
   const totalEarned = wallet?.totalEarned ?? balance;
   const pendingClearance = wallet?.pendingClearance ?? 0;
 
@@ -39,12 +40,13 @@ const PartnerWalletCard = () => {
     }
   };
 
+  // The real withdrawal flow (amount, bank validation, API call) lives on the Wallet tab
   const handleWithdraw = () => {
     if (balance <= 0) {
       toast.error('Insufficient wallet balance for withdrawal.');
       return;
     }
-    toast.success(`🎉 Instant IMPS transfer of ₹${Number(balance).toLocaleString()} initiated to linked bank account!`);
+    onWithdraw?.();
   };
 
   return (
@@ -144,7 +146,7 @@ const PartnerWalletCard = () => {
               }}
             >
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#34d399', boxShadow: '0 0 8px #34d399' }} />
-              <span>Instant Payouts</span>
+              <span>Secure Wallet</span>
             </div>
           </div>
 
@@ -294,7 +296,7 @@ const PartnerWalletCard = () => {
             <span>Recent Wallet Transactions</span>
           </h3>
           <span style={{ fontSize: '0.74rem', fontWeight: '700', color: '#64748b', background: '#f1f5f9', padding: '4px 10px', borderRadius: '12px' }}>
-            {transactions.length} Activity Logged
+            Last {transactions.length}
           </span>
         </div>
 

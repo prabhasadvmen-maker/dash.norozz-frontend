@@ -10,6 +10,7 @@ import PartnerQuickActions from '../components/partner/PartnerQuickActions';
 import OnlineOfflineModal from '../components/partner/OnlineOfflineModal';
 import IncomingJobOfferModal from '../components/partner/IncomingJobOfferModal';
 import PartnerFulfillmentPage from './partner/PartnerFulfillmentPage';
+import PartnerWalletView from '../components/partner/PartnerWalletView';
 import PartnerProfileView from '../components/partner/PartnerProfileView';
 import PartnerAnalyticsView from '../components/partner/PartnerAnalyticsView';
 import PartnerCalendarView from '../components/partner/PartnerCalendarView';
@@ -27,7 +28,6 @@ import {
   Users,
   Calendar,
   Lock,
-  ZapOff,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -456,41 +456,6 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
                     onToggleOnlineClick={handleOpenOnlineModal}
                   />
 
-                  {/* Offline Warning Banner if Technician is Offline */}
-                  {!isOnline && (
-                    <div
-                      style={{
-                        padding: '16px 20px',
-                        background: '#fef2f2',
-                        borderRadius: 'var(--radius-lg)',
-                        border: '1px solid #fecaca',
-                        color: '#991b1b',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginBottom: '24px'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <ZapOff size={24} color="#dc2626" />
-                        <div>
-                          <div style={{ fontWeight: '800', fontSize: '0.95rem' }}>You are currently Offline</div>
-                          <div style={{ fontSize: '0.82rem', opacity: 0.9 }}>
-                            Switch back Online to start receiving instant booking dispatches near your area.
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleOpenOnlineModal}
-                        className="btn btn-sm"
-                        style={{ background: '#16a34a', color: '#ffffff', fontWeight: '700', borderRadius: '10px', padding: '8px 16px', border: 'none' }}
-                      >
-                        Go Online Now
-                      </button>
-                    </div>
-                  )}
-
                   {/* 1. Today's Stats Row */}
                   <PartnerMetricCards />
 
@@ -502,7 +467,7 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
                   />
 
                   {/* 3. Wallet Balance Card */}
-                  <PartnerWalletCard />
+                  <PartnerWalletCard onWithdraw={() => setActiveTab('wallet')} />
 
                   {/* 4. Quick Actions Grid */}
                   <PartnerQuickActions
@@ -533,7 +498,9 @@ const DedicatedPartnerPanel = ({ currentUser, onLogout, onUpdateUser }) => {
           {activeTab === 'documents' && <PartnerProfileView partnerData={currentUser} initialSubTab="documents" onTabChange={(t) => setActiveTab(t)} onUpdateUser={onUpdateUser} />}
           {activeTab === 'bankDetails' && <PartnerProfileView partnerData={currentUser} initialSubTab="bank" onTabChange={(t) => setActiveTab(t)} onUpdateUser={onUpdateUser} />}
           {activeTab === 'referral' && <PartnerProfileView partnerData={currentUser} initialSubTab="referral" onTabChange={(t) => setActiveTab(t)} onUpdateUser={onUpdateUser} />}
-          {activeTab === 'wallet' && <PartnerProfileView partnerData={currentUser} initialSubTab="wallet" onTabChange={(t) => setActiveTab(t)} onUpdateUser={onUpdateUser} />}
+          {activeTab === 'wallet' && (
+            <PartnerWalletView currentUser={currentUser} isApproved={isApproved} onNavigateTab={(t) => setActiveTab(t)} onUpdateUser={onUpdateUser} />
+          )}
           {activeTab === 'settings' && <PartnerProfileView partnerData={currentUser} initialSubTab="settings" onTabChange={(t) => setActiveTab(t)} onUpdateUser={onUpdateUser} />}
 
           {/* UNLOCKED TABS FOR APPROVED PARTNERS */}

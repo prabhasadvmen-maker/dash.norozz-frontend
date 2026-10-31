@@ -503,6 +503,13 @@ const SuperAdminBannersView = () => {
                 <div style={{ fontSize: '0.74rem', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>
                   Live Customer App Preview
                 </div>
+                {formData.imageUrl && !formData.title && !formData.subtitle && !formData.badgeText ? (
+                  <img
+                    src={formData.imageUrl}
+                    alt="Banner preview"
+                    style={{ display: 'block', width: '100%', height: 'auto', borderRadius: '16px', boxShadow: '0 8px 20px rgba(0,0,0,0.15)' }}
+                  />
+                ) : (
                 <div style={{
                   background: formData.imageUrl ? `url(${formData.imageUrl}) center/cover` : (formData.gradientBg || gradientPresets[0].value),
                   borderRadius: '16px',
@@ -541,6 +548,7 @@ const SuperAdminBannersView = () => {
                     )}
                   </div>
                 </div>
+                )}
               </div>
 
               {/* TITLE & BADGE */}
