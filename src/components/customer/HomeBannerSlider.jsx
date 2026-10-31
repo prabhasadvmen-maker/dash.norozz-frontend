@@ -149,6 +149,7 @@ const HomeBannerSlider = ({ banners: propBanners, onSelectCategory, onSelectServ
         
         {/* Left Column: Dynamic Banner Headline, Subtitle, CTA & Tags */}
         <div>
+          {(!activeBanner || activeBanner.badgeText) && (
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -164,8 +165,9 @@ const HomeBannerSlider = ({ banners: propBanners, onSelectCategory, onSelectServ
             textTransform: 'uppercase',
             marginBottom: '16px'
           }}>
-            <Sparkles size={13} color="#34d399" /> {activeBanner?.badgeText || 'NOROZZ GUARANTEED HOME SERVICES'}
+            <Sparkles size={13} color="#34d399" /> {activeBanner ? activeBanner.badgeText : 'NOROZZ GUARANTEED HOME SERVICES'}
           </div>
+          )}
 
           <h1 style={{
             fontSize: '2.4rem',
@@ -175,7 +177,7 @@ const HomeBannerSlider = ({ banners: propBanners, onSelectCategory, onSelectServ
             letterSpacing: '-0.5px',
             color: '#ffffff'
           }}>
-            {activeBanner?.title || 'Premium On-Demand Services'} <br />
+            {activeBanner ? activeBanner.title : 'Premium On-Demand Services'} <br />
             {!activeBanner && (
               <span style={{
                 background: 'linear-gradient(135deg, #34d399 0%, #a7f3d0 100%)',
@@ -193,7 +195,7 @@ const HomeBannerSlider = ({ banners: propBanners, onSelectCategory, onSelectServ
             maxWidth: '460px',
             fontWeight: '500'
           }}>
-            {activeBanner?.subtitle || 'Book background-verified professionals for deep cleaning, AC repair, grooming, and plumbing. Upfront pricing with 100% satisfaction guarantee.'}
+            {activeBanner ? activeBanner.subtitle : 'Book background-verified professionals for deep cleaning, AC repair, grooming, and plumbing. Upfront pricing with 100% satisfaction guarantee.'}
           </p>
 
           {/* CTA Button */}

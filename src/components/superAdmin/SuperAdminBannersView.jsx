@@ -201,7 +201,7 @@ const SuperAdminBannersView = () => {
     setFormData({
       title: '',
       subtitle: '',
-      badgeText: 'SPECIAL OFFER',
+      badgeText: '',
       imageUrl: '',
       gradientBg: gradientPresets[0].value,
       targetType: 'none',
@@ -218,7 +218,7 @@ const SuperAdminBannersView = () => {
     setFormData({
       title: banner.title || '',
       subtitle: banner.subtitle || '',
-      badgeText: banner.badgeText || 'SPECIAL OFFER',
+      badgeText: banner.badgeText || '',
       imageUrl: banner.imageUrl || '',
       gradientBg: banner.gradientBg || gradientPresets[0].value,
       targetType: banner.targetType || 'none',
@@ -266,11 +266,6 @@ const SuperAdminBannersView = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.title.trim()) {
-      toast.error('Please enter banner title');
-      return;
-    }
-
     setSaving(true);
     try {
       if (editingBanner) {
@@ -520,15 +515,21 @@ const SuperAdminBannersView = () => {
                   flexDirection: 'column',
                   gap: '8px'
                 }}>
-                  <span style={{ background: 'rgba(255,255,255,0.2)', padding: '3px 10px', borderRadius: '12px', fontSize: '0.68rem', fontWeight: '800', textTransform: 'uppercase', alignSelf: 'flex-start' }}>
-                    {formData.badgeText || 'SPECIAL OFFER'}
-                  </span>
-                  <div style={{ fontSize: '1.4rem', fontWeight: '900', lineHeight: 1.2 }}>
-                    {formData.title || 'Banner Title Here'}
-                  </div>
-                  <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>
-                    {formData.subtitle || 'Banner subtitle text will appear here.'}
-                  </div>
+                  {formData.badgeText && (
+                    <span style={{ background: 'rgba(255,255,255,0.2)', padding: '3px 10px', borderRadius: '12px', fontSize: '0.68rem', fontWeight: '800', textTransform: 'uppercase', alignSelf: 'flex-start' }}>
+                      {formData.badgeText}
+                    </span>
+                  )}
+                  {formData.title && (
+                    <div style={{ fontSize: '1.4rem', fontWeight: '900', lineHeight: 1.2 }}>
+                      {formData.title}
+                    </div>
+                  )}
+                  {formData.subtitle && (
+                    <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>
+                      {formData.subtitle}
+                    </div>
+                  )}
                   <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button type="button" style={{ padding: '6px 14px', background: '#ffffff', color: '#0f172a', border: 'none', borderRadius: '9999px', fontSize: '0.76rem', fontWeight: '800', cursor: 'default' }}>
                       Book Now <ArrowRight size={12} style={{ display: 'inline', marginLeft: '4px' }} />
@@ -546,11 +547,10 @@ const SuperAdminBannersView = () => {
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '14px' }}>
                 <div>
                   <label style={{ fontSize: '0.8rem', fontWeight: '800', color: '#475569', display: 'block', marginBottom: '6px' }}>
-                    BANNER TITLE *
+                    BANNER TITLE
                   </label>
                   <input
                     type="text"
-                    required
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     placeholder="e.g. AC Jet Deep Cleaning"
