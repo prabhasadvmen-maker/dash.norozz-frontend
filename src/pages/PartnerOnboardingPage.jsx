@@ -31,6 +31,7 @@ import { catalogService } from '../services/catalog.service.js';
 import { cityService } from '../services/city.service.js';
 import { geoapifyService } from '../services/geoapify.service.js';
 import { toast } from '../utils/toast.js';
+import { payWithGateway } from '../utils/razorpay.js';
 import { kycService } from '../services/kyc.service.js';
 
 const DEFAULT_SCHEDULE = [
@@ -403,7 +404,6 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
     currency: 'INR',
   });
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('UPI');
   const [processingFeePayment, setProcessingFeePayment] = useState(false);
 
   useEffect(() => {
@@ -429,8 +429,8 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [editName, setEditName] = useState(currentUser?.name || '');
   const [editEmail, setEditEmail] = useState(currentUser?.email || '');
-  const [editDob, setEditDob] = useState(currentUser?.dob || '1995-08-15');
-  const [editGender, setEditGender] = useState(currentUser?.gender || 'Male');
+  const [editDob, setEditDob] = useState(currentUser?.dob || '');
+  const [editGender, setEditGender] = useState(currentUser?.gender || '');
   const [editCity, setEditCity] = useState(currentUser?.assignedCity || currentUser?.city || '');
   const [activeCitiesList, setActiveCitiesList] = useState([]);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -2735,55 +2735,32 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                 <div style={{ fontSize: '0.72rem', color: '#64748b' }}>One-Time Onboarding Fee (Incl. 18% GST)</div>
               </div>
 
-              <div style={{ marginBottom: '18px' }}>
-                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: '800', color: '#334155', marginBottom: '8px' }}>
-                  Select Payment Option
-                </label>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {['UPI (GPay / PhonePe / Paytm)', 'Debit / Credit Card', 'Net Banking / Wallet'].map((method) => (
-                    <div
-                      key={method}
-                      onClick={() => setSelectedPaymentMethod(method)}
-                      style={{
-                        padding: '12px 16px',
-                        borderRadius: '12px',
-                        border: selectedPaymentMethod === method ? '2px solid #16a34a' : '1.5px solid #cbd5e1',
-                        background: selectedPaymentMethod === method ? '#f0fdf4' : '#ffffff',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        fontWeight: '700',
-                        fontSize: '0.88rem',
-                        color: selectedPaymentMethod === method ? '#15803d' : '#334155',
-                      }}
-                    >
-                      <span>{method}</span>
-                      <div style={{
-                        width: '18px',
-                        height: '18px',
-                        borderRadius: '50%',
-                        border: selectedPaymentMethod === method ? '6px solid #16a34a' : '2px solid #94a3b8',
-                      }} />
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', textAlign: 'center', margin: '0 0 16px 0' }}>
+                You will choose UPI, card or net banking on the secure payment window.
+              </p>
 
               <button
                 type="button"
                 onClick={async () => {
                   setProcessingFeePayment(true);
                   try {
-                    await payOnboardingFee({ paymentMethod: selectedPaymentMethod });
+                    // The server creates the order for the configured fee, the gateway collects the money,
+                    // and the fee is only marked paid after the payment is verified
+                    const verified = await payWithGateway({
+                      type: 'onboarding_fee',
+                      user: currentUser,
+                      description: 'NOROZZ partner onboarding fee',
+                    });
+                    const transactionId = verified?.data?.payment?.transactionId;
+                    await payOnboardingFee({ transactionId });
                     setShowPaymentModal(false);
                     toast.success('🎉 Registration fee paid successfully!');
                     setTimeout(() => {
                       if (onFinishOnboarding) onFinishOnboarding();
                     }, 800);
                   } catch (pErr) {
-                    toast.error(pErr.message || 'Payment processing failed');
+                    // API errors are already toasted by the axios interceptor; gateway problems (cancelled, failed) are Errors
+                    if (pErr instanceof Error) toast.error(pErr.message || 'Payment processing failed');
                   } finally {
                     setProcessingFeePayment(false);
                   }
@@ -2905,6 +2882,7 @@ const PartnerOnboardingPage = ({ currentUser, onLogout, onFinishOnboarding }) =>
                       style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '0.86rem', outline: 'none', background: '#ffffff' }}
                       required
                     >
+                      <option value="" disabled>Select gender</option>
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
                       <option value="Other">Other</option>

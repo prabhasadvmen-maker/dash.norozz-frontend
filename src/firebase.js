@@ -10,7 +10,15 @@ const firebaseConfig = {
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-export const messaging = getMessaging(app);
+
+// getMessaging() throws in non-browser environments (e.g. SSR, SW scope)
+let messaging = null;
+try {
+  messaging = getMessaging(app);
+} catch (e) {
+  console.warn('[Firebase] Messaging not available:', e.message);
+}
+export { messaging };
 
 export async function requestPermissionAndGetToken() {
   const permission = await Notification.requestPermission();
